@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isSignedIn() &&
+        firestore.exists(/databases/(default)/documents/staff_users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isStaff() &&
+        firestore.get(/databases/(default)/documents/staff_users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Public-read, admin-write catalog imagery.
+    match /products/{productId}/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin() && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /categories/{categoryId}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /offers/{offerId}/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Private — owner + staff only.
+    match /users/{uid}/{fileName} {
+      allow read: if request.auth.uid == uid || isStaff();
+      allow write: if request.auth.uid == uid && request.resource.size < 3 * 1024 * 1024;
+    }
+
+    match /order_requests/{requestId}/{fileName} {
+      // photo_upload mode: uploaded by the requesting customer, read by staff.
+      allow read: if isStaff();
+      allow write: if isSignedIn() && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /invoices/{orderId}/{fileName} {
+      allow read: if isSignedIn(); // further scoped in app logic to the order owner + staff
+      allow write: if isAdmin();
+    }
+
+    match /admin/broadcastAssets/{assetId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

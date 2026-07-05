@@ -1,0 +1,150 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helper functions ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function staffDoc() {
+      return get(/databases/$(database)/documents/staff_users/$(request.auth.uid));
+    }
+
+    function isStaff() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/staff_users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isStaff() && staffDoc().data.role == 'admin';
+    }
+
+    function isEmployee() {
+      return isStaff() && staffDoc().data.role == 'employee';
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if false;
+
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /wishlist/{productId} {
+        allow read, write: if isOwner(uid);
+      }
+      match /recentlyViewed/{productId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ---------- staff_users ----------
+    match /staff_users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ---------- catalog (public read, admin write) ----------
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /inventory/{productId} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /coupons/{couponCode} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ---------- carts ----------
+    match /carts/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ---------- order_requests ----------
+    match /order_requests/{requestId} {
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      // Status/confirmation fields are staff-only to update.
+      allow update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- orders ----------
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isStaff());
+      // Customers can never set their own orderStatus/paymentStatus/
+      // orderApprovalStatus — status mutation is staff-only.
+      allow update: if isStaff();
+      allow delete: if false;
+
+      match /invoice/{invoiceId} {
+        allow read: if isSignedIn() &&
+          (get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid || isStaff());
+        allow write: if isStaff();
+      }
+    }
+
+    // ---------- loyalty_ledger ----------
+    match /loyalty_ledger/{entryId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow create, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- notifications ----------
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------- sales_reports_cache ----------
+    match /sales_reports_cache/{periodId} {
+      allow read: if isStaff();
+      allow write: if isAdmin(); // normally only written by Cloud Functions (Admin SDK bypasses rules)
+    }
+
+    // ---------- support_requests ----------
+    match /support_requests/{requestId} {
+      allow create: if true; // allow guests to submit a contact form
+      allow read, update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- admin_config ----------
+    match /admin_config/{docId} {
+      allow read: if true; // business info/app settings are public app content
+      allow write: if isAdmin();
+    }
+  }
+}
