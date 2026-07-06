@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/loaders/shimmer_skeletons.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../../../core/widgets/search/search_bar_launcher.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../categories/presentation/providers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_tile.dart';
@@ -26,13 +27,6 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Hi, ${user?.name?.split(' ').first ?? 'there'} 👋'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => ref.read(signOutUseCaseProvider).call(),
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -45,6 +39,8 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           children: [
+            SearchBarLauncher(onTap: () => context.push('/search')),
+            const SizedBox(height: AppSpacing.md),
             _BannerSection(ref: ref),
             const SizedBox(height: AppSpacing.lg),
             _CategorySection(ref: ref),

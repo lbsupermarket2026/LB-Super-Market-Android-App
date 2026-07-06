@@ -76,4 +76,21 @@ class ProductRemoteDataSource {
     }
     return ProductModel.fromFirestore(doc);
   }
+
+  /// Simple prefix/keyword search against the denormalized
+  /// `searchKeywords` array field (see final schema §4). Sufficient for
+  /// exact-token matching; if fuzzy/typo-tolerant search is needed later,
+  /// that's the point to bring in Algolia/Typesense as flagged during
+  /// architecture planning — this stays as the Firestore-native fallback.
+  Future<List<ProductModel>> searchProducts(String query, {int limit = 20}) async {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return const [];
+
+    final snapshot = await _collection
+        .where('isActive', isEqualTo: true)
+        .where('searchKeywords', arrayContains: normalized)
+        .limit(limit)
+        .get();
+    return snapshot.docs.map(ProductModel.fromFirestore).toList();
+  }
 }

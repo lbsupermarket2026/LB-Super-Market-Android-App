@@ -13,7 +13,9 @@ class RouteNames {
   static const String categories = '/categories';
   static const String cart = '/cart';
   static const String orders = '/orders';
+  static const String offers = '/offers';
   static const String profile = '/profile';
+  static const String search = '/search';
 
   static const String productDetail = '/product/:productId';
   static const String categoryDetail = '/category/:categoryId';

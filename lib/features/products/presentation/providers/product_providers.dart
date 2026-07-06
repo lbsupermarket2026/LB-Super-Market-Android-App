@@ -8,6 +8,7 @@ import '../../domain/usecases/get_trending_products_usecase.dart';
 import '../../domain/usecases/get_best_sellers_usecase.dart';
 import '../../domain/usecases/get_products_by_category_usecase.dart';
 import '../../domain/usecases/get_product_by_id_usecase.dart';
+import '../../domain/usecases/search_products_usecase.dart';
 
 final productRemoteDataSourceProvider = Provider<ProductRemoteDataSource>((ref) {
   return ProductRemoteDataSource();
@@ -35,6 +36,10 @@ final getProductsByCategoryUseCaseProvider = Provider<GetProductsByCategoryUseCa
 
 final getProductByIdUseCaseProvider = Provider<GetProductByIdUseCase>((ref) {
   return GetProductByIdUseCase(ref.watch(productRepositoryProvider));
+});
+
+final searchProductsUseCaseProvider = Provider<SearchProductsUseCase>((ref) {
+  return SearchProductsUseCase(ref.watch(productRepositoryProvider));
 });
 
 // ---- Home-page section providers ----

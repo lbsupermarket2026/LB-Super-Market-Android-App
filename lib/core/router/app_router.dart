@@ -9,19 +9,23 @@ import '../../features/authentication/presentation/screens/forgot_password_scree
 import '../../features/authentication/presentation/screens/splash_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/categories/presentation/screens/categories_screen.dart';
+import '../../features/orders/presentation/screens/orders_screen.dart';
+import '../../features/offers/presentation/screens/offers_rewards_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/products/presentation/screens/category_detail_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
 import '../../features/admin/dashboard/presentation/screens/admin_dashboard_screen.dart';
+import '../widgets/bottom_nav_shell.dart';
 import 'route_guards.dart';
 import 'route_names.dart';
 
 /// Bridges Riverpod provider updates into a Listenable GoRouter can use.
 /// Deliberately driven by the SAME authStateChangesProvider that
 /// RouteGuard.redirect() reads — using a separate raw FirebaseAuth stream
-/// here (as an earlier version of this file did) creates a race: two
-/// independent subscriptions to the same underlying stream can resolve
-/// in the wrong order, leaving the redirect stuck evaluating a stale
-/// "still loading" state indefinitely (splash screen never leaves).
+/// here creates a race between two independent subscriptions to the same
+/// underlying stream, which can leave redirect stuck on a stale "loading"
+/// read forever (this was the splash-screen-stuck bug).
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }
@@ -46,8 +50,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: RouteNames.signup, builder: (context, state) => const SignupScreen()),
       GoRoute(path: RouteNames.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
 
-      GoRoute(path: RouteNames.home, builder: (context, state) => const HomeScreen()),
-      GoRoute(path: RouteNames.categories, builder: (context, state) => const CategoriesScreen()),
+      // 5 primary tabs — persistent bottom nav, each keeps its own stack.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) => BottomNavShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: RouteNames.home, builder: (context, state) => const HomeScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: RouteNames.categories, builder: (context, state) => const CategoriesScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: RouteNames.orders, builder: (context, state) => const OrdersScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: RouteNames.offers, builder: (context, state) => const OffersRewardsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: RouteNames.profile, builder: (context, state) => const ProfileScreen()),
+          ]),
+        ],
+      ),
+
+      // Full-screen pushes that sit ABOVE the bottom nav (no tab bar).
+      GoRoute(path: RouteNames.search, builder: (context, state) => const SearchScreen()),
       GoRoute(
         path: '/category/:categoryId',
         builder: (context, state) => CategoryDetailScreen(
@@ -62,10 +88,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       GoRoute(path: RouteNames.adminDashboard, builder: (context, state) => const AdminDashboardScreen()),
 
-      // Remaining routes (categories, product detail, cart, checkout,
-      // orders, wishlist, profile, admin sub-sections) are added as each
-      // feature module is built — the guard above already accounts for
-      // any '/admin/**' path being staff-only.
+      // Remaining routes (cart, checkout, wishlist, admin sub-sections)
+      // are added as each feature module is built — the guard above
+      // already accounts for any '/admin/**' path being staff-only.
     ],
   );
 });

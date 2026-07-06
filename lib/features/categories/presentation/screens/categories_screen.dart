@@ -15,7 +15,16 @@ class CategoriesScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(topLevelCategoriesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Categories')),
+      appBar: AppBar(
+        title: const Text('Categories'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search products',
+            onPressed: () => context.push('/search'),
+          ),
+        ],
+      ),
       body: categoriesAsync.when(
         data: (categories) => categories.isEmpty
             ? const EmptyStateWidget(message: 'No categories available yet.', icon: Icons.category_outlined)

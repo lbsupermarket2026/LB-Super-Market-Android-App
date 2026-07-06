@@ -25,4 +25,6 @@ abstract class ProductRepository {
   });
 
   Future<Result<ProductEntity>> getProductById(String productId);
+
+  Future<Result<List<ProductEntity>>> searchProducts(String query, {int limit = 20});
 }

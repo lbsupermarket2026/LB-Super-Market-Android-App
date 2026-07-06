@@ -54,4 +54,12 @@ class ProductRepositoryImpl implements ProductRepository {
       return model.toEntity();
     });
   }
+
+  @override
+  Future<Result<List<ProductEntity>>> searchProducts(String query, {int limit = 20}) {
+    return guard(() async {
+      final models = await _remote.searchProducts(query, limit: limit);
+      return models.map((m) => m.toEntity()).toList();
+    });
+  }
 }
