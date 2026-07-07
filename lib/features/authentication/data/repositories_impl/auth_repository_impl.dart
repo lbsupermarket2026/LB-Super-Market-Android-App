@@ -24,6 +24,16 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Result<void>> updateProfile({required String name, required String phone}) {
+    return guard(() => _remote.updateProfile(name: name, phone: phone));
+  }
+
+  @override
+  Future<Result<void>> changePassword({required String currentPassword, required String newPassword}) {
+    return guard(() => _remote.changePassword(currentPassword: currentPassword, newPassword: newPassword));
+  }
+
+  @override
   UserEntity? get currentUser => null; // rely on authStateChanges stream via Riverpod provider
 
   @override

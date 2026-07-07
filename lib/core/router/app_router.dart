@@ -19,6 +19,11 @@ import '../../features/admin/dashboard/presentation/screens/admin_dashboard_scre
 import '../widgets/bottom_nav_shell.dart';
 import 'route_guards.dart';
 import 'route_names.dart';
+import '../../features/business_info/presentation/about_us_screen.dart';
+import '../../features/legal/presentation/screens/static_content_screen.dart';
+import '../../features/legal/presentation/screens/faqs_screen.dart';
+import '../../features/legal/presentation/providers/legal_providers.dart';
+import '../../features/addresses/presentation/screens/addresses_screen.dart';
 
 /// Bridges Riverpod provider updates into a Listenable GoRouter can use.
 /// Deliberately driven by the SAME authStateChangesProvider that
@@ -85,6 +90,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/product/:productId',
         builder: (context, state) => ProductDetailScreen(productId: state.pathParameters['productId']!),
       ),
+
+      GoRoute(path: RouteNames.addresses, builder: (context, state) => const AddressesScreen()),
+      GoRoute(path: '/about-us', builder: (context, state) => const AboutUsScreen()),
+      GoRoute(path: '/faqs', builder: (context, state) => const FaqsScreen()),
+      GoRoute(
+        path: '/terms-conditions',
+        builder: (context, state) => StaticContentScreen(title: 'Terms & Conditions', provider: termsConditionsProvider),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        builder: (context, state) => StaticContentScreen(title: 'Privacy Policy', provider: privacyPolicyProvider),
+      ),
+      GoRoute(
+        path: '/refund-policy',
+        builder: (context, state) => StaticContentScreen(title: 'Refund Policy', provider: refundPolicyProvider),
+      ),
+
 
       GoRoute(path: RouteNames.adminDashboard, builder: (context, state) => const AdminDashboardScreen()),
 

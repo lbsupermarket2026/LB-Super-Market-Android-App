@@ -15,6 +15,7 @@ class AppTheme {
       surface: AppColors.lightSurface,
       onSurface: AppColors.lightOnSurface,
       error: AppColors.lightError,
+      tertiary: AppColors.lightAccent,
     );
 
     return ThemeData(
@@ -23,10 +24,17 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.lightSurface,
       textTheme: AppTypography.textTheme(AppColors.lightOnSurface),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.lightSurface,
-        foregroundColor: AppColors.lightOnSurface,
+        backgroundColor: AppColors.navBar,
+        foregroundColor: AppColors.onNavBar,
         elevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.onNavBar),
+        titleTextStyle: TextStyle(
+          fontFamily: AppTypography.fontFamily,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+          color: AppColors.onNavBar,
+        ),
       ),
       cardTheme: CardThemeData(
         color: Colors.white,
@@ -68,10 +76,17 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.darkSurface,
       textTheme: AppTypography.textTheme(AppColors.darkOnSurface),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.darkSurface,
-        foregroundColor: AppColors.darkOnSurface,
+        backgroundColor: AppColors.navBar,
+        foregroundColor: AppColors.onNavBar,
         elevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.onNavBar),
+        titleTextStyle: TextStyle(
+          fontFamily: AppTypography.fontFamily,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+          color: AppColors.onNavBar,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.darkSurfaceVariant,

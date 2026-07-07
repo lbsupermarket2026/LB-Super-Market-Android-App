@@ -123,6 +123,30 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> updateProfile({required String name, required String phone}) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw const AuthException('Not signed in.');
+
+    await _firestore.collection(FirestorePaths.users).doc(user.uid).set(
+      {'name': name, 'phone': phone},
+      SetOptions(merge: true),
+    );
+    await user.updateDisplayName(name);
+  }
+
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null || user.email == null) throw const AuthException('Not signed in.');
+
+    try {
+      final credential = fb.EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+    } on fb.FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseAuthError(e));
+    }
+  }
+
   String _mapFirebaseAuthError(fb.FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':

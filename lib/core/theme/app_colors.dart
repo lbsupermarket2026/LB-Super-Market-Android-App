@@ -30,4 +30,10 @@ class AppColors {
   static const Color darkWarning = Color(0xFFFFCC80);
   static const Color darkError = Color(0xFFEF9A9A);
   static const Color darkAccent = Color(0xFFFFAB74);
+
+  // Brand nav bar — matches the website's dark header/footer bands.
+  // Used for the app bar regardless of light/dark theme mode, so the
+  // brand identity stays consistent the way it does across the site.
+  static const Color navBar = Color(0xFF181818);
+  static const Color onNavBar = Color(0xFFFFFFFF);
 }

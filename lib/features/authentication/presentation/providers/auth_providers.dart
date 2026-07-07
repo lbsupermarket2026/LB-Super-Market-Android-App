@@ -7,6 +7,8 @@ import '../../domain/usecases/sign_in_usecase.dart';
 import '../../domain/usecases/sign_up_usecase.dart';
 import '../../domain/usecases/sign_out_usecase.dart';
 import '../../domain/usecases/reset_password_usecase.dart';
+import '../../domain/usecases/update_profile_usecase.dart';
+import '../../domain/usecases/change_password_usecase.dart';
 
 // ---- DI wiring ----
 
@@ -24,6 +26,14 @@ final signInUseCaseProvider = Provider<SignInUseCase>((ref) {
 
 final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
   return SignUpUseCase(ref.watch(authRepositoryProvider));
+});
+
+final updateProfileUseCaseProvider = Provider<UpdateProfileUseCase>((ref) {
+  return UpdateProfileUseCase(ref.watch(authRepositoryProvider));
+});
+
+final changePasswordUseCaseProvider = Provider<ChangePasswordUseCase>((ref) {
+  return ChangePasswordUseCase(ref.watch(authRepositoryProvider));
 });
 
 final signOutUseCaseProvider = Provider<SignOutUseCase>((ref) {
@@ -95,6 +105,31 @@ class SignUpState {
       );
 }
 
+
+class EditProfileNotifier extends Notifier<SignInState> {
+  @override
+  SignInState build() => const SignInState();
+
+  Future<bool> save({required String name, required String phone}) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    final result = await ref.read(updateProfileUseCaseProvider).call(name: name, phone: phone);
+    return result.match(
+      (failure) {
+        state = state.copyWith(isLoading: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isLoading: false, errorMessage: null);
+        ref.invalidate(authStateChangesProvider);
+        return true;
+      },
+    );
+  }
+}
+
+final editProfileNotifierProvider = NotifierProvider<EditProfileNotifier, SignInState>(EditProfileNotifier.new);
+
+
 class SignUpNotifier extends Notifier<SignUpState> {
   @override
   SignUpState build() => const SignUpState();
@@ -145,3 +180,28 @@ class ForgotPasswordNotifier extends Notifier<SignInState> {
 }
 
 final forgotPasswordNotifierProvider = NotifierProvider<ForgotPasswordNotifier, SignInState>(ForgotPasswordNotifier.new);
+
+
+class ChangePasswordNotifier extends Notifier<SignInState> {
+  @override
+  SignInState build() => const SignInState();
+
+  Future<bool> changePassword({required String currentPassword, required String newPassword}) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    final result = await ref
+        .read(changePasswordUseCaseProvider)
+        .call(currentPassword: currentPassword, newPassword: newPassword);
+    return result.match(
+      (failure) {
+        state = state.copyWith(isLoading: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isLoading: false, errorMessage: null);
+        return true;
+      },
+    );
+  }
+}
+
+final changePasswordNotifierProvider = NotifierProvider<ChangePasswordNotifier, SignInState>(ChangePasswordNotifier.new);

@@ -28,6 +28,7 @@ class RouteNames {
 
   static const String orderDetail = '/orders/:orderId';
   static const String wishlist = '/wishlist';
+  static const String addresses = '/profile/addresses';
 
   static const String adminDashboard = '/admin/dashboard';
   static const String adminLogin = '/admin/login';
