@@ -24,6 +24,7 @@ import '../../features/legal/presentation/screens/static_content_screen.dart';
 import '../../features/legal/presentation/screens/faqs_screen.dart';
 import '../../features/legal/presentation/providers/legal_providers.dart';
 import '../../features/addresses/presentation/screens/addresses_screen.dart';
+import '../../features/wishlist/presentation/screens/wishlist_screen.dart';
 
 /// Bridges Riverpod provider updates into a Listenable GoRouter can use.
 /// Deliberately driven by the SAME authStateChangesProvider that
@@ -92,6 +93,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       GoRoute(path: RouteNames.addresses, builder: (context, state) => const AddressesScreen()),
+      GoRoute(path: RouteNames.wishlist, builder: (context, state) => const WishlistScreen()),
       GoRoute(path: '/about-us', builder: (context, state) => const AboutUsScreen()),
       GoRoute(path: '/faqs', builder: (context, state) => const FaqsScreen()),
       GoRoute(

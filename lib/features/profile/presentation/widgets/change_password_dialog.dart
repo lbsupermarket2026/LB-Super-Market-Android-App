@@ -15,11 +15,6 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  // Shows a success message inline and keeps the dialog open, per how
-  // this flow is meant to behave — the user can close it manually once
-  // they've seen the confirmation.
-  bool _success = false;
-
   @override
   void dispose() {
     _currentPasswordController.dispose();
@@ -38,12 +33,13 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
 
     if (!mounted) return;
 
-    if (ok) {
-      setState(() => _success = true);
-      _currentPasswordController.clear();
-      _newPasswordController.clear();
-      _confirmPasswordController.clear();
-    }
+    // Closes the dialog and hands the result back to whoever opened it —
+    // showChangePasswordDialog() below uses this to pop back to Profile
+    // and show the confirmation snackbar there. (Previously this dialog
+    // stayed open with an inline success banner instead — swap this
+    // Navigator.pop for a setState(() => _success = true) if you'd
+    // rather go back to that behavior.)
+    if (ok) Navigator.pop(context, true);
   }
 
   @override
@@ -58,28 +54,6 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_success)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.check_circle, color: Colors.green, size: 20),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Password updated successfully.',
-                          style: TextStyle(color: Colors.green),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               if (state.errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -136,8 +110,8 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
   }
 }
 
-Future<void> showChangePasswordDialog(BuildContext context) {
-  return showDialog(
+Future<bool?> showChangePasswordDialog(BuildContext context) {
+  return showDialog<bool>(
     context: context,
     builder: (_) => const ChangePasswordDialog(),
   );

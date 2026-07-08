@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required on Android 13+ (API 33+) for the system notification
+         permission prompt to appear at all — without this, requesting
+         permission at runtime silently does nothing. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="freshcart"
         android:name="${applicationName}"

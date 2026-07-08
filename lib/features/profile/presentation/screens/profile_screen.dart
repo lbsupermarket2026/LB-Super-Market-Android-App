@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
@@ -68,10 +69,30 @@ class ProfileScreen extends ConsumerWidget {
           _ProfileTile(
             icon: Icons.lock_outline,
             label: 'Change Password',
-            onTap: () => showChangePasswordDialog(context),
+            onTap: () async {
+              final changed = await showChangePasswordDialog(context);
+              if (changed == true && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password updated successfully.')),
+                );
+              }
+            },
           ),
-          const _ProfileTile(icon: Icons.favorite_border, label: 'Wishlist'),
-          const _ProfileTile(icon: Icons.notifications_outlined, label: 'Notifications'),
+          _ProfileTile(
+            icon: Icons.favorite_border,
+            label: 'Wishlist',
+            onTap: () => context.push(RouteNames.wishlist),
+          ),
+          _ProfileTile(
+            icon: Icons.notifications_outlined,
+            label: 'Notifications',
+            // Notification permission is requested automatically on first
+            // app launch (see main.dart). From here, "Notifications" opens
+            // the phone's own app-notification settings page — the same
+            // native screen where you'd manage any app's notifications —
+            // rather than a custom in-app toggle.
+            onTap: () => openAppSettings(),
+          ),
           _ProfileTile(
             icon: Icons.support_agent_outlined,
             label: 'Support / FAQ',

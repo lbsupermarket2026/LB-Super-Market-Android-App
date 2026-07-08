@@ -40,7 +40,28 @@ class AuthRemoteDataSource {
 
     final userDoc = await _firestore.collection(FirestorePaths.users).doc(uid).get();
     if (userDoc.exists) {
-      return UserModel.fromFirestore(userDoc);
+      final model = UserModel.fromFirestore(userDoc);
+      // Some accounts have a Firebase Auth displayName but an empty/missing
+      // 'name' field in Firestore (e.g. accounts created outside the normal
+      // sign-up flow) — fall back to that rather than showing "Guest".
+      if (model.name == null || model.name!.trim().isEmpty) {
+        final displayName = _firebaseAuth.currentUser?.displayName;
+        if (displayName != null && displayName.trim().isNotEmpty) {
+          return UserModel(
+            uid: model.uid,
+            name: displayName,
+            email: model.email,
+            phone: model.phone,
+            photoUrl: model.photoUrl,
+            role: model.role,
+            loyaltyPoints: model.loyaltyPoints,
+            defaultAddressId: model.defaultAddressId,
+            isBlocked: model.isBlocked,
+            fcmTokens: model.fcmTokens,
+          );
+        }
+      }
+      return model;
     }
 
     throw const NotFoundException('User profile not found in Firestore.');
