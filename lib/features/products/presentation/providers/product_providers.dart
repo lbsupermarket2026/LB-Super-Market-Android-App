@@ -9,6 +9,8 @@ import '../../domain/usecases/get_best_sellers_usecase.dart';
 import '../../domain/usecases/get_products_by_category_usecase.dart';
 import '../../domain/usecases/get_product_by_id_usecase.dart';
 import '../../domain/usecases/search_products_usecase.dart';
+import '../../domain/usecases/get_category_product_count_usecase.dart';
+import '../../domain/usecases/get_all_products_usecase.dart';
 
 final productRemoteDataSourceProvider = Provider<ProductRemoteDataSource>((ref) {
   return ProductRemoteDataSource();
@@ -40,6 +42,21 @@ final getProductByIdUseCaseProvider = Provider<GetProductByIdUseCase>((ref) {
 
 final searchProductsUseCaseProvider = Provider<SearchProductsUseCase>((ref) {
   return SearchProductsUseCase(ref.watch(productRepositoryProvider));
+});
+
+final getCategoryProductCountUseCaseProvider = Provider<GetCategoryProductCountUseCase>((ref) {
+  return GetCategoryProductCountUseCase(ref.watch(productRepositoryProvider));
+});
+
+final getAllProductsUseCaseProvider = Provider<GetAllProductsUseCase>((ref) {
+  return GetAllProductsUseCase(ref.watch(productRepositoryProvider));
+});
+
+/// Powers the "N items" label on each category card — cheap aggregate
+/// count, cached per category id for the lifetime of the provider.
+final categoryProductCountProvider = FutureProvider.family<int, String>((ref, categoryId) async {
+  final result = await ref.watch(getCategoryProductCountUseCaseProvider).call(categoryId);
+  return result.match((failure) => 0, (count) => count);
 });
 
 // ---- Home-page section providers ----

@@ -26,5 +26,12 @@ abstract class ProductRepository {
 
   Future<Result<ProductEntity>> getProductById(String productId);
 
+  Future<Result<int>> getProductCountForCategory(String categoryId);
+
+  Future<Result<ProductPage>> getAllProducts({
+    int limit = 20,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+  });
+
   Future<Result<List<ProductEntity>>> searchProducts(String query, {int limit = 20});
 }

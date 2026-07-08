@@ -56,6 +56,26 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
+  Future<Result<int>> getProductCountForCategory(String categoryId) {
+    return guard(() => _remote.getProductCountForCategory(categoryId));
+  }
+
+  @override
+  Future<Result<ProductPage>> getAllProducts({
+    int limit = 20,
+    startAfter,
+  }) {
+    return guard(() async {
+      final result = await _remote.getAllProducts(limit: limit, startAfter: startAfter);
+      return ProductPage(
+        items: result.items.map((m) => m.toEntity()).toList(),
+        lastDocument: result.lastDoc,
+        hasMore: result.hasMore,
+      );
+    });
+  }
+
+  @override
   Future<Result<List<ProductEntity>>> searchProducts(String query, {int limit = 20}) {
     return guard(() async {
       final models = await _remote.searchProducts(query, limit: limit);

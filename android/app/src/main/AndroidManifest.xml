@@ -45,5 +45,28 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Required on Android 11+ (API 30+) for url_launcher to resolve
+             an installed app for these schemes at all — without this,
+             canLaunchUrl/launchUrl silently fail even when e.g. Chrome
+             or WhatsApp is installed, because package visibility hides
+             them by default unless explicitly declared here. Covers
+             WhatsApp links (https), Call Delivery/Call Us (tel), and
+             Support email links (mailto) throughout the app. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="tel"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="mailto"/>
+        </intent>
     </queries>
 </manifest>
