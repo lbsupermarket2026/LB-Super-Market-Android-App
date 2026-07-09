@@ -27,6 +27,7 @@ import '../../features/addresses/presentation/screens/addresses_screen.dart';
 import '../../features/wishlist/presentation/screens/wishlist_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
+import '../../features/order_requests/presentation/screens/place_order_screen.dart';
 
 /// Bridges Riverpod provider updates into a Listenable GoRouter can use.
 /// Deliberately driven by the SAME authStateChangesProvider that
@@ -97,6 +98,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/orders/:orderId',
         builder: (context, state) => OrderDetailScreen(orderId: state.pathParameters['orderId']!),
       ),
+      GoRoute(path: '/place-order', builder: (context, state) => const PlaceOrderScreen()),
 
       GoRoute(path: RouteNames.addresses, builder: (context, state) => const AddressesScreen()),
       GoRoute(path: RouteNames.wishlist, builder: (context, state) => const WishlistScreen()),

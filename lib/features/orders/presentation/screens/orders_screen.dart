@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
+import '../../../order_requests/domain/entities/order_request_entity.dart';
+import '../../../order_requests/presentation/providers/order_request_providers.dart';
 import '../../domain/entities/order_entity.dart';
 import '../providers/order_providers.dart';
 import '../widgets/order_status_stepper.dart';
@@ -29,8 +31,12 @@ class OrdersScreen extends ConsumerWidget {
             return ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: const [
+                _PlaceOrderEntryButton(),
+                SizedBox(height: AppSpacing.md),
                 _WhatsAppOrderCard(),
-                SizedBox(height: AppSpacing.xl),
+                SizedBox(height: AppSpacing.md),
+                _PendingOrderRequestsSection(),
+                SizedBox(height: AppSpacing.lg),
                 EmptyStateWidget(
                   message: 'Your orders will show up here once you place one.',
                   icon: Icons.receipt_long_outlined,
@@ -52,7 +58,11 @@ class OrdersScreen extends ConsumerWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline),
                 ),
                 const SizedBox(height: AppSpacing.md),
+                const _PlaceOrderEntryButton(),
+                const SizedBox(height: AppSpacing.md),
                 const _WhatsAppOrderCard(),
+                const SizedBox(height: AppSpacing.md),
+                const _PendingOrderRequestsSection(),
                 const SizedBox(height: AppSpacing.md),
                 if (activeOrder.isNotEmpty) ...[
                   _ActiveOrderCard(order: activeOrder.first),
@@ -116,6 +126,92 @@ class _WhatsAppOrderCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PlaceOrderEntryButton extends StatelessWidget {
+  const _PlaceOrderEntryButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFE53935),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push('/place-order'),
+        child: const Padding(
+          padding: EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Icon(Icons.playlist_add, color: Colors.white),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text('Place a New Order',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              ),
+              Icon(Icons.chevron_right, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PendingOrderRequestsSection extends ConsumerWidget {
+  const _PendingOrderRequestsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final requestsAsync = ref.watch(myOrderRequestsProvider);
+
+    return requestsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (requests) {
+        final pending = requests.where((r) => r.status == OrderRequestStatus.pending).toList();
+        if (pending.isEmpty) return const SizedBox.shrink();
+
+        final theme = Theme.of(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Order Requests', style: theme.textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.sm),
+            ...pending.map((r) => Card(
+                  child: ListTile(
+                    leading: Icon(
+                      r.type == OrderRequestType.photo ? Icons.photo_camera_outlined : Icons.edit_note,
+                    ),
+                    title: Text(
+                      r.type == OrderRequestType.photo
+                          ? 'Photo list submitted'
+                          : '${r.itemLines.length} item${r.itemLines.length == 1 ? '' : 's'} typed',
+                    ),
+                    subtitle: Text(
+                      '${r.fulfillmentMethod == FulfillmentMethod.delivery ? 'Home Delivery' : 'In-Store Pickup'} • We\'ll call ${r.contactPhone}',
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Pending',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                )),
+          ],
+        );
+      },
     );
   }
 }

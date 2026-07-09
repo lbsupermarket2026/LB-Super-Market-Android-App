@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/dev/mock_product_seeder.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
+import '../../../products/presentation/providers/product_providers.dart';
 import '../providers/category_providers.dart';
 import '../widgets/category_card.dart';
 
@@ -71,6 +74,34 @@ class CategoriesScreen extends ConsumerWidget {
                       onPressed: () => context.push('/search'),
                     ),
                   ),
+                  // Debug-only — never shows in a release build. One tap
+                  // seeds a handful of realistic mock products into every
+                  // existing category, for regular setup/testing.
+                  if (kDebugMode) ...[
+                    const SizedBox(width: 8),
+                    Material(
+                      color: Colors.white,
+                      shape: const CircleBorder(),
+                      elevation: 2,
+                      child: IconButton(
+                        icon: const Icon(Icons.science_outlined, color: Colors.black87),
+                        tooltip: 'Seed mock products (debug only)',
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          messenger.showSnackBar(const SnackBar(content: Text('Seeding mock products…')));
+                          try {
+                            final count = await MockProductSeeder.seedAll(ref);
+                            for (final category in categoriesAsync.valueOrNull ?? []) {
+                              ref.invalidate(categoryProductCountProvider(category.id));
+                            }
+                            messenger.showSnackBar(SnackBar(content: Text('Seeded $count mock products.')));
+                          } catch (e) {
+                            messenger.showSnackBar(SnackBar(content: Text('Seeding failed: $e')));
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
