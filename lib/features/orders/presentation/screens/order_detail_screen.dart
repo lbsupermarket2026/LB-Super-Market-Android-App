@@ -63,6 +63,15 @@ class OrderDetailScreen extends ConsumerWidget {
                     Text('Delivery Address', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 6),
                     Text(order.deliveryAddress),
+                    const Divider(height: 20),
+                    Row(
+                      children: [
+                        const Icon(Icons.payments_outlined, size: 18, color: Color(0xFF2E7D32)),
+                        const SizedBox(width: 6),
+                        Text('Payment: ${order.paymentMethod.label}',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -86,7 +95,14 @@ class OrderDetailScreen extends ConsumerWidget {
                                   width: 44,
                                   height: 44,
                                   child: item.imageUrl.isNotEmpty
-                                      ? CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover)
+                                      ? CachedNetworkImage(
+                                          imageUrl: item.imageUrl,
+                                          fit: BoxFit.cover,
+                                          errorWidget: (_, __, ___) => Container(
+                                            color: const Color(0xFFF3F3F3),
+                                            child: const Icon(Icons.image_not_supported_outlined, color: Colors.black38, size: 20),
+                                          ),
+                                        )
                                       : Container(
                                           color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                           child: const Icon(Icons.image_outlined, size: 20),

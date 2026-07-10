@@ -29,12 +29,14 @@ class OrderRepositoryImpl implements OrderRepository {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
     required String deliveryAddress,
+    String paymentMethod = 'cod',
   }) {
     return guard(() => _remote.createOrder(
           userId: userId,
           items: items,
           totalAmount: totalAmount,
           deliveryAddress: deliveryAddress,
+          paymentMethod: paymentMethod,
         ));
   }
 

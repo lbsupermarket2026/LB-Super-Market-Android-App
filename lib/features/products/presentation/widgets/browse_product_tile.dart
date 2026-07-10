@@ -39,7 +39,14 @@ class BrowseProductTile extends ConsumerWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: product.primaryImage.isNotEmpty
-                        ? CachedNetworkImage(imageUrl: product.primaryImage, fit: BoxFit.contain)
+                        ? CachedNetworkImage(
+                        imageUrl: product.primaryImage,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, __, ___) => Container(
+                          color: cs.surfaceContainerHighest,
+                          child: const Icon(Icons.image_not_supported_outlined),
+                        ),
+                      )
                         : Container(
                             color: cs.surfaceContainerHighest,
                             child: const Icon(Icons.image_outlined),

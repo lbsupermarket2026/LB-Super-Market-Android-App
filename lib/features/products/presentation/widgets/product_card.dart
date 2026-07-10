@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/theme/app_radii_shadows.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../wishlist/presentation/widgets/wishlist_button.dart';
 import '../../domain/entities/product_entity.dart';
 
 class ProductCard extends StatelessWidget {
   final ProductEntity product;
   final VoidCallback onTap;
+  final bool showWishlist;
 
-  const ProductCard({super.key, required this.product, required this.onTap});
+  const ProductCard({super.key, required this.product, required this.onTap, this.showWishlist = true});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 150,
         decoration: BoxDecoration(
-          color: theme.cardTheme.color ?? Colors.white,
-          borderRadius: AppRadii.card,
-          boxShadow: AppShadows.soft,
+          // Hardcoded white/dark-text, same reasoning as CategoryCard —
+          // this should always look like the (light-themed) website,
+          // regardless of the phone's system theme.
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,15 +38,15 @@ class ProductCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: product.primaryImage,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(color: theme.colorScheme.surfaceContainerHighest),
+                            placeholder: (context, url) => Container(color: const Color(0xFFF3F3F3)),
                             errorWidget: (context, url, error) => Container(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              child: const Icon(Icons.image_not_supported_outlined),
+                              color: const Color(0xFFF3F3F3),
+                              child: const Icon(Icons.image_not_supported_outlined, color: Colors.black38),
                             ),
                           )
                         : Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: const Icon(Icons.image_outlined),
+                            color: const Color(0xFFF3F3F3),
+                            child: const Icon(Icons.image_outlined, color: Colors.black38),
                           ),
                   ),
                 ),
@@ -55,7 +57,7 @@ class ProductCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.error,
+                        color: const Color(0xFFE53935),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -63,6 +65,12 @@ class ProductCard extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
                       ),
                     ),
+                  ),
+                if (showWishlist)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: WishlistButton(productId: product.id, size: 16),
                   ),
               ],
             ),
@@ -75,24 +83,29 @@ class ProductCard extends StatelessWidget {
                     product.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
                   ),
                   if (product.unit.isNotEmpty)
-                    Text(product.unit, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
+                    Text(product.unit, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Text(
                         '₹${product.displayPrice.toStringAsFixed(0)}',
-                        style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: Color(0xFF2E7D32),
+                        ),
                       ),
                       if (product.hasDiscount) ...[
                         const SizedBox(width: 6),
                         Text(
                           '₹${product.basePrice.toStringAsFixed(0)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
+                          style: TextStyle(
+                            fontSize: 11,
                             decoration: TextDecoration.lineThrough,
-                            color: theme.colorScheme.outline,
+                            color: Colors.grey.shade500,
                           ),
                         ),
                       ],
@@ -103,7 +116,7 @@ class ProductCard extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         'Out of stock',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                        style: TextStyle(fontSize: 11, color: Colors.red.shade700),
                       ),
                     ),
                 ],

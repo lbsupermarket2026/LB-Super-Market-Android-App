@@ -25,45 +25,74 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Hi, ${user?.name?.split(' ').first ?? 'there'} 👋'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(homeBannersProvider);
-          ref.invalidate(topLevelCategoriesProvider);
-          ref.invalidate(featuredProductsProvider);
-          ref.invalidate(trendingProductsProvider);
-          ref.invalidate(bestSellersProvider);
-        },
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          children: [
-            SearchBarLauncher(onTap: () => context.push('/search')),
-            const SizedBox(height: AppSpacing.md),
-            _BannerSection(ref: ref),
-            const SizedBox(height: AppSpacing.lg),
-            _CategorySection(ref: ref),
-            const SizedBox(height: AppSpacing.lg),
-            _ProductSection(
-              title: 'Featured Products',
-              provider: featuredProductsProvider,
-              ref: ref,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _ProductSection(
-              title: 'Trending Now',
-              provider: trendingProductsProvider,
-              ref: ref,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _ProductSection(
-              title: 'Best Sellers',
-              provider: bestSellersProvider,
-              ref: ref,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-          ],
+      backgroundColor: const Color(0xFFF6F8ED),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(homeBannersProvider);
+            ref.invalidate(topLevelCategoriesProvider);
+            ref.invalidate(featuredProductsProvider);
+            ref.invalidate(trendingProductsProvider);
+            ref.invalidate(bestSellersProvider);
+          },
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6)],
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: Image.asset('assets/images/bs_logo.png', fit: BoxFit.contain),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Hi, ${user?.name?.split(' ').first ?? 'there'} 👋',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SearchBarLauncher(onTap: () => context.push('/search')),
+              const SizedBox(height: AppSpacing.md),
+              _BannerSection(ref: ref),
+              const SizedBox(height: AppSpacing.lg),
+              _CategorySection(ref: ref),
+              const SizedBox(height: AppSpacing.lg),
+              _ProductSection(
+                title: 'Featured Products',
+                accentWord: 'Products',
+                provider: featuredProductsProvider,
+                ref: ref,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _ProductSection(
+                title: 'Trending Now',
+                accentWord: 'Now',
+                provider: trendingProductsProvider,
+                ref: ref,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _ProductSection(
+                title: 'Best Sellers',
+                accentWord: 'Sellers',
+                provider: bestSellersProvider,
+                ref: ref,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+          ),
         ),
       ),
     );
@@ -99,7 +128,7 @@ class _CategorySection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: 'Categories', onSeeAll: () => context.push(RouteNames.categories)),
+        SectionHeader(title: 'Shop by Category', accentWord: 'Category', onSeeAll: () => context.push(RouteNames.categories)),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
           height: 100,
@@ -136,10 +165,11 @@ class _CategorySection extends ConsumerWidget {
 
 class _ProductSection extends ConsumerWidget {
   final String title;
+  final String accentWord;
   final FutureProvider<List<ProductEntity>> provider;
   final WidgetRef ref;
 
-  const _ProductSection({required this.title, required this.provider, required this.ref});
+  const _ProductSection({required this.title, required this.accentWord, required this.provider, required this.ref});
 
   @override
   Widget build(BuildContext context, WidgetRef _) {
@@ -148,7 +178,7 @@ class _ProductSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: title),
+        SectionHeader(title: title, accentWord: accentWord),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
           height: 240,

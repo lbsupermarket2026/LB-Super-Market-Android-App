@@ -21,6 +21,15 @@ final myOrderRequestsProvider = FutureProvider.autoDispose<List<OrderRequestEnti
   return result.match((failure) => throw failure, (requests) => requests);
 });
 
+final orderByIdInRequestsProvider = Provider.family<OrderRequestEntity?, String>((ref, requestId) {
+  final requests = ref.watch(myOrderRequestsProvider).valueOrNull ?? [];
+  try {
+    return requests.firstWhere((r) => r.id == requestId);
+  } catch (_) {
+    return null;
+  }
+});
+
 class OrderRequestSubmission {
   final bool isSubmitting;
   final String? error;
@@ -31,7 +40,7 @@ class OrderRequestSubmitter extends StateNotifier<OrderRequestSubmission> {
   final Ref _ref;
   OrderRequestSubmitter(this._ref) : super(const OrderRequestSubmission());
 
-  Future<bool> submit({
+  Future<String?> submit({
     required OrderRequestType type,
     List<String> itemLines = const [],
     File? photoFile,
@@ -42,7 +51,7 @@ class OrderRequestSubmitter extends StateNotifier<OrderRequestSubmission> {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = const OrderRequestSubmission(error: 'You need to be signed in to place an order.');
-      return false;
+      return null;
     }
 
     state = const OrderRequestSubmission(isSubmitting: true);
@@ -54,7 +63,7 @@ class OrderRequestSubmitter extends StateNotifier<OrderRequestSubmission> {
       final failed = uploadResult.match((f) => f, (_) => null);
       if (failed != null) {
         state = OrderRequestSubmission(error: failed.message);
-        return false;
+        return null;
       }
       photoUrl = uploadResult.match((f) => null, (url) => url);
     }
@@ -72,12 +81,12 @@ class OrderRequestSubmitter extends StateNotifier<OrderRequestSubmission> {
     return result.match(
       (failure) {
         state = OrderRequestSubmission(error: failure.message);
-        return false;
+        return null;
       },
-      (_) {
+      (requestId) {
         state = const OrderRequestSubmission();
         _ref.invalidate(myOrderRequestsProvider);
-        return true;
+        return requestId;
       },
     );
   }

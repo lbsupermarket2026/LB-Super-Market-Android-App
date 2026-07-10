@@ -10,12 +10,14 @@ class CreateOrderUseCase {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
     required String deliveryAddress,
+    String paymentMethod = 'cod',
   }) {
     return _repository.createOrder(
       userId: userId,
       items: items,
       totalAmount: totalAmount,
       deliveryAddress: deliveryAddress,
+      paymentMethod: paymentMethod,
     );
   }
 }

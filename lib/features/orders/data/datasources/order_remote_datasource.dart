@@ -28,12 +28,14 @@ class OrderRemoteDataSource {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
     required String deliveryAddress,
+    String paymentMethod = 'cod',
   }) async {
     final docRef = await _collection.add(OrderModel.toFirestoreMap(
       userId: userId,
       items: items,
       totalAmount: totalAmount,
       deliveryAddress: deliveryAddress,
+      paymentMethod: paymentMethod,
     ));
     return docRef.id;
   }

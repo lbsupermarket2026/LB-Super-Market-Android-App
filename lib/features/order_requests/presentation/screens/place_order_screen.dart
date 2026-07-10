@@ -10,7 +10,7 @@ import 'review_order_request_screen.dart';
 
 // Same store contact number used for WhatsApp Order — kept here too so
 // the call button on this screen doesn't depend on the Orders screen.
-const _callNumber = '917989694819';
+const _callNumber = '7989694819';
 
 class PlaceOrderScreen extends StatefulWidget {
   const PlaceOrderScreen({super.key});
@@ -84,12 +84,11 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const brandRed = Color(0xFFE53935);
+    const brandGreen = Color(0xFF2E7D32);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
       appBar: AppBar(
-        backgroundColor: brandRed,
+        backgroundColor: brandGreen,
         foregroundColor: Colors.white,
         title: const Text('Place Order'),
         actions: [
@@ -108,8 +107,8 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
         children: [
           _OptionCard(
             icon: Icons.edit_note,
-            iconColor: brandRed,
-            iconBg: brandRed.withOpacity(0.1),
+            iconColor: const Color(0xFFEF6C00),
+            iconBg: const Color(0xFFEF6C00).withOpacity(0.1),
             title: 'Type my list',
             subtitle: 'Add items one by one with name & quantity',
             onTap: _openTypeList,
@@ -163,7 +162,7 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
           ? SafeArea(
               minimum: const EdgeInsets.all(AppSpacing.md),
               child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: brandRed, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: brandGreen, foregroundColor: Colors.white),
                 onPressed: _reviewAndPlace,
                 icon: const Icon(Icons.arrow_forward),
                 label: const Text('Review & Place Order'),

@@ -36,6 +36,25 @@ extension OrderStatusX on OrderStatus {
   }
 }
 
+enum PaymentMethod { upi, cod, cardSwipe }
+
+extension PaymentMethodX on PaymentMethod {
+  String get label {
+    switch (this) {
+      case PaymentMethod.upi:
+        return 'UPI';
+      case PaymentMethod.cod:
+        return 'Cash on Delivery';
+      case PaymentMethod.cardSwipe:
+        return 'Card (Swipe on Delivery)';
+    }
+  }
+
+  static PaymentMethod fromString(String value) {
+    return PaymentMethod.values.firstWhere((m) => m.name == value, orElse: () => PaymentMethod.cod);
+  }
+}
+
 class OrderItemEntity extends Equatable {
   final String productId;
   final String name;
@@ -67,6 +86,7 @@ class OrderEntity extends Equatable {
   final OrderStatus status;
   final DateTime createdAt;
   final String deliveryAddress;
+  final PaymentMethod paymentMethod;
   final String? deliveryPersonName;
   final String? deliveryPersonPhone;
   final double? rating;
@@ -80,6 +100,7 @@ class OrderEntity extends Equatable {
     required this.status,
     required this.createdAt,
     required this.deliveryAddress,
+    this.paymentMethod = PaymentMethod.cod,
     this.deliveryPersonName,
     this.deliveryPersonPhone,
     this.rating,
@@ -100,6 +121,7 @@ class OrderEntity extends Equatable {
         status,
         createdAt,
         deliveryAddress,
+        paymentMethod,
         deliveryPersonName,
         deliveryPersonPhone,
         rating,

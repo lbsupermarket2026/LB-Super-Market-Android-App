@@ -13,16 +13,18 @@ class OrderStatusStepper extends StatelessWidget {
     OrderStatus.delivered,
   ];
 
+  static const _green = Color(0xFF2E7D32);
+  static const _red = Color(0xFFE53935);
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
 
     if (status == OrderStatus.cancelled) {
       return Row(
         children: [
-          Icon(Icons.cancel, color: cs.error, size: 20),
+          Icon(Icons.cancel, color: _red, size: 20),
           const SizedBox(width: 8),
-          Text('Order Cancelled', style: TextStyle(color: cs.error, fontWeight: FontWeight.w600)),
+          Text('Order Cancelled', style: TextStyle(color: _red, fontWeight: FontWeight.w600)),
         ],
       );
     }
@@ -41,12 +43,12 @@ class OrderStatusStepper extends StatelessWidget {
                 children: [
                   Icon(
                     isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: isDone ? cs.primary : cs.outline,
+                    color: isDone ? _green : Colors.grey.shade500,
                     size: 20,
                   ),
                   if (!isLast)
                     Expanded(
-                      child: Container(width: 2, color: isDone ? cs.primary : cs.outlineVariant),
+                      child: Container(width: 2, color: isDone ? _green : Colors.grey.shade300),
                     ),
                 ],
               ),
@@ -57,7 +59,7 @@ class OrderStatusStepper extends StatelessWidget {
                   _steps[i].label,
                   style: TextStyle(
                     fontWeight: isDone ? FontWeight.w700 : FontWeight.w400,
-                    color: isDone ? null : cs.outline,
+                    color: isDone ? null : Colors.grey.shade500,
                   ),
                 ),
               ),

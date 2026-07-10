@@ -4,6 +4,8 @@ import '../../../../core/theme/app_spacing.dart';
 import '../providers/address_providers.dart';
 import '../widgets/address_form_dialog.dart';
 
+const _green = Color(0xFF2E7D32);
+
 class AddressesScreen extends ConsumerWidget {
   const AddressesScreen({super.key});
 
@@ -14,6 +16,8 @@ class AddressesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('My Addresses')),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: _green,
+        foregroundColor: Colors.white,
         onPressed: () => showDialog(context: context, builder: (_) => const AddressFormDialog()),
         icon: const Icon(Icons.add),
         label: const Text('Add Address'),
@@ -29,7 +33,7 @@ class AddressesScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.location_off_outlined, size: 48, color: Theme.of(context).colorScheme.outline),
+                    Icon(Icons.location_off_outlined, size: 48, color: Colors.grey.shade400),
                     const SizedBox(height: AppSpacing.md),
                     const Text('No saved addresses yet.'),
                     const SizedBox(height: AppSpacing.sm),
@@ -49,7 +53,12 @@ class AddressesScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               final address = addresses[index];
-              return Card(
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
@@ -64,7 +73,7 @@ class AddressesScreen extends ConsumerWidget {
                                     ? Icons.work_outline
                                     : Icons.location_on_outlined,
                             size: 20,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: _green,
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           Text(address.label, style: Theme.of(context).textTheme.titleMedium),
@@ -73,13 +82,13 @@ class AddressesScreen extends ConsumerWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primaryContainer,
+                                color: _green.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 'Default',
                                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color: _green,
                                     ),
                               ),
                             ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/section_header.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../../order_requests/domain/entities/order_request_entity.dart';
@@ -10,6 +11,10 @@ import '../../../order_requests/presentation/providers/order_request_providers.d
 import '../../domain/entities/order_entity.dart';
 import '../providers/order_providers.dart';
 import '../widgets/order_status_stepper.dart';
+
+const _green = Color(0xFF2E7D32);
+const _orange = Color(0xFFEF6C00);
+const _red = Color(0xFFE53935);
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
@@ -46,34 +51,53 @@ class OrdersScreen extends ConsumerWidget {
           }
 
           final activeOrder = orders.where((o) => o.status.isActive).toList();
-          final theme = Theme.of(context);
 
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(myOrdersProvider),
             child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               children: [
-                Text(
-                  orders.length == 1 ? 'You have 1 order' : 'You have ${orders.length} orders',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Text(
+                    orders.length == 1 ? 'You have 1 order' : 'You have ${orders.length} orders',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                const _PlaceOrderEntryButton(),
-                const SizedBox(height: AppSpacing.md),
-                const _WhatsAppOrderCard(),
-                const SizedBox(height: AppSpacing.md),
-                const _PendingOrderRequestsSection(),
-                const SizedBox(height: AppSpacing.md),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Column(
+                    children: const [
+                      _PlaceOrderEntryButton(),
+                      SizedBox(height: AppSpacing.md),
+                      _WhatsAppOrderCard(),
+                      SizedBox(height: AppSpacing.md),
+                      _PendingOrderRequestsSection(),
+                    ],
+                  ),
+                ),
                 if (activeOrder.isNotEmpty) ...[
-                  _ActiveOrderCard(order: activeOrder.first),
                   const SizedBox(height: AppSpacing.lg),
-                  Text('Order History', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    child: _ActiveOrderCard(order: activeOrder.first),
+                  ),
                 ],
-                ...orders.map((order) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _OrderCard(order: order),
-                    )),
+                const SizedBox(height: AppSpacing.lg),
+                const SectionHeader(title: 'Order History', accentWord: 'History'),
+                const SizedBox(height: AppSpacing.sm),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Column(
+                    children: orders
+                        .map((order) => Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                              child: _OrderCard(order: order),
+                            ))
+                        .toList(),
+                  ),
+                ),
               ],
             ),
           );
@@ -86,9 +110,7 @@ class OrdersScreen extends ConsumerWidget {
 class _WhatsAppOrderCard extends StatelessWidget {
   const _WhatsAppOrderCard();
 
-  // Fixed store number for phone/WhatsApp orders — update here if it
-  // ever changes, this is the only place it's defined.
-  static const _whatsappNumber = '917989694819';
+  static const _whatsappNumber = '7989694819';
 
   Future<void> _openWhatsApp() async {
     final uri = Uri.parse(
@@ -100,10 +122,10 @@ class _WhatsAppOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF25D366), // WhatsApp brand green
-      borderRadius: BorderRadius.circular(16),
+      color: const Color(0xFF25D366),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: _openWhatsApp,
         child: const Padding(
           padding: EdgeInsets.all(AppSpacing.md),
@@ -136,10 +158,10 @@ class _PlaceOrderEntryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFE53935),
-      borderRadius: BorderRadius.circular(16),
+      color: _green,
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: () => context.push('/place-order'),
         child: const Padding(
           padding: EdgeInsets.all(AppSpacing.md),
@@ -148,8 +170,7 @@ class _PlaceOrderEntryButton extends StatelessWidget {
               Icon(Icons.playlist_add, color: Colors.white),
               SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Text('Place a New Order',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                child: Text('Place a New Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               ),
               Icon(Icons.chevron_right, color: Colors.white),
             ],
@@ -174,37 +195,48 @@ class _PendingOrderRequestsSection extends ConsumerWidget {
         final pending = requests.where((r) => r.status == OrderRequestStatus.pending).toList();
         if (pending.isEmpty) return const SizedBox.shrink();
 
-        final theme = Theme.of(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Order Requests', style: theme.textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
-            ...pending.map((r) => Card(
+            const Text('Order Requests', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87)),
+            const SizedBox(height: AppSpacing.sm),
+            ...pending.map((r) => Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+                  ),
                   child: ListTile(
-                    leading: Icon(
-                      r.type == OrderRequestType.photo ? Icons.photo_camera_outlined : Icons.edit_note,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    onTap: () => context.push('/order-requests/${r.id}'),
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(color: _orange.withOpacity(0.12), shape: BoxShape.circle),
+                      child: Icon(
+                        r.type == OrderRequestType.photo ? Icons.photo_camera_outlined : Icons.edit_note,
+                        color: _orange,
+                      ),
                     ),
                     title: Text(
                       r.type == OrderRequestType.photo
                           ? 'Photo list submitted'
                           : '${r.itemLines.length} item${r.itemLines.length == 1 ? '' : 's'} typed',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     subtitle: Text(
                       '${r.fulfillmentMethod == FulfillmentMethod.delivery ? 'Home Delivery' : 'In-Store Pickup'} • We\'ll call ${r.contactPhone}',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     ),
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
                       child: Text(
                         'Pending',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.amber.shade900,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.w700, fontSize: 11),
                       ),
                     ),
                   ),
@@ -222,14 +254,11 @@ class _ActiveOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
     return Container(
       decoration: BoxDecoration(
-        color: cs.primaryContainer.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.primary.withOpacity(0.3)),
+        gradient: LinearGradient(colors: [_green.withOpacity(0.10), _green.withOpacity(0.03)]),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _green.withOpacity(0.25)),
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -237,9 +266,9 @@ class _ActiveOrderCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.local_shipping_outlined, color: cs.primary),
+              const Icon(Icons.local_shipping_outlined, color: _green),
               const SizedBox(width: 8),
-              Text('Track Your Order', style: theme.textTheme.titleMedium),
+              const Text('Track Your Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87)),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -249,6 +278,7 @@ class _ActiveOrderCard extends StatelessWidget {
               if (order.canCallDelivery)
                 Expanded(
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: _green, side: const BorderSide(color: _green)),
                     onPressed: () async {
                       final uri = Uri.parse('tel:${order.deliveryPersonPhone}');
                       if (await canLaunchUrl(uri)) await launchUrl(uri);
@@ -260,6 +290,7 @@ class _ActiveOrderCard extends StatelessWidget {
               if (order.canCallDelivery) const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white),
                   onPressed: () => context.push('/orders/${order.id}'),
                   child: const Text('View Details'),
                 ),
@@ -278,32 +309,42 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
     final statusColor = order.status == OrderStatus.cancelled
-        ? cs.error
+        ? _red
         : order.status == OrderStatus.delivered
-            ? cs.primary
-            : cs.tertiary;
+            ? _green
+            : _orange;
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => context.push('/orders/${order.id}'),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: statusColor.withOpacity(0.12), shape: BoxShape.circle),
+                child: Icon(Icons.receipt_long_outlined, color: statusColor, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
-                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                        style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
                     const SizedBox(height: 2),
                     Text(
                       '${order.itemCount} item${order.itemCount == 1 ? '' : 's'} • ${_formatDate(order.createdAt)}',
-                      style: theme.textTheme.bodySmall?.copyWith(color: cs.outline),
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     ),
                   ],
                 ),
@@ -311,17 +352,15 @@ class _OrderCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₹${order.totalAmount.toStringAsFixed(2)}', style: theme.textTheme.bodyMedium),
+                  Text('₹${order.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
                     child: Text(
                       order.status.label,
-                      style: theme.textTheme.labelSmall?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11),
                     ),
                   ),
                 ],

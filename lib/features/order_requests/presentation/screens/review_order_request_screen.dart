@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../addresses/domain/entities/address_entity.dart';
 import '../../../addresses/presentation/providers/address_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../domain/entities/order_request_entity.dart';
@@ -24,22 +25,69 @@ class ReviewOrderRequestScreen extends ConsumerStatefulWidget {
   ConsumerState<ReviewOrderRequestScreen> createState() => _ReviewOrderRequestScreenState();
 }
 
+class _SavedAddressPicker extends ConsumerWidget {
+  final String? selectedId;
+  final ValueChanged<AddressEntity> onSelected;
+  const _SavedAddressPicker({required this.selectedId, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final addressesAsync = ref.watch(addressListProvider);
+    final addresses = addressesAsync.valueOrNull ?? [];
+
+    if (addresses.isEmpty) {
+      // No saved addresses yet — the free-text field below still works
+      // fine on its own, this is purely a shortcut when one exists.
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Use a saved address', style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: addresses.map((address) {
+            final isSelected = address.id == selectedId;
+            return ChoiceChip(
+              avatar: Icon(
+                address.label == 'Home'
+                    ? Icons.home_outlined
+                    : address.label == 'Work'
+                        ? Icons.work_outline
+                        : Icons.location_on_outlined,
+                size: 16,
+                color: isSelected ? Colors.white : null,
+              ),
+              label: Text(address.label),
+              selected: isSelected,
+              selectedColor: Theme.of(context).colorScheme.primary,
+              labelStyle: TextStyle(color: isSelected ? Colors.white : null),
+              onSelected: (_) => onSelected(address),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
 class _ReviewOrderRequestScreenState extends ConsumerState<ReviewOrderRequestScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   FulfillmentMethod _method = FulfillmentMethod.delivery;
+  String? _selectedAddressId;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider);
     _phoneController.text = user?.phone ?? '';
-
-    final addresses = ref.read(addressListProvider).valueOrNull ?? [];
-    if (addresses.isNotEmpty) {
-      final defaultAddress = addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first);
-      _addressController.text = defaultAddress.formatted.replaceAll('\n', ', ');
-    }
+    // No address auto-fill here — leaving this blank until the person
+    // either taps a saved address chip or types their own, so nothing
+    // shows up unexpectedly.
   }
 
   @override
@@ -63,7 +111,7 @@ class _ReviewOrderRequestScreenState extends ConsumerState<ReviewOrderRequestScr
       return;
     }
 
-    final success = await ref.read(orderRequestSubmitterProvider.notifier).submit(
+    final requestId = await ref.read(orderRequestSubmitterProvider.notifier).submit(
           type: widget.type,
           itemLines: widget.itemLines,
           photoFile: widget.photoFile,
@@ -74,11 +122,11 @@ class _ReviewOrderRequestScreenState extends ConsumerState<ReviewOrderRequestScr
 
     if (!mounted) return;
 
-    if (success) {
+    if (requestId != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request sent! Our team will call you shortly to confirm.')),
       );
-      context.go('/orders');
+      context.go('/order-requests/$requestId');
     } else {
       final error = ref.read(orderRequestSubmitterProvider).error;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Something went wrong.')));
@@ -158,9 +206,20 @@ class _ReviewOrderRequestScreenState extends ConsumerState<ReviewOrderRequestScr
           ),
           if (_method == FulfillmentMethod.delivery) ...[
             const SizedBox(height: AppSpacing.sm),
+            _SavedAddressPicker(
+              selectedId: _selectedAddressId,
+              onSelected: (address) => setState(() {
+                _selectedAddressId = address.id;
+                _addressController.text = address.formatted.replaceAll('\n', ', ');
+              }),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _addressController,
               maxLines: 3,
+              onChanged: (_) {
+                if (_selectedAddressId != null) setState(() => _selectedAddressId = null);
+              },
               decoration: const InputDecoration(labelText: 'Delivery Address', border: OutlineInputBorder()),
             ),
           ],

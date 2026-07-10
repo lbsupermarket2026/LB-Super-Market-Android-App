@@ -9,6 +9,7 @@ class OrderModel {
   final String status;
   final Timestamp createdAt;
   final String deliveryAddress;
+  final String paymentMethod;
   final String? deliveryPersonName;
   final String? deliveryPersonPhone;
   final double? rating;
@@ -22,6 +23,7 @@ class OrderModel {
     required this.status,
     required this.createdAt,
     required this.deliveryAddress,
+    this.paymentMethod = 'cod',
     this.deliveryPersonName,
     this.deliveryPersonPhone,
     this.rating,
@@ -38,6 +40,7 @@ class OrderModel {
       status: (data['status'] as String?) ?? 'placed',
       createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
       deliveryAddress: (data['deliveryAddress'] as String?) ?? '',
+      paymentMethod: (data['paymentMethod'] as String?) ?? 'cod',
       deliveryPersonName: data['deliveryPersonName'] as String?,
       deliveryPersonPhone: data['deliveryPersonPhone'] as String?,
       rating: (data['rating'] as num?)?.toDouble(),
@@ -62,6 +65,7 @@ class OrderModel {
         status: OrderStatusX.fromString(status),
         createdAt: createdAt.toDate(),
         deliveryAddress: deliveryAddress,
+        paymentMethod: PaymentMethodX.fromString(paymentMethod),
         deliveryPersonName: deliveryPersonName,
         deliveryPersonPhone: deliveryPersonPhone,
         rating: rating,
@@ -73,6 +77,7 @@ class OrderModel {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
     required String deliveryAddress,
+    String paymentMethod = 'cod',
   }) {
     return {
       'userId': userId,
@@ -81,6 +86,7 @@ class OrderModel {
       'status': OrderStatus.placed.name,
       'createdAt': FieldValue.serverTimestamp(),
       'deliveryAddress': deliveryAddress,
+      'paymentMethod': paymentMethod,
       'deliveryPersonName': null,
       'deliveryPersonPhone': null,
       'rating': null,

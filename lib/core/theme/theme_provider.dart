@@ -18,7 +18,13 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
       case 'dark':
         return ThemeMode.dark;
       default:
-        return ThemeMode.system;
+        // This app is designed to always look like the (light-themed)
+        // website — deliberately NOT following the phone's system
+        // dark/light setting by default. Without this, any screen that
+        // doesn't hardcode its own colors falls back to Flutter's
+        // automatic dark theme, which is what caused every screen to
+        // look like a different, inconsistent shade.
+        return ThemeMode.light;
     }
   }
 

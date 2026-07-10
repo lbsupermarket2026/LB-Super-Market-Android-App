@@ -27,7 +27,7 @@ class WishlistScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.favorite_border, size: 48, color: Theme.of(context).colorScheme.outline),
+                    Icon(Icons.favorite_border, size: 48, color: Colors.grey.shade400),
                     const SizedBox(height: AppSpacing.md),
                     const Text('Your wishlist is empty.'),
                     const SizedBox(height: AppSpacing.sm),

@@ -28,6 +28,8 @@ import '../../features/wishlist/presentation/screens/wishlist_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/order_requests/presentation/screens/place_order_screen.dart';
+import '../../features/order_requests/presentation/screens/order_request_detail_screen.dart';
+import '../../features/dev_tools/presentation/screens/seed_products_screen.dart';
 
 /// Bridges Riverpod provider updates into a Listenable GoRouter can use.
 /// Deliberately driven by the SAME authStateChangesProvider that
@@ -99,6 +101,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => OrderDetailScreen(orderId: state.pathParameters['orderId']!),
       ),
       GoRoute(path: '/place-order', builder: (context, state) => const PlaceOrderScreen()),
+      GoRoute(
+        path: '/order-requests/:requestId',
+        builder: (context, state) => OrderRequestDetailScreen(requestId: state.pathParameters['requestId']!),
+      ),
+      GoRoute(path: '/dev/seed-products', builder: (context, state) => const SeedProductsScreen()),
 
       GoRoute(path: RouteNames.addresses, builder: (context, state) => const AddressesScreen()),
       GoRoute(path: RouteNames.wishlist, builder: (context, state) => const WishlistScreen()),

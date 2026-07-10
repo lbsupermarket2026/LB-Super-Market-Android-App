@@ -7,6 +7,9 @@ import '../../../../core/widgets/states/empty_state.dart';
 import '../providers/cart_providers.dart';
 import '../widgets/place_order_dialog.dart';
 
+const _green = Color(0xFF2E7D32);
+const _red = Color(0xFFE53935);
+
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
 
@@ -37,42 +40,55 @@ class CartScreen extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: SizedBox(
-                                width: 56,
-                                height: 56,
-                                child: item.imageUrl.isNotEmpty
-                                    ? CachedNetworkImage(imageUrl: item.imageUrl, fit: BoxFit.cover)
-                                    : Container(
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                        child: const Icon(Icons.image_outlined),
-                                      ),
-                              ),
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: SizedBox(
+                              width: 60,
+                              height: 60,
+                              child: item.imageUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                    imageUrl: item.imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (_, __, ___) => Container(
+                                      color: const Color(0xFFF3F3F3),
+                                      child: const Icon(Icons.image_not_supported_outlined, color: Colors.black38, size: 20),
+                                    ),
+                                  )
+                                  : Container(
+                                      color: const Color(0xFFF3F3F3),
+                                      child: const Icon(Icons.image_outlined, color: Colors.black38),
+                                    ),
                             ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  if (item.unit.isNotEmpty)
-                                    Text(item.unit, style: Theme.of(context).textTheme.bodySmall),
-                                  Text(
-                                    '₹${item.price.toStringAsFixed(2)}',
-                                    style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                                  ),
-                                ],
-                              ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                                if (item.unit.isNotEmpty)
+                                  Text(item.unit, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                Text(
+                                  '₹${item.price.toStringAsFixed(2)}',
+                                  style: const TextStyle(color: _green, fontWeight: FontWeight.w700),
+                                ),
+                              ],
                             ),
-                            _QuantityStepper(productId: item.productId, quantity: item.quantity),
-                          ],
-                        ),
+                          ),
+                          _QuantityStepper(productId: item.productId, quantity: item.quantity),
+                        ],
                       ),
                     );
                   },
@@ -81,8 +97,8 @@ class CartScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, -2))],
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, -2))],
                 ),
                 child: SafeArea(
                   top: false,
@@ -92,15 +108,20 @@ class CartScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Total', style: Theme.of(context).textTheme.bodySmall),
+                            Text('Total', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                             Text(
                               '₹${total.toStringAsFixed(2)}',
-                              style: Theme.of(context).textTheme.titleLarge,
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black87),
                             ),
                           ],
                         ),
                       ),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _green,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                         onPressed: () async {
                           final orderId = await showDialog<String>(
                             context: context,
@@ -115,7 +136,7 @@ class CartScreen extends ConsumerWidget {
                         },
                         child: const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          child: Text('Place Order'),
+                          child: Text('Place Order', style: TextStyle(fontWeight: FontWeight.w700)),
                         ),
                       ),
                     ],
@@ -137,19 +158,18 @@ class _QuantityStepper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           icon: const Icon(Icons.remove_circle_outline),
-          color: cs.error,
+          color: _red,
           onPressed: () => ref.read(cartProvider.notifier).setQuantity(productId, quantity - 1),
         ),
-        Text('$quantity', style: Theme.of(context).textTheme.titleMedium),
+        Text('$quantity', style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
         IconButton(
           icon: const Icon(Icons.add_circle_outline),
-          color: cs.primary,
+          color: _green,
           onPressed: () => ref.read(cartProvider.notifier).setQuantity(productId, quantity + 1),
         ),
       ],

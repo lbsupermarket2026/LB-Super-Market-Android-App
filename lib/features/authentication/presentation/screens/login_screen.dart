@@ -48,19 +48,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: AppSpacing.xxl),
-                Text('Welcome back', style: Theme.of(context).textTheme.headlineLarge),
+                const SizedBox(height: AppSpacing.xl),
+                Center(
+                  child: Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10)],
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Image.asset('assets/images/bs_logo.png', fit: BoxFit.contain),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const Text('Welcome back',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.black87)),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Sign in to continue shopping',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: TextStyle(color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 AppTextField(
