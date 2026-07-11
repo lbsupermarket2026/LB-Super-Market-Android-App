@@ -62,6 +62,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
               .toList(),
           totalAmount: total,
           deliveryAddress: _addressController.text.trim(),
+          customerPhone: user.phone,
           paymentMethod: _paymentMethod.name,
         );
 

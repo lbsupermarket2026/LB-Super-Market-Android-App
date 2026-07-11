@@ -8,7 +8,9 @@ class OrderRequestModel {
       id: doc.id,
       userId: (data['uid'] as String?) ?? '',
       type: (data['type'] as String?) == 'photo' ? OrderRequestType.photo : OrderRequestType.typedList,
-      itemLines: (data['itemLines'] as List<dynamic>?)?.cast<String>() ?? const [],
+      itemLines: (data['itemLines'] is List)
+          ? (data['itemLines'] as List).whereType<String>().toList()
+          : const [],
       photoUrl: data['photoUrl'] as String?,
       contactPhone: (data['contactPhone'] as String?) ?? '',
       fulfillmentMethod:

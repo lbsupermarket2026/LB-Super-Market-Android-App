@@ -29,6 +29,7 @@ class OrderRepositoryImpl implements OrderRepository {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
     required String deliveryAddress,
+    String? customerPhone,
     String paymentMethod = 'cod',
   }) {
     return guard(() => _remote.createOrder(
@@ -36,6 +37,7 @@ class OrderRepositoryImpl implements OrderRepository {
           items: items,
           totalAmount: totalAmount,
           deliveryAddress: deliveryAddress,
+          customerPhone: customerPhone,
           paymentMethod: paymentMethod,
         ));
   }

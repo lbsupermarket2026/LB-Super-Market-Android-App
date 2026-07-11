@@ -11,6 +11,7 @@ abstract class OrderRepository {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
     required String deliveryAddress,
+    String? customerPhone,
     String paymentMethod = 'cod',
   });
 
