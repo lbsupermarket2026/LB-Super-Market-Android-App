@@ -16,6 +16,7 @@ import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/products/presentation/screens/category_detail_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
 import '../../features/admin/dashboard/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/admin/employee_mgmt/presentation/screens/employee_list_screen.dart';
 import '../widgets/bottom_nav_shell.dart';
 import 'route_guards.dart';
 import 'route_names.dart';
@@ -127,6 +128,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 
       GoRoute(path: RouteNames.adminDashboard, builder: (context, state) => const AdminDashboardScreen()),
+      GoRoute(path: '/admin/employees', builder: (context, state) => const EmployeeListScreen()),
 
       // Remaining routes (cart, checkout, wishlist, admin sub-sections)
       // are added as each feature module is built — the guard above
