@@ -8,6 +8,25 @@ import '../providers/admin_order_providers.dart';
 
 const _green = Color(0xFF2E7D32);
 const _orange = Color(0xFFEF6C00);
+const _red = Color(0xFFE53935);
+
+// Confirmed/Delivered read as success (green), Cancelled as a stop (red),
+// everything still in-progress stays orange — matches how the customer
+// side and Orders list already color status badges, so this reads
+// consistently across the whole app rather than "selected = always green."
+Color _statusColor(OrderStatus status) {
+  switch (status) {
+    case OrderStatus.confirmed:
+    case OrderStatus.delivered:
+      return _green;
+    case OrderStatus.cancelled:
+      return _red;
+    case OrderStatus.placed:
+    case OrderStatus.preparing:
+    case OrderStatus.outForDelivery:
+      return _orange;
+  }
+}
 
 class AdminOrderDetailScreen extends ConsumerWidget {
   final OrderEntity order;
@@ -69,10 +88,11 @@ class AdminOrderDetailScreen extends ConsumerWidget {
               runSpacing: 8,
               children: OrderStatus.values.map((s) {
                 final isCurrent = s == order.status;
+                final color = _statusColor(s);
                 return ChoiceChip(
                   label: Text(s.label),
                   selected: isCurrent,
-                  selectedColor: _green,
+                  selectedColor: color,
                   labelStyle: TextStyle(color: isCurrent ? Colors.white : Colors.black87, fontSize: 12),
                   onSelected: mutation.isSubmitting
                       ? null
@@ -113,8 +133,28 @@ class AdminOrderDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _showAssignDialog(BuildContext context, WidgetRef ref) async {
-    final staffAsync = ref.read(allStaffProvider);
-    final staff = staffAsync.valueOrNull?.where((s) => s.role == StaffRole.employee).toList() ?? [];
+    // ref.read() on its own only returns whatever's already loaded — if
+    // this is the first time this session anything has asked for the
+    // staff list (e.g. jumping straight to an order without visiting
+    // Employees first), that snapshot is empty even though real
+    // employees exist. Awaiting .future actually fetches it.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    List<StaffMemberEntity> staff;
+    try {
+      final allStaff = await ref.read(allStaffProvider.future);
+      staff = allStaff.where((s) => s.role == StaffRole.employee).toList();
+    } catch (e) {
+      staff = [];
+    }
+
+    if (context.mounted) Navigator.pop(context); // close the loading dialog
+
+    if (!context.mounted) return;
 
     if (staff.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

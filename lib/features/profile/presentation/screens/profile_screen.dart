@@ -5,11 +5,14 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
+import '../../../addresses/presentation/providers/address_providers.dart';
+import '../../../orders/presentation/providers/order_providers.dart';
 import '../widgets/change_password_dialog.dart';
 import '../widgets/edit_profile_dialog.dart';
 
 const _green = Color(0xFF2E7D32);
-const _orange = Color(0xFFEF6C00);
+const _greenLight = Color(0xFFEAF3DE);
+const _ink = Color(0xFF232620);
 const _red = Color(0xFFE53935);
 
 class ProfileScreen extends ConsumerWidget {
@@ -18,116 +21,130 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final ordersAsync = ref.watch(myOrdersProvider);
+    final addressesAsync = ref.watch(addressListProvider);
+
+    final orderCount = ordersAsync.valueOrNull?.length ?? 0;
+    final addressCount = addressesAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      backgroundColor: const Color(0xFFF6F8ED),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.zero,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))],
-            ),
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => showEditProfileDialog(context, user),
+          // Green header block — matches the reference design instead of
+          // the earlier plain white card + separate avatar treatment.
+          GestureDetector(
+            onTap: () => showEditProfileDialog(context, user),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 40, AppSpacing.md, 24),
+              decoration: const BoxDecoration(
+                color: _green,
+                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+              ),
               child: Column(
                 children: [
-                  Stack(
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      (user?.name?.isNotEmpty == true ? user!.name![0] : user?.email?[0] ?? '?').toUpperCase(),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _green),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(user?.name ?? 'Guest', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                  if (user?.phone?.isNotEmpty == true)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(user!.phone!, style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
+                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: _green.withOpacity(0.12),
-                        child: Text(
-                          (user?.name?.isNotEmpty == true ? user!.name![0] : user?.email?[0] ?? '?').toUpperCase(),
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _green),
-                        ),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: _orange,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(Icons.edit, size: 14, color: Colors.white),
-                        ),
-                      ),
+                      _StatItem(value: '$orderCount', label: 'Orders'),
+                      const SizedBox(width: 26),
+                      _StatItem(value: '${user?.loyaltyPoints ?? 0}', label: 'Points'),
+                      const SizedBox(width: 26),
+                      _StatItem(value: '$addressCount', label: 'Addresses'),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(user?.name ?? 'Guest',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87)),
-                  Text(user?.email ?? '', style: TextStyle(color: Colors.grey.shade600)),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          _ProfileTile(
-            icon: Icons.location_on_outlined,
-            color: _green,
-            label: 'My Addresses',
-            onTap: () => context.push(RouteNames.addresses),
-          ),
-          _ProfileTile(
-            icon: Icons.lock_outline,
-            color: _orange,
-            label: 'Change Password',
-            onTap: () async {
-              final changed = await showChangePasswordDialog(context);
-              if (changed == true && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Password updated successfully.')),
-                );
-              }
-            },
-          ),
-          _ProfileTile(
-            icon: Icons.favorite_border,
-            color: _red,
-            label: 'Wishlist',
-            onTap: () => context.push(RouteNames.wishlist),
-          ),
-          _ProfileTile(
-            icon: Icons.notifications_outlined,
-            color: _green,
-            label: 'Notifications',
-            onTap: () => openAppSettings(),
-          ),
-          _ProfileTile(
-            icon: Icons.support_agent_outlined,
-            color: _orange,
-            label: 'Support / FAQ',
-            onTap: () => context.push('/faqs'),
-          ),
-          _ProfileTile(
-            icon: Icons.description_outlined,
-            color: Colors.blueGrey,
-            label: 'Terms & Conditions',
-            onTap: () => context.push('/terms-conditions'),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          _ProfileTile(
-            icon: Icons.science_outlined,
-            color: Colors.purple,
-            label: 'Seed Sample Products (Dev)',
-            onTap: () => context.push('/dev/seed-products'),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Container(
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-            child: ListTile(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              leading: const Icon(Icons.logout, color: _red),
-              title: const Text('Sign Out', style: TextStyle(color: _red, fontWeight: FontWeight.w700)),
-              onTap: () => ref.read(signOutUseCaseProvider).call(),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              children: [
+                _MenuItem(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'My orders',
+                  subtitle: 'Track, reorder or return',
+                  onTap: () => context.push(RouteNames.orders),
+                ),
+                _MenuItem(
+                  icon: Icons.location_on_outlined,
+                  title: 'Saved addresses',
+                  subtitle: addressCount > 0 ? '$addressCount saved' : 'Add your first address',
+                  onTap: () => context.push(RouteNames.addresses),
+                ),
+                _MenuItem(
+                  icon: Icons.lock_outline,
+                  title: 'Change password',
+                  subtitle: 'Update your login password',
+                  onTap: () async {
+                    final changed = await showChangePasswordDialog(context);
+                    if (changed == true && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password updated successfully.')));
+                    }
+                  },
+                ),
+                _MenuItem(
+                  icon: Icons.favorite_border,
+                  title: 'Wishlist',
+                  subtitle: 'Items you\'ve saved',
+                  onTap: () => context.push(RouteNames.wishlist),
+                ),
+                _MenuItem(
+                  icon: Icons.local_offer_outlined,
+                  title: 'Coupons & offers',
+                  subtitle: 'Coming soon',
+                  onTap: null,
+                ),
+                _MenuItem(
+                  icon: Icons.notifications_outlined,
+                  title: 'Notifications',
+                  subtitle: 'Order and offer alerts',
+                  onTap: () => openAppSettings(),
+                ),
+                _MenuItem(
+                  icon: Icons.support_agent_outlined,
+                  title: 'Help & support',
+                  subtitle: 'FAQs and contact us',
+                  onTap: () => context.push('/faqs'),
+                ),
+                _MenuItem(
+                  icon: Icons.description_outlined,
+                  title: 'Terms & Conditions',
+                  onTap: () => context.push('/terms-conditions'),
+                ),
+                _MenuItem(
+                  icon: Icons.science_outlined,
+                  title: 'Seed Sample Products (Dev)',
+                  onTap: () => context.push('/dev/seed-products'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _MenuItem(
+                  icon: Icons.logout,
+                  title: 'Log out',
+                  iconColor: _red,
+                  titleColor: _red,
+                  onTap: () => ref.read(signOutUseCaseProvider).call(),
+                ),
+              ],
             ),
           ),
         ],
@@ -136,36 +153,77 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-class _ProfileTile extends StatelessWidget {
-  final IconData icon;
-  final Color color;
+class _StatItem extends StatelessWidget {
+  final String value;
   final String label;
-  final VoidCallback? onTap;
-  const _ProfileTile({required this.icon, required this.color, required this.label, this.onTap});
+  const _StatItem({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white70)),
+      ],
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? titleColor;
+
+  const _MenuItem({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+    this.iconColor,
+    this.titleColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEECE2)),
       ),
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
-          child: Icon(icon, color: color, size: 20),
+      child: InkWell(
+        onTap: onTap ?? () {},
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: _greenLight, borderRadius: BorderRadius.circular(9)),
+              child: Icon(icon, size: 18, color: disabled ? Colors.grey : (iconColor ?? _green)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: disabled ? Colors.grey : (titleColor ?? _ink))),
+                  if (subtitle != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(subtitle!, style: const TextStyle(fontSize: 10.5, color: Color(0xFF8A8D82))),
+                    ),
+                ],
+              ),
+            ),
+            if (!disabled) const Icon(Icons.chevron_right, color: Color(0xFFC9C7BB)),
+          ],
         ),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
-        trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
-        onTap: onTap ??
-            () {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label — coming soon')));
-            },
       ),
     );
   }

@@ -6,8 +6,9 @@ import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/loaders/shimmer_skeletons.dart';
 import '../../../../core/widgets/states/error_state.dart';
-import '../../../../core/widgets/section_header.dart';
 import '../../../../core/widgets/search/search_bar_launcher.dart';
+import '../../../../core/widgets/auto_scroll_row.dart';
+import '../../../addresses/presentation/providers/address_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../categories/presentation/providers/category_providers.dart';
 import '../../../categories/presentation/widgets/category_tile.dart';
@@ -17,12 +18,25 @@ import '../../../products/presentation/widgets/product_card.dart';
 import '../providers/home_providers.dart';
 import '../widgets/banner_carousel.dart';
 
+const _green = Color(0xFF2E7D32);
+const _ink = Color(0xFF232620);
+const _muted = Color(0xFF8A8D82);
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final addressesAsync = ref.watch(addressListProvider);
+    final defaultAddress = addressesAsync.valueOrNull?.isNotEmpty == true
+        ? (addressesAsync.valueOrNull!.where((a) => a.isDefault).isNotEmpty
+            ? addressesAsync.valueOrNull!.firstWhere((a) => a.isDefault)
+            : addressesAsync.valueOrNull!.first)
+        : null;
+
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8ED),
@@ -40,60 +54,74 @@ class HomeScreen extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6)],
+                    if (defaultAddress != null)
+                      GestureDetector(
+                        onTap: () => context.push(RouteNames.addresses),
+                        child: Row(
+                          children: [
+                            const Text('Deliver to ', style: TextStyle(fontSize: 12, color: _muted)),
+                            Flexible(
+                              child: Text(
+                                '${defaultAddress.label} · ${defaultAddress.city}',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, color: _ink, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down, size: 16, color: _muted),
+                          ],
+                        ),
                       ),
-                      padding: const EdgeInsets.all(6),
-                      child: Image.asset('assets/images/bs_logo.png', fit: BoxFit.contain),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Hi, ${user?.name?.split(' ').first ?? 'there'} 👋',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
-                      ),
+                    Text(
+                      '$greeting, ${user?.name?.split(' ').first ?? 'there'} 👋',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
               SearchBarLauncher(onTap: () => context.push('/search')),
               const SizedBox(height: AppSpacing.md),
               _BannerSection(ref: ref),
               const SizedBox(height: AppSpacing.lg),
               _CategorySection(ref: ref),
               const SizedBox(height: AppSpacing.lg),
-              _ProductSection(
-                title: 'Featured Products',
-                accentWord: 'Products',
-                provider: featuredProductsProvider,
-                ref: ref,
-              ),
+              _ProductSection(title: 'Featured products', provider: featuredProductsProvider, ref: ref),
               const SizedBox(height: AppSpacing.lg),
-              _ProductSection(
-                title: 'Trending Now',
-                accentWord: 'Now',
-                provider: trendingProductsProvider,
-                ref: ref,
-              ),
+              _ProductSection(title: 'Trending now', provider: trendingProductsProvider, ref: ref),
               const SizedBox(height: AppSpacing.lg),
-              _ProductSection(
-                title: 'Best Sellers',
-                accentWord: 'Sellers',
-                provider: bestSellersProvider,
-                ref: ref,
-              ),
+              _ProductSection(title: 'Best sellers', provider: bestSellersProvider, ref: ref),
               const SizedBox(height: AppSpacing.xl),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Plain bold title + green "See all" — matches the reference design's
+/// section headers exactly (no two-tone accent/underline treatment).
+class _PlainSectionHead extends StatelessWidget {
+  final String title;
+  final VoidCallback? onSeeAll;
+  const _PlainSectionHead({required this.title, this.onSeeAll});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+          if (onSeeAll != null)
+            GestureDetector(
+              onTap: onSeeAll,
+              child: const Text('See all', style: TextStyle(fontSize: 12, color: _green, fontWeight: FontWeight.w700)),
+            ),
+        ],
       ),
     );
   }
@@ -112,7 +140,7 @@ class _BannerSection extends ConsumerWidget {
         aspectRatio: 16 / 7,
         child: Padding(padding: EdgeInsets.symmetric(horizontal: 16), child: Center(child: CircularProgressIndicator())),
       ),
-      error: (_, __) => const SizedBox.shrink(), // banners are non-critical; fail silently
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
@@ -128,25 +156,25 @@ class _CategorySection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: 'Shop by Category', accentWord: 'Category', onSeeAll: () => context.push(RouteNames.categories)),
+        _PlainSectionHead(title: 'Shop by category', onSeeAll: () => context.push(RouteNames.categories)),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 100,
+          height: 92,
           child: categoriesAsync.when(
             data: (categories) => categories.isEmpty
                 ? const Center(child: Text('No categories yet'))
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
+                : AutoScrollRow(
+                    itemWidth: 82,
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    itemCount: categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
-                    itemBuilder: (context, index) {
-                      final category = categories[index];
-                      return CategoryTile(
-                        category: category,
-                        onTap: () => context.push('/category/${category.id}', extra: category.name),
-                      );
-                    },
+                    children: categories
+                        .map((category) => Padding(
+                              padding: const EdgeInsets.only(right: AppSpacing.md),
+                              child: CategoryTile(
+                                category: category,
+                                onTap: () => context.push('/category/${category.id}', extra: category.name),
+                              ),
+                            ))
+                        .toList(),
                   ),
             loading: () => ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -165,11 +193,10 @@ class _CategorySection extends ConsumerWidget {
 
 class _ProductSection extends ConsumerWidget {
   final String title;
-  final String accentWord;
   final FutureProvider<List<ProductEntity>> provider;
   final WidgetRef ref;
 
-  const _ProductSection({required this.title, required this.accentWord, required this.provider, required this.ref});
+  const _ProductSection({required this.title, required this.provider, required this.ref});
 
   @override
   Widget build(BuildContext context, WidgetRef _) {
@@ -178,25 +205,22 @@ class _ProductSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: title, accentWord: accentWord),
+        _PlainSectionHead(title: title),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 240,
+          height: 210,
           child: productsAsync.when(
             data: (products) => products.isEmpty
                 ? const Center(child: Text('Nothing here yet'))
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
+                : AutoScrollRow(
+                    itemWidth: 158,
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    itemCount: products.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      return ProductCard(
-                        product: product,
-                        onTap: () => context.push('/product/${product.id}'),
-                      );
-                    },
+                    children: products
+                        .map((product) => Padding(
+                              padding: const EdgeInsets.only(right: AppSpacing.sm),
+                              child: ProductCard(product: product, onTap: () => context.push('/product/${product.id}')),
+                            ))
+                        .toList(),
                   ),
             loading: () => ListView.separated(
               scrollDirection: Axis.horizontal,
