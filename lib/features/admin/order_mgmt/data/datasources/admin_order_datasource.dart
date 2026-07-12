@@ -24,8 +24,9 @@ class AdminOrderDataSource {
     await _orders.doc(orderId).update({'status': status.name});
   }
 
-  Future<void> assignDelivery(String orderId, String name, String phone) async {
+  Future<void> assignDelivery(String orderId, String employeeUid, String name, String phone) async {
     await _orders.doc(orderId).update({
+      'assignedEmployeeUid': employeeUid,
       'deliveryPersonName': name,
       'deliveryPersonPhone': phone,
       // Assigning someone naturally implies it's on its way — keeps the

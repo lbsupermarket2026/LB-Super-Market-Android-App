@@ -57,14 +57,16 @@ class ProductModel {
       brand: data['brand'] as String?,
       categoryId: (data['categoryId'] as String?) ?? '',
       subCategoryId: data['subCategoryId'] as String?,
-      images: (data['images'] as List<dynamic>?)?.cast<String>() ?? const [],
+      images: (data['images'] is List) ? (data['images'] as List).whereType<String>().toList() : const [],
       thumbnailUrl: data['thumbnailUrl'] as String?,
       basePrice: (data['basePrice'] as num?)?.toDouble() ?? 0,
       mrp: (data['mrp'] as num?)?.toDouble(),
       discountPercent: (data['discountPercent'] as num?)?.toDouble() ?? 0,
       taxPercent: (data['taxPercent'] as num?)?.toDouble() ?? 0,
       unit: (data['unit'] as String?) ?? '',
-      variants: (data['variants'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? const [],
+      variants: (data['variants'] is List)
+          ? (data['variants'] as List).whereType<Map<String, dynamic>>().toList()
+          : const [],
       stockQty: (data['stockQty'] as num?)?.toInt() ?? (data['stock'] as num?)?.toInt() ?? 0,
       isFeatured: (data['isFeatured'] as bool?) ?? false,
       isTrending: (data['isTrending'] as bool?) ?? false,

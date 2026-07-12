@@ -88,6 +88,7 @@ class OrderEntity extends Equatable {
   final String deliveryAddress;
   final String? customerPhone;
   final PaymentMethod paymentMethod;
+  final String? assignedEmployeeUid;
   final String? deliveryPersonName;
   final String? deliveryPersonPhone;
   final double? rating;
@@ -103,6 +104,7 @@ class OrderEntity extends Equatable {
     required this.deliveryAddress,
     this.customerPhone,
     this.paymentMethod = PaymentMethod.cod,
+    this.assignedEmployeeUid,
     this.deliveryPersonName,
     this.deliveryPersonPhone,
     this.rating,
@@ -125,6 +127,7 @@ class OrderEntity extends Equatable {
         deliveryAddress,
         customerPhone,
         paymentMethod,
+        assignedEmployeeUid,
         deliveryPersonName,
         deliveryPersonPhone,
         rating,

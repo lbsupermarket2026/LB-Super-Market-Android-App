@@ -139,7 +139,7 @@ class AdminOrderDetailScreen extends ConsumerWidget {
     if (selected == null || !context.mounted) return;
 
     final success =
-        await ref.read(adminOrderMutationProvider.notifier).assignDelivery(order.id, selected.name, selected.phone);
+        await ref.read(adminOrderMutationProvider.notifier).assignDelivery(order.id, selected.uid, selected.name, selected.phone);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(success ? 'Assigned to ${selected.name}.' : 'Could not assign.')),

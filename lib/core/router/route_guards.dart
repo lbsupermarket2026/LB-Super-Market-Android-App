@@ -42,10 +42,16 @@ class RouteGuard {
       return _homeForRole(user.role);
     }
 
-    // Signed in, on some other route: block customers from admin routes.
+    // Signed in, on some other route: block customers from admin/employee
+    // routes, and keep employees off the full admin dashboard — they get
+    // their own simpler "my deliveries" screen instead.
     final isAdminRoute = currentLocation.startsWith('/admin');
-    if (isAdminRoute && !user.isStaff) {
+    final isEmployeeRoute = currentLocation.startsWith('/employee');
+    if ((isAdminRoute || isEmployeeRoute) && !user.isStaff) {
       return RouteNames.home;
+    }
+    if (isAdminRoute && user.role == UserRole.employee) {
+      return '/employee/home';
     }
 
     return null; // no redirect needed
@@ -54,8 +60,9 @@ class RouteGuard {
   String _homeForRole(UserRole role) {
     switch (role) {
       case UserRole.admin:
-      case UserRole.employee:
         return RouteNames.adminDashboard;
+      case UserRole.employee:
+        return '/employee/home';
       case UserRole.customer:
         return RouteNames.home;
     }

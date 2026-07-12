@@ -38,10 +38,10 @@ class AdminOrderMutationNotifier extends StateNotifier<AdminOrderMutationState> 
     }
   }
 
-  Future<bool> assignDelivery(String orderId, String name, String phone) async {
+  Future<bool> assignDelivery(String orderId, String employeeUid, String name, String phone) async {
     state = const AdminOrderMutationState(isSubmitting: true);
     try {
-      await _ref.read(adminOrderDataSourceProvider).assignDelivery(orderId, name, phone);
+      await _ref.read(adminOrderDataSourceProvider).assignDelivery(orderId, employeeUid, name, phone);
       state = const AdminOrderMutationState();
       _ref.invalidate(allOrdersAdminProvider);
       return true;

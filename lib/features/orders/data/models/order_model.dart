@@ -11,6 +11,7 @@ class OrderModel {
   final String deliveryAddress;
   final String? customerPhone;
   final String paymentMethod;
+  final String? assignedEmployeeUid;
   final String? deliveryPersonName;
   final String? deliveryPersonPhone;
   final double? rating;
@@ -26,6 +27,7 @@ class OrderModel {
     required this.deliveryAddress,
     this.customerPhone,
     this.paymentMethod = 'cod',
+    this.assignedEmployeeUid,
     this.deliveryPersonName,
     this.deliveryPersonPhone,
     this.rating,
@@ -55,6 +57,7 @@ class OrderModel {
       deliveryAddress: (data['deliveryAddress'] as String?) ?? '',
       customerPhone: data['customerPhone'] as String?,
       paymentMethod: (data['paymentMethod'] as String?) ?? 'cod',
+      assignedEmployeeUid: data['assignedEmployeeUid'] as String?,
       deliveryPersonName: data['deliveryPersonName'] as String?,
       deliveryPersonPhone: data['deliveryPersonPhone'] as String?,
       rating: (data['rating'] as num?)?.toDouble(),
@@ -81,6 +84,7 @@ class OrderModel {
         deliveryAddress: deliveryAddress,
         customerPhone: customerPhone,
         paymentMethod: PaymentMethodX.fromString(paymentMethod),
+        assignedEmployeeUid: assignedEmployeeUid,
         deliveryPersonName: deliveryPersonName,
         deliveryPersonPhone: deliveryPersonPhone,
         rating: rating,

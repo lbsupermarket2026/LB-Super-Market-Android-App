@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_spacing.dart';
+import '../../../inventory_mgmt/presentation/providers/admin_inventory_providers.dart';
+import '../../../order_mgmt/presentation/providers/admin_order_providers.dart';
+import '../../../../order_requests/domain/entities/order_request_entity.dart';
+import '../../../../orders/domain/entities/order_entity.dart';
+import '../../../../products/domain/entities/product_entity.dart';
 import '../../domain/entities/sales_bucket_entity.dart';
 import '../providers/sales_report_providers.dart';
 
 const _green = Color(0xFF2E7D32);
 const _orange = Color(0xFFEF6C00);
 const _red = Color(0xFFE53935);
+
+// Products at or below this stock level count toward the "Low Stock" KPI.
+const _lowStockThreshold = 5;
 
 class AdminSalesScreen extends ConsumerWidget {
   const AdminSalesScreen({super.key});
@@ -15,17 +23,27 @@ class AdminSalesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final granularity = ref.watch(selectedGranularityProvider);
     final bucketsAsync = ref.watch(salesBucketsProvider);
+    final ordersAsync = ref.watch(allOrdersAdminProvider);
+    final requestsAsync = ref.watch(allOrderRequestsAdminProvider);
+    final productsAsync = ref.watch(allProductsAdminProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8ED),
       appBar: AppBar(title: const Text('Sales Reports')),
-      body: Column(
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          // Fixed KPI cards — these reflect current overall state and do
+          // NOT change with the granularity selector below, unlike the
+          // breakdown chart which is scoped to the selected time window.
+          _KpiGrid(ordersAsync: ordersAsync, requestsAsync: requestsAsync, productsAsync: productsAsync),
+          const SizedBox(height: AppSpacing.lg),
+          const Text('Sales Over Time', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: AppSpacing.sm),
           SizedBox(
-            height: 52,
+            height: 44,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
               children: SalesGranularity.values.map((g) {
                 final selected = g == granularity;
                 return Padding(
@@ -41,47 +59,26 @@ class AdminSalesScreen extends ConsumerWidget {
               }).toList(),
             ),
           ),
-          Expanded(
-            child: bucketsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Could not load sales data: $e')),
-              data: (buckets) {
-                if (buckets.isEmpty) {
-                  return const Center(child: Text('No orders in this time range yet.'));
-                }
-
-                final totalRevenue = buckets.fold(0.0, (sum, b) => sum + b.revenue);
-                final totalOrders = buckets.fold(0, (sum, b) => sum + b.orderCount);
-                final totalCancelled = buckets.fold(0, (sum, b) => sum + b.cancelledCount);
-                final avgOrderValue = totalOrders == 0 ? 0.0 : totalRevenue / totalOrders;
-                final maxRevenue = buckets.map((b) => b.revenue).fold(0.0, (a, b) => a > b ? a : b);
-
-                return ListView(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: _SummaryCard(label: 'Revenue', value: '₹${totalRevenue.toStringAsFixed(0)}', color: _green)),
-                        const SizedBox(width: 8),
-                        Expanded(child: _SummaryCard(label: 'Orders', value: '$totalOrders', color: _orange)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(child: _SummaryCard(label: 'Avg Order', value: '₹${avgOrderValue.toStringAsFixed(0)}', color: _green)),
-                        const SizedBox(width: 8),
-                        Expanded(child: _SummaryCard(label: 'Cancelled', value: '$totalCancelled', color: _red)),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text('Breakdown', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    const SizedBox(height: AppSpacing.sm),
-                    ...buckets.reversed.map((b) => _BucketRow(bucket: b, maxRevenue: maxRevenue)),
-                  ],
-                );
-              },
+          const SizedBox(height: AppSpacing.sm),
+          bucketsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
             ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text('Could not load sales data: $e'),
+            ),
+            data: (buckets) {
+              if (buckets.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: Text('No orders in this time range yet.')),
+                );
+              }
+              final maxRevenue = buckets.map((b) => b.revenue).fold(0.0, (a, b) => a > b ? a : b);
+              return Column(children: buckets.reversed.map((b) => _BucketRow(bucket: b, maxRevenue: maxRevenue)).toList());
+            },
           ),
         ],
       ),
@@ -89,11 +86,55 @@ class AdminSalesScreen extends ConsumerWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
+class _KpiGrid extends StatelessWidget {
+  final AsyncValue<List<OrderEntity>> ordersAsync;
+  final AsyncValue<List<OrderRequestEntity>> requestsAsync;
+  final AsyncValue<List<ProductEntity>> productsAsync;
+
+  const _KpiGrid({required this.ordersAsync, required this.requestsAsync, required this.productsAsync});
+
+  @override
+  Widget build(BuildContext context) {
+    final orders = ordersAsync.valueOrNull ?? [];
+    final totalSales = orders
+        .where((o) => o.status != OrderStatus.cancelled)
+        .fold(0.0, (sum, o) => sum + o.totalAmount);
+    final totalOrders = orders.where((o) => o.status != OrderStatus.cancelled).length;
+
+    final requests = requestsAsync.valueOrNull ?? [];
+    final pendingRequests = requests.where((r) => r.status == OrderRequestStatus.pending).length;
+
+    final products = productsAsync.valueOrNull ?? [];
+    final lowStockCount = products.where((p) => p.stockQty <= _lowStockThreshold).length;
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 1.6,
+      children: [
+        _KpiCard(label: 'Total Sales', value: '₹${totalSales.toStringAsFixed(0)}', icon: Icons.payments_outlined, color: _green),
+        _KpiCard(label: 'Total Orders', value: '$totalOrders', icon: Icons.receipt_long_outlined, color: _orange),
+        _KpiCard(label: 'Pending Requests', value: '$pendingRequests', icon: Icons.pending_actions_outlined, color: Colors.blueGrey),
+        _KpiCard(
+          label: 'Low Stock (≤$_lowStockThreshold)',
+          value: '$lowStockCount',
+          icon: Icons.warning_amber_outlined,
+          color: _red,
+        ),
+      ],
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
   final String label;
   final String value;
+  final IconData icon;
   final Color color;
-  const _SummaryCard({required this.label, required this.value, required this.color});
+  const _KpiCard({required this.label, required this.value, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -103,12 +144,14 @@ class _SummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          Icon(icon, color: color, size: 18),
+          const Spacer(),
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
