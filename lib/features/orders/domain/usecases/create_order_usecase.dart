@@ -12,6 +12,7 @@ class CreateOrderUseCase {
     required String deliveryAddress,
     String? customerPhone,
     String paymentMethod = 'cod',
+    String? razorpayPaymentId,
   }) {
     return _repository.createOrder(
       userId: userId,
@@ -20,6 +21,7 @@ class CreateOrderUseCase {
       deliveryAddress: deliveryAddress,
       customerPhone: customerPhone,
       paymentMethod: paymentMethod,
+      razorpayPaymentId: razorpayPaymentId,
     );
   }
 }

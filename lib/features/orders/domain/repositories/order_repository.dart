@@ -13,7 +13,10 @@ abstract class OrderRepository {
     required String deliveryAddress,
     String? customerPhone,
     String paymentMethod = 'cod',
+    String? razorpayPaymentId,
   });
 
   Future<Result<void>> submitRating(String orderId, double rating, String? comment);
+
+  Future<Result<void>> cancelOrder(String orderId);
 }

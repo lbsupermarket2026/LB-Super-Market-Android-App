@@ -1,1 +1,40 @@
-{"firestore":{"rules":"backend/firestore/firestore.rules","indexes":"backend/firestore/firestore.indexes.json"},"flutter":{"platforms":{"dart":{"lib/firebase_options.dart":{"projectId":"lb-super-market","configurations":{"android":"1:320723889608:android:b419e4c6a687ba6efba4fd","ios":"1:320723889608:ios:9f219f43070a7d0bfba4fd"}}},"android":{"default":{"projectId":"lb-super-market","appId":"1:320723889608:android:b419e4c6a687ba6efba4fd","fileOutput":"android/app/google-services.json"}}}}}
+{
+  "firestore": {
+    "rules": "backend/firestore/firestore.rules",
+    "indexes": "backend/firestore/firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "lb-super-market",
+          "configurations": {
+            "android": "1:320723889608:android:b419e4c6a687ba6efba4fd",
+            "ios": "1:320723889608:ios:9f219f43070a7d0bfba4fd"
+          }
+        }
+      },
+      "android": {
+        "default": {
+          "projectId": "lb-super-market",
+          "appId": "1:320723889608:android:b419e4c6a687ba6efba4fd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

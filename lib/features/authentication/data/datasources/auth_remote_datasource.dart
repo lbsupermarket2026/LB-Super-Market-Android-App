@@ -171,9 +171,14 @@ class AuthRemoteDataSource {
   String _mapFirebaseAuthError(fb.FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
-        return 'No account found with this email.';
       case 'wrong-password':
-        return 'Incorrect password. Please try again.';
+      case 'invalid-credential':
+        // Deliberately the same generic message for all three — telling
+        // someone specifically "no account with this email" vs "wrong
+        // password" leaks whether an email is registered at all, which
+        // is exactly the kind of thing you don't want to hand an
+        // attacker trying to guess valid accounts.
+        return 'Incorrect email or password. Please try again.';
       case 'email-already-in-use':
         return 'An account already exists with this email.';
       case 'weak-password':

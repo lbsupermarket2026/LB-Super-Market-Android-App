@@ -7,6 +7,7 @@ import '../../domain/usecases/get_my_orders_usecase.dart';
 import '../../domain/usecases/get_order_by_id_usecase.dart';
 import '../../domain/usecases/create_order_usecase.dart';
 import '../../domain/usecases/submit_order_rating_usecase.dart';
+import '../../domain/usecases/cancel_order_usecase.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 
 final orderRemoteDataSourceProvider = Provider<OrderRemoteDataSource>((ref) {
@@ -33,6 +34,42 @@ final submitOrderRatingUseCaseProvider = Provider<SubmitOrderRatingUseCase>((ref
   return SubmitOrderRatingUseCase(ref.watch(orderRepositoryProvider));
 });
 
+final cancelOrderUseCaseProvider = Provider<CancelOrderUseCase>((ref) {
+  return CancelOrderUseCase(ref.watch(orderRepositoryProvider));
+});
+
+class CancelOrderState {
+  final bool isSubmitting;
+  final String? error;
+  const CancelOrderState({this.isSubmitting = false, this.error});
+}
+
+class CancelOrderNotifier extends StateNotifier<CancelOrderState> {
+  final Ref _ref;
+  CancelOrderNotifier(this._ref) : super(const CancelOrderState());
+
+  Future<bool> cancel(String orderId) async {
+    state = const CancelOrderState(isSubmitting: true);
+    final result = await _ref.read(cancelOrderUseCaseProvider).call(orderId);
+    return result.match(
+      (failure) {
+        state = CancelOrderState(error: failure.message);
+        return false;
+      },
+      (_) {
+        state = const CancelOrderState();
+        _ref.invalidate(myOrdersProvider);
+        _ref.invalidate(orderByIdProvider(orderId));
+        return true;
+      },
+    );
+  }
+}
+
+final cancelOrderProvider = StateNotifierProvider.autoDispose<CancelOrderNotifier, CancelOrderState>((ref) {
+  return CancelOrderNotifier(ref);
+});
+
 /// Watches currentUserProvider so this automatically refreshes on
 /// sign-in/out rather than caching a stale empty list for a guest.
 final myOrdersProvider = FutureProvider.autoDispose<List<OrderEntity>>((ref) async {
@@ -44,6 +81,12 @@ final myOrdersProvider = FutureProvider.autoDispose<List<OrderEntity>>((ref) asy
 });
 
 final orderByIdProvider = FutureProvider.autoDispose.family<OrderEntity, String>((ref, orderId) async {
-  final result = await ref.watch(getOrderByIdUseCaseProvider).call(orderId);
+  // Without a timeout, a stalled network call leaves this stuck in
+  // AsyncLoading forever — an infinite spinner with no way out. This
+  // guarantees it eventually surfaces as a real, retryable error instead.
+  final result = await ref.watch(getOrderByIdUseCaseProvider).call(orderId).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Taking too long to load — check your connection and try again.'),
+      );
   return result.match((failure) => throw failure, (order) => order);
 });

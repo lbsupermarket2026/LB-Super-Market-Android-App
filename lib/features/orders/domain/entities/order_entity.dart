@@ -28,6 +28,9 @@ extension OrderStatusX on OrderStatus {
 
   bool get isActive => this != OrderStatus.delivered && this != OrderStatus.cancelled;
 
+  bool get canBeCancelled =>
+      this == OrderStatus.placed || this == OrderStatus.confirmed || this == OrderStatus.preparing;
+
   static OrderStatus fromString(String value) {
     return OrderStatus.values.firstWhere(
       (s) => s.name == value,
@@ -88,6 +91,10 @@ class OrderEntity extends Equatable {
   final String deliveryAddress;
   final String? customerPhone;
   final PaymentMethod paymentMethod;
+  final String? razorpayPaymentId;
+  final String? refundStatus; // null | 'processing' | 'processed' | 'failed'
+  final String? refundId;
+  final String? refundError;
   final String? assignedEmployeeUid;
   final String? deliveryPersonName;
   final String? deliveryPersonPhone;
@@ -104,6 +111,10 @@ class OrderEntity extends Equatable {
     required this.deliveryAddress,
     this.customerPhone,
     this.paymentMethod = PaymentMethod.cod,
+    this.razorpayPaymentId,
+    this.refundStatus,
+    this.refundId,
+    this.refundError,
     this.assignedEmployeeUid,
     this.deliveryPersonName,
     this.deliveryPersonPhone,
@@ -127,6 +138,10 @@ class OrderEntity extends Equatable {
         deliveryAddress,
         customerPhone,
         paymentMethod,
+        razorpayPaymentId,
+        refundStatus,
+        refundId,
+        refundError,
         assignedEmployeeUid,
         deliveryPersonName,
         deliveryPersonPhone,

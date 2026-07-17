@@ -11,6 +11,10 @@ class OrderModel {
   final String deliveryAddress;
   final String? customerPhone;
   final String paymentMethod;
+  final String? razorpayPaymentId;
+  final String? refundStatus;
+  final String? refundId;
+  final String? refundError;
   final String? assignedEmployeeUid;
   final String? deliveryPersonName;
   final String? deliveryPersonPhone;
@@ -27,6 +31,10 @@ class OrderModel {
     required this.deliveryAddress,
     this.customerPhone,
     this.paymentMethod = 'cod',
+    this.razorpayPaymentId,
+    this.refundStatus,
+    this.refundId,
+    this.refundError,
     this.assignedEmployeeUid,
     this.deliveryPersonName,
     this.deliveryPersonPhone,
@@ -56,6 +64,10 @@ class OrderModel {
       createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
       deliveryAddress: (data['deliveryAddress'] as String?) ?? '',
       customerPhone: data['customerPhone'] as String?,
+      razorpayPaymentId: data['razorpayPaymentId'] as String?,
+      refundStatus: data['refundStatus'] as String?,
+      refundId: data['refundId'] as String?,
+      refundError: data['refundError'] as String?,
       paymentMethod: (data['paymentMethod'] as String?) ?? 'cod',
       assignedEmployeeUid: data['assignedEmployeeUid'] as String?,
       deliveryPersonName: data['deliveryPersonName'] as String?,
@@ -84,6 +96,10 @@ class OrderModel {
         deliveryAddress: deliveryAddress,
         customerPhone: customerPhone,
         paymentMethod: PaymentMethodX.fromString(paymentMethod),
+        razorpayPaymentId: razorpayPaymentId,
+        refundStatus: refundStatus,
+        refundId: refundId,
+        refundError: refundError,
         assignedEmployeeUid: assignedEmployeeUid,
         deliveryPersonName: deliveryPersonName,
         deliveryPersonPhone: deliveryPersonPhone,
@@ -98,6 +114,7 @@ class OrderModel {
     required String deliveryAddress,
     String? customerPhone,
     String paymentMethod = 'cod',
+    String? razorpayPaymentId,
   }) {
     return {
       'userId': userId,
@@ -108,6 +125,7 @@ class OrderModel {
       'deliveryAddress': deliveryAddress,
       'customerPhone': customerPhone,
       'paymentMethod': paymentMethod,
+      'razorpayPaymentId': razorpayPaymentId,
       'deliveryPersonName': null,
       'deliveryPersonPhone': null,
       'rating': null,

@@ -31,6 +31,7 @@ class OrderRepositoryImpl implements OrderRepository {
     required String deliveryAddress,
     String? customerPhone,
     String paymentMethod = 'cod',
+    String? razorpayPaymentId,
   }) {
     return guard(() => _remote.createOrder(
           userId: userId,
@@ -39,11 +40,17 @@ class OrderRepositoryImpl implements OrderRepository {
           deliveryAddress: deliveryAddress,
           customerPhone: customerPhone,
           paymentMethod: paymentMethod,
+          razorpayPaymentId: razorpayPaymentId,
         ));
   }
 
   @override
   Future<Result<void>> submitRating(String orderId, double rating, String? comment) {
     return guard(() => _remote.submitRating(orderId, rating, comment));
+  }
+
+  @override
+  Future<Result<void>> cancelOrder(String orderId) {
+    return guard(() => _remote.cancelOrder(orderId));
   }
 }

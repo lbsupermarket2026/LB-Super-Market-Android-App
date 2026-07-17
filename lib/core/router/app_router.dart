@@ -20,6 +20,7 @@ import '../../features/admin/employee_mgmt/presentation/screens/employee_list_sc
 import '../../features/admin/order_mgmt/presentation/screens/admin_orders_screen.dart';
 import '../../features/admin/inventory_mgmt/presentation/screens/admin_inventory_screen.dart';
 import '../../features/admin/sales_reports/presentation/screens/admin_sales_screen.dart';
+import '../../features/admin/offers_mgmt/presentation/screens/admin_offers_screen.dart';
 import '../../features/employee/presentation/screens/employee_home_screen.dart';
 import '../widgets/bottom_nav_shell.dart';
 import 'route_guards.dart';
@@ -136,6 +137,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/orders', builder: (context, state) => const AdminOrdersScreen()),
       GoRoute(path: '/admin/inventory', builder: (context, state) => const AdminInventoryScreen()),
       GoRoute(path: '/admin/sales', builder: (context, state) => const AdminSalesScreen()),
+      GoRoute(path: '/admin/offers', builder: (context, state) => const AdminOffersScreen()),
       GoRoute(path: '/employee/home', builder: (context, state) => const EmployeeHomeScreen()),
 
       // Remaining routes (cart, checkout, wishlist, admin sub-sections)

@@ -54,6 +54,34 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: 4),
                 Text('Payment: ${order.paymentMethod.label}'),
+                if (order.razorpayPaymentId?.isNotEmpty == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Payment ref: ${order.razorpayPaymentId}',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+                if (order.refundStatus != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      order.refundStatus == 'processed'
+                          ? 'Refund: Processed${order.refundId != null ? ' (${order.refundId})' : ''}'
+                          : order.refundStatus == 'processing'
+                              ? 'Refund: In progress via Razorpay'
+                              : 'Refund: Failed — ${order.refundError ?? 'check Razorpay dashboard'}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: order.refundStatus == 'processed'
+                            ? _green
+                            : order.refundStatus == 'processing'
+                                ? _orange
+                                : _red,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

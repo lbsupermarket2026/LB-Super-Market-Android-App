@@ -78,6 +78,13 @@ class AdminDashboardScreen extends ConsumerWidget {
               subtitle: 'Revenue and orders, hourly through yearly',
               onTap: () => context.push('/admin/sales'),
             ),
+            _AdminTile(
+              icon: Icons.local_offer_outlined,
+              color: _red,
+              title: 'Home Offer Cards',
+              subtitle: 'Manage the scrolling promo cards on Home',
+              onTap: () => context.push('/admin/offers'),
+            ),
           ],
         ],
       ),

@@ -244,6 +244,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         onRetry: () => ref.invalidate(browseProductsProvider(_selectedCategoryKey)),
       ),
       data: (state) {
+        if (state.errorMessage != null && state.items.isEmpty) {
+          return ErrorStateWidget(
+            message: state.errorMessage!,
+            onRetry: () => ref.invalidate(browseProductsProvider(_selectedCategoryKey)),
+          );
+        }
         final filtered = _applyFilters(state.items);
         if (filtered.isEmpty) {
           return const EmptyStateWidget(message: 'No products found.', icon: Icons.shopping_bag_outlined);

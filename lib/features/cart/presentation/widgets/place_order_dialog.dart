@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../../../core/config/payment_config.dart';
 import '../../../addresses/domain/entities/address_entity.dart';
 import '../../../addresses/presentation/providers/address_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../../../orders/presentation/providers/order_providers.dart';
+import '../../../payments/domain/razorpay_checkout_service.dart';
 import '../providers/cart_providers.dart';
 
 class PlaceOrderDialog extends ConsumerStatefulWidget {
@@ -21,10 +25,54 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
   bool _isPlacing = false;
   String? _error;
 
+  late final RazorpayCheckoutService _razorpayService;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpayService = RazorpayCheckoutService();
+  }
+
   @override
   void dispose() {
     _addressController.dispose();
+    _razorpayService.dispose();
     super.dispose();
+  }
+
+  /// Bridges Razorpay's callback-based SDK into something this dialog's
+  /// normal async flow can just await — resolves with the payment ID on
+  /// success, or null on failure/cancel.
+  Future<String?> _collectUpiPayment({
+    required double amount,
+    required String customerName,
+    required String customerPhone,
+    String? customerEmail,
+  }) {
+    final completer = Completer<String?>();
+
+    _razorpayService.init(
+      onSuccess: (PaymentSuccessResponse response) {
+        if (!completer.isCompleted) completer.complete(response.paymentId);
+      },
+      onError: (PaymentFailureResponse response) {
+        if (!completer.isCompleted) completer.complete(null);
+      },
+      onExternalWallet: (ExternalWalletResponse response) {
+        // Selecting an external wallet isn't itself success or failure —
+        // Razorpay will still follow up with one of the two above once
+        // that flow finishes, so nothing to resolve here.
+      },
+    );
+
+    _razorpayService.openUpiCheckout(
+      amountInRupees: amount,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      customerEmail: customerEmail,
+    );
+
+    return completer.future;
   }
 
   Future<void> _placeOrder() async {
@@ -42,12 +90,45 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     final cartItems = ref.read(cartProvider).valueOrNull ?? [];
     if (cartItems.isEmpty) return;
 
-    setState(() {
-      _isPlacing = true;
-      _error = null;
-    });
-
     final total = ref.read(cartTotalProvider);
+    String? razorpayPaymentId;
+
+    if (_paymentMethod == PaymentMethod.upi) {
+      if (!PaymentConfig.isConfigured) {
+        setState(() => _error =
+            'UPI payment isn\'t set up yet — add a Razorpay test key in lib/core/config/payment_config.dart first.');
+        return;
+      }
+
+      setState(() {
+        _isPlacing = true;
+        _error = null;
+      });
+
+      final paymentId = await _collectUpiPayment(
+        amount: total,
+        customerName: user.name ?? 'Customer',
+        customerPhone: user.phone ?? '',
+        customerEmail: user.email,
+      );
+
+      if (!mounted) return;
+
+      if (paymentId == null) {
+        setState(() {
+          _isPlacing = false;
+          _error = 'Payment was not completed. Nothing has been charged — try again or choose a different payment method.';
+        });
+        return;
+      }
+      razorpayPaymentId = paymentId;
+    } else {
+      setState(() {
+        _isPlacing = true;
+        _error = null;
+      });
+    }
+
     final result = await ref.read(createOrderUseCaseProvider).call(
           userId: user.uid,
           items: cartItems
@@ -64,6 +145,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
           deliveryAddress: _addressController.text.trim(),
           customerPhone: user.phone,
           paymentMethod: _paymentMethod.name,
+          razorpayPaymentId: razorpayPaymentId,
         );
 
     if (!mounted) return;
@@ -97,7 +179,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Choose how you\'d like to pay. Payment is completed on delivery/pickup — this app doesn\'t process online payments yet.',
+              'UPI charges you now, through Razorpay. Cash and Card Swipe are settled in person on delivery/pickup.',
               style: TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -171,12 +253,12 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: _isPlacing ? null : () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(
           onPressed: _isPlacing ? null : _placeOrder,
           child: _isPlacing
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Place Order'),
+              : Text(_paymentMethod == PaymentMethod.upi ? 'Pay & Place Order' : 'Place Order'),
         ),
       ],
     );

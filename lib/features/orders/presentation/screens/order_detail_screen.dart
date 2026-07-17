@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -18,7 +19,16 @@ class OrderDetailScreen extends ConsumerWidget {
     final orderAsync = ref.watch(orderByIdProvider(orderId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Order Details')),
+      appBar: AppBar(
+        title: const Text('Order Details'),
+        // Explicit, guaranteed-safe back button — falls back to the
+        // Orders list if there's nothing to pop, so this can never
+        // dead-end and kick you out of the app.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/orders'),
+        ),
+      ),
       body: orderAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ErrorStateWidget(
@@ -72,6 +82,7 @@ class OrderDetailScreen extends ConsumerWidget {
                             style: const TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
+                    _RefundStatusBanner(order: order),
                   ],
                 ),
               ),
@@ -138,8 +149,117 @@ class OrderDetailScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+            _CancelOrderSection(order: order),
             _RatingSection(order: order),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RefundStatusBanner extends StatelessWidget {
+  final OrderEntity order;
+  const _RefundStatusBanner({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    if (order.refundStatus == null) return const SizedBox.shrink();
+
+    late final Color color;
+    late final IconData icon;
+    late final String message;
+
+    switch (order.refundStatus) {
+      case 'processing':
+        color = const Color(0xFFEF6C00);
+        icon = Icons.hourglass_top;
+        message = 'Refund in progress — usually credited within a few days.';
+        break;
+      case 'processed':
+        color = const Color(0xFF2E7D32);
+        icon = Icons.check_circle_outline;
+        message = 'Refunded — the amount has been sent back to your original payment method.';
+        break;
+      case 'failed':
+        color = const Color(0xFFE53935);
+        icon = Icons.error_outline;
+        message = 'Refund could not be processed automatically. Please contact support.';
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CancelOrderSection extends ConsumerWidget {
+  final OrderEntity order;
+  const _CancelOrderSection({required this.order});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only cancellable up through "Preparing" — once it's Out for
+    // Delivery, someone's already carrying it, so cancelling from the
+    // app stops making sense (call the store instead at that point).
+    if (!order.status.canBeCancelled) return const SizedBox.shrink();
+
+    final cancelState = ref.watch(cancelOrderProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
+          onPressed: cancelState.isSubmitting
+              ? null
+              : () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Cancel this order?'),
+                      content: const Text('This can\'t be undone once confirmed.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep Order')),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Cancel Order', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true || !context.mounted) return;
+
+                  final success = await ref.read(cancelOrderProvider.notifier).cancel(order.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success
+                            ? 'Order cancelled.'
+                            : ref.read(cancelOrderProvider).error ?? 'Could not cancel order.'),
+                      ),
+                    );
+                  }
+                },
+          icon: cancelState.isSubmitting
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.cancel_outlined),
+          label: const Text('Cancel Order'),
         ),
       ),
     );
