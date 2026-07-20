@@ -28,8 +28,7 @@ extension OrderStatusX on OrderStatus {
 
   bool get isActive => this != OrderStatus.delivered && this != OrderStatus.cancelled;
 
-  bool get canBeCancelled =>
-      this == OrderStatus.placed || this == OrderStatus.confirmed || this == OrderStatus.preparing;
+  bool get canBeCancelled => this == OrderStatus.placed;
 
   static OrderStatus fromString(String value) {
     return OrderStatus.values.firstWhere(

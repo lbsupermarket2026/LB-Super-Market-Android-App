@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../../../core/error/result.dart';
 import '../entities/user_entity.dart';
 
@@ -22,7 +23,9 @@ abstract class AuthRepository {
     required String password,
   });
 
-  Future<Result<void>> updateProfile({required String name, required String phone});
+  Future<Result<void>> updateProfile({required String name, required String phone, String? photoUrl});
+
+  Future<Result<String>> uploadProfilePhoto(File file);
 
   Future<Result<void>> changePassword({
     required String currentPassword,

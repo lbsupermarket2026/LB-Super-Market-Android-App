@@ -35,6 +35,7 @@ class ProductEntity extends Equatable {
   final String unit;
   final List<ProductVariantEntity> variants;
   final int stockQty;
+  final int lowStockThreshold;
   final bool isFeatured;
   final bool isTrending;
   final bool isBestSeller;
@@ -58,6 +59,7 @@ class ProductEntity extends Equatable {
     this.unit = '',
     this.variants = const [],
     this.stockQty = 0,
+    this.lowStockThreshold = 5,
     this.isFeatured = false,
     this.isTrending = false,
     this.isBestSeller = false,
@@ -75,6 +77,7 @@ class ProductEntity extends Equatable {
 
   bool get hasDiscount => discountPercent > 0;
   bool get isInStock => stockQty > 0;
+  bool get isLowStock => stockQty > 0 && stockQty <= lowStockThreshold;
   String get primaryImage => thumbnailUrl ?? (images.isNotEmpty ? images.first : '');
 
   @override
@@ -94,6 +97,7 @@ class ProductEntity extends Equatable {
         unit,
         variants,
         stockQty,
+        lowStockThreshold,
         isFeatured,
         isTrending,
         isBestSeller,

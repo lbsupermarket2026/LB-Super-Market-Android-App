@@ -53,6 +53,20 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                   Text('Phone: ${order.customerPhone}'),
                 ],
                 const SizedBox(height: 4),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final countAsync = ref.watch(customerOrderCountProvider(order.userId));
+                    return countAsync.when(
+                      data: (count) => Text(
+                        count <= 1 ? 'First order from this customer' : '$count orders total from this customer',
+                        style: const TextStyle(fontWeight: FontWeight.w600, color: _green),
+                      ),
+                      loading: () => const Text('Loading order history…', style: TextStyle(color: Colors.grey)),
+                      error: (_, __) => const SizedBox.shrink(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 4),
                 Text('Payment: ${order.paymentMethod.label}'),
                 if (order.razorpayPaymentId?.isNotEmpty == true)
                   Padding(

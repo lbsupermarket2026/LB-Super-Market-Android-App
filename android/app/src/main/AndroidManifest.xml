@@ -4,7 +4,7 @@
          permission at runtime silently does nothing. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="freshcart"
+        android:label="LB Super Market"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -67,6 +67,15 @@
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="mailto"/>
+        </intent>
+        <!-- Without this, Android 11+ hides every UPI app (PhonePe,
+             GPay, Paytm, CRED, etc.) from Razorpay's checkout entirely
+             — they silently just don't show up as tappable options,
+             same class of restriction as the entries above, just for
+             the upi:// scheme specifically. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="upi"/>
         </intent>
     </queries>
 </manifest>

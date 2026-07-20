@@ -6,7 +6,8 @@ import '../providers/employee_providers.dart';
 const _green = Color(0xFF2E7D32);
 
 class AddEmployeeDialog extends ConsumerStatefulWidget {
-  const AddEmployeeDialog({super.key});
+  final StaffMemberEntity? existing;
+  const AddEmployeeDialog({super.key, this.existing});
 
   @override
   ConsumerState<AddEmployeeDialog> createState() => _AddEmployeeDialogState();
@@ -20,6 +21,20 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
   final _passwordController = TextEditingController();
   StaffRole _role = StaffRole.employee;
 
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e != null) {
+      _nameController.text = e.name;
+      _emailController.text = e.email;
+      _phoneController.text = e.phone;
+      _role = e.role;
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -32,13 +47,21 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(employeeMutationProvider.notifier).createEmployee(
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          phone: _phoneController.text.trim(),
-          password: _passwordController.text,
-          role: _role,
-        );
+    final notifier = ref.read(employeeMutationProvider.notifier);
+    final success = _isEditing
+        ? await notifier.updateEmployee(
+            uid: widget.existing!.uid,
+            name: _nameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            role: _role,
+          )
+        : await notifier.createEmployee(
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            phone: _phoneController.text.trim(),
+            password: _passwordController.text,
+            role: _role,
+          );
 
     if (!mounted) return;
     if (success) {
@@ -51,7 +74,7 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
     final state = ref.watch(employeeMutationProvider);
 
     return AlertDialog(
-      title: const Text('Add Staff Member'),
+      title: Text(_isEditing ? 'Edit Staff Member' : 'Add Staff Member'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -71,8 +94,12 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
+                enabled: !_isEditing,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email (used to sign in)'),
+                decoration: InputDecoration(
+                  labelText: 'Email (used to sign in)',
+                  helperText: _isEditing ? 'Email can\'t be changed here — it\'s tied to their login account' : null,
+                ),
                 validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
               ),
               const SizedBox(height: 12),
@@ -82,13 +109,15 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
                 decoration: const InputDecoration(labelText: 'Phone'),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Temporary Password (min 6 characters)'),
-                validator: (v) => (v == null || v.length < 6) ? 'At least 6 characters' : null,
-              ),
+              if (!_isEditing) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Temporary Password (min 6 characters)'),
+                  validator: (v) => (v == null || v.length < 6) ? 'At least 6 characters' : null,
+                ),
+              ],
               const SizedBox(height: 12),
               DropdownButtonFormField<StaffRole>(
                 value: _role,
@@ -99,11 +128,13 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
                 ],
                 onChanged: (v) => setState(() => _role = v ?? StaffRole.employee),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Share this email and temporary password with them — they can change the password later from Profile.',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
+              if (!_isEditing) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Share this email and temporary password with them — they can change the password later from Profile.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ],
             ],
           ),
         ),
@@ -115,7 +146,7 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
           onPressed: state.isSubmitting ? null : _submit,
           child: state.isSubmitting
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Text('Add'),
+              : Text(_isEditing ? 'Save' : 'Add'),
         ),
       ],
     );

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories_impl/auth_repository_impl.dart';
@@ -8,6 +9,7 @@ import '../../domain/usecases/sign_up_usecase.dart';
 import '../../domain/usecases/sign_out_usecase.dart';
 import '../../domain/usecases/reset_password_usecase.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
+import '../../domain/usecases/upload_profile_photo_usecase.dart';
 import '../../domain/usecases/change_password_usecase.dart';
 
 // ---- DI wiring ----
@@ -30,6 +32,10 @@ final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
 
 final updateProfileUseCaseProvider = Provider<UpdateProfileUseCase>((ref) {
   return UpdateProfileUseCase(ref.watch(authRepositoryProvider));
+});
+
+final uploadProfilePhotoUseCaseProvider = Provider<UploadProfilePhotoUseCase>((ref) {
+  return UploadProfilePhotoUseCase(ref.watch(authRepositoryProvider));
 });
 
 final changePasswordUseCaseProvider = Provider<ChangePasswordUseCase>((ref) {
@@ -110,9 +116,21 @@ class EditProfileNotifier extends Notifier<SignInState> {
   @override
   SignInState build() => const SignInState();
 
-  Future<bool> save({required String name, required String phone}) async {
+  Future<bool> save({required String name, required String phone, File? photoFile}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    final result = await ref.read(updateProfileUseCaseProvider).call(name: name, phone: phone);
+
+    String? photoUrl;
+    if (photoFile != null) {
+      final uploadResult = await ref.read(uploadProfilePhotoUseCaseProvider).call(photoFile);
+      final failure = uploadResult.match((f) => f, (_) => null);
+      if (failure != null) {
+        state = state.copyWith(isLoading: false, errorMessage: failure.message);
+        return false;
+      }
+      photoUrl = uploadResult.match((f) => null, (url) => url);
+    }
+
+    final result = await ref.read(updateProfileUseCaseProvider).call(name: name, phone: phone, photoUrl: photoUrl);
     return result.match(
       (failure) {
         state = state.copyWith(isLoading: false, errorMessage: failure.message);

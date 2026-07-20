@@ -15,6 +15,14 @@ class AdminOrderDataSource {
   CollectionReference<Map<String, dynamic>> get _orders => _firestore.collection('orders');
   CollectionReference<Map<String, dynamic>> get _requests => _firestore.collection('order_requests');
 
+  /// Aggregate count, not a full fetch — cheap regardless of how many
+  /// orders that customer has, same reasoning as the category product
+  /// count on the customer side.
+  Future<int> getCustomerOrderCount(String userId) async {
+    final snapshot = await _orders.where('userId', isEqualTo: userId).count().get();
+    return snapshot.count ?? 0;
+  }
+
   Future<List<OrderEntity>> getAllOrders() async {
     final snapshot = await _orders.orderBy('createdAt', descending: true).get();
     return snapshot.docs.map((d) => OrderModel.fromFirestore(d).toEntity()).toList();

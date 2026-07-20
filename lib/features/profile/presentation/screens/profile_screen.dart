@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../addresses/presentation/providers/address_providers.dart';
@@ -48,10 +50,15 @@ class ProfileScreen extends ConsumerWidget {
                   CircleAvatar(
                     radius: 32,
                     backgroundColor: Colors.white,
-                    child: Text(
-                      (user?.name?.isNotEmpty == true ? user!.name![0] : user?.email?[0] ?? '?').toUpperCase(),
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _green),
-                    ),
+                    backgroundImage: user?.photoUrl?.isNotEmpty == true
+                        ? CachedNetworkImageProvider(user!.photoUrl!)
+                        : null,
+                    child: user?.photoUrl?.isNotEmpty == true
+                        ? null
+                        : Text(
+                            (user?.name?.isNotEmpty == true ? user!.name![0] : user?.email?[0] ?? '?').toUpperCase(),
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _green),
+                          ),
                   ),
                   const SizedBox(height: 8),
                   Text(user?.name ?? 'Guest', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
@@ -109,17 +116,12 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push(RouteNames.wishlist),
                 ),
                 _MenuItem(
-                  icon: Icons.local_offer_outlined,
-                  title: 'Coupons & offers',
-                  subtitle: 'Coming soon',
-                  onTap: null,
-                ),
-                _MenuItem(
                   icon: Icons.notifications_outlined,
                   title: 'Notifications',
                   subtitle: 'Order and offer alerts',
                   onTap: () => openAppSettings(),
                 ),
+                const _ThemeModeMenuItem(),
                 _MenuItem(
                   icon: Icons.support_agent_outlined,
                   title: 'Help & support',
@@ -165,6 +167,60 @@ class _StatItem extends StatelessWidget {
         Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.white70)),
       ],
+    );
+  }
+}
+
+class _ThemeModeMenuItem extends ConsumerWidget {
+  const _ThemeModeMenuItem();
+
+  String _label(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      case ThemeMode.system:
+        return 'System';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEEECE2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: _greenLight, borderRadius: BorderRadius.circular(9)),
+            child: const Icon(Icons.dark_mode_outlined, size: 18, color: _green),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text('Appearance', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _ink)),
+          ),
+          DropdownButton<ThemeMode>(
+            value: mode,
+            underline: const SizedBox.shrink(),
+            items: ThemeMode.values
+                .map((m) => DropdownMenuItem(value: m, child: Text(_label(m), style: const TextStyle(fontSize: 13))))
+                .toList(),
+            onChanged: (m) {
+              if (m != null) ref.read(themeModeProvider.notifier).setThemeMode(m);
+            },
+          ),
+        ],
+      ),
     );
   }
 }

@@ -45,6 +45,29 @@ class EmployeeMutationNotifier extends StateNotifier<EmployeeMutationState> {
     }
   }
 
+  Future<bool> updateEmployee({
+    required String uid,
+    required String name,
+    required String phone,
+    required StaffRole role,
+  }) async {
+    state = const EmployeeMutationState(isSubmitting: true);
+    try {
+      await _ref.read(employeeRemoteDataSourceProvider).updateEmployee(
+            uid: uid,
+            name: name,
+            phone: phone,
+            role: role,
+          );
+      state = const EmployeeMutationState();
+      _ref.invalidate(allStaffProvider);
+      return true;
+    } catch (e) {
+      state = EmployeeMutationState(error: e.toString());
+      return false;
+    }
+  }
+
   Future<bool> removeStaff(String uid) async {
     state = const EmployeeMutationState(isSubmitting: true);
     try {

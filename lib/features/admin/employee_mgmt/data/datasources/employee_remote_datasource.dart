@@ -59,6 +59,23 @@ class EmployeeRemoteDataSource {
     }
   }
 
+  /// Editing an existing staff member's name/phone/role — deliberately
+  /// doesn't touch email, since changing another person's login email
+  /// isn't something the client SDK can do safely (that's an Auth
+  /// account-level change, not a Firestore field).
+  Future<void> updateEmployee({
+    required String uid,
+    required String name,
+    required String phone,
+    required StaffRole role,
+  }) async {
+    await _collection.doc(uid).update({
+      'name': name,
+      'phone': phone,
+      'role': role == StaffRole.admin ? 'admin' : 'employee',
+    });
+  }
+
   /// Revokes staff access by deleting the staff_users doc — Firestore
   /// rules key off this doc's existence (isStaff()), so this immediately
   /// cuts off admin/employee access. It does NOT delete the underlying

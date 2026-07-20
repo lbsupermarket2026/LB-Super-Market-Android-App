@@ -213,9 +213,9 @@ class _CancelOrderSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Only cancellable up through "Preparing" — once it's Out for
-    // Delivery, someone's already carrying it, so cancelling from the
-    // app stops making sense (call the store instead at that point).
+    // Only cancellable while still "Placed" — once staff confirm it,
+    // they've started acting on it, so self-cancel from the app stops
+    // being available (call the store instead at that point).
     if (!order.status.canBeCancelled) return const SizedBox.shrink();
 
     final cancelState = ref.watch(cancelOrderProvider);

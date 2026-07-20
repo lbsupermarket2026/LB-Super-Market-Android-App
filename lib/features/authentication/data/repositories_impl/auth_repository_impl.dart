@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../../../core/error/result.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/user_entity.dart';
@@ -24,8 +25,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<void>> updateProfile({required String name, required String phone}) {
-    return guard(() => _remote.updateProfile(name: name, phone: phone));
+  Future<Result<void>> updateProfile({required String name, required String phone, String? photoUrl}) {
+    return guard(() => _remote.updateProfile(name: name, phone: phone, photoUrl: photoUrl));
+  }
+
+  @override
+  Future<Result<String>> uploadProfilePhoto(File file) {
+    return guard(() => _remote.uploadProfilePhoto(file));
   }
 
   @override

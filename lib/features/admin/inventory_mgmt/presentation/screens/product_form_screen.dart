@@ -29,6 +29,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _discountController = TextEditingController();
   final _unitController = TextEditingController();
   final _stockController = TextEditingController();
+  final _thresholdController = TextEditingController(text: '5');
   String? _categoryId;
   File? _pickedImage;
   bool _isFeatured = false;
@@ -49,6 +50,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _discountController.text = p.discountPercent.toStringAsFixed(1);
       _unitController.text = p.unit;
       _stockController.text = p.stockQty.toString();
+      _thresholdController.text = p.lowStockThreshold.toString();
       _categoryId = p.categoryId;
       _isFeatured = p.isFeatured;
       _isTrending = p.isTrending;
@@ -69,6 +71,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _discountController.dispose();
     _unitController.dispose();
     _stockController.dispose();
+    _thresholdController.dispose();
     super.dispose();
   }
 
@@ -97,6 +100,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           discountPercent: double.tryParse(_discountController.text) ?? 0,
           unit: _unitController.text.trim(),
           stockQty: int.tryParse(_stockController.text) ?? 0,
+          lowStockThreshold: int.tryParse(_thresholdController.text) ?? 5,
           isFeatured: _isFeatured,
           isTrending: _isTrending,
           isBestSeller: _isBestSeller,
@@ -207,11 +211,26 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _stockController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Stock Quantity'),
-              validator: (v) => (int.tryParse(v ?? '') == null) ? 'Enter a whole number' : null,
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _stockController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Stock Quantity'),
+                    validator: (v) => (int.tryParse(v ?? '') == null) ? 'Enter a whole number' : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _thresholdController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Low Stock Alert At'),
+                    validator: (v) => (int.tryParse(v ?? '') == null) ? 'Enter a whole number' : null,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.sm),
             CheckboxListTile(

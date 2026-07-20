@@ -70,6 +70,17 @@ class EmployeeListScreen extends ConsumerWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text('${member.email}\n${member.phone}'),
                   isThreeLine: true,
+                  onTap: () async {
+                    final edited = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AddEmployeeDialog(existing: member),
+                    );
+                    if (edited == true && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Staff member updated.')),
+                      );
+                    }
+                  },
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,

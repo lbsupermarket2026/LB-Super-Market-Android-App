@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import '../../../../core/constants/firestore_paths.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/user_model.dart';
@@ -9,12 +11,15 @@ import '../models/user_model.dart';
 class AuthRemoteDataSource {
   final fb.FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
 
   AuthRemoteDataSource({
     fb.FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
   })  : _firebaseAuth = firebaseAuth ?? fb.FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
 
   Stream<fb.User?> get firebaseAuthStateChanges => _firebaseAuth.authStateChanges();
 
@@ -144,15 +149,31 @@ class AuthRemoteDataSource {
     }
   }
 
-  Future<void> updateProfile({required String name, required String phone}) async {
+  Future<String> uploadProfilePhoto(File file) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) throw const AuthException('Not signed in.');
 
+    final ref = _storage.ref('profile_photos/${user.uid}.jpg');
+    final snapshot = await ref.putFile(file);
+    if (snapshot.state != TaskState.success) {
+      throw Exception('Photo upload did not complete (state: ${snapshot.state}).');
+    }
+    return snapshot.ref.getDownloadURL();
+  }
+
+  Future<void> updateProfile({required String name, required String phone, String? photoUrl}) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw const AuthException('Not signed in.');
+
+    final updates = <String, dynamic>{'name': name, 'phone': phone};
+    if (photoUrl != null) updates['photoUrl'] = photoUrl;
+
     await _firestore.collection(FirestorePaths.users).doc(user.uid).set(
-      {'name': name, 'phone': phone},
+      updates,
       SetOptions(merge: true),
     );
     await user.updateDisplayName(name);
+    if (photoUrl != null) await user.updatePhotoURL(photoUrl);
   }
 
   Future<void> changePassword({required String currentPassword, required String newPassword}) async {

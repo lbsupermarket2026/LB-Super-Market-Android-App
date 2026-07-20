@@ -302,7 +302,12 @@ class _PaymentMethodTile extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: isSelected ? green : Colors.grey.shade700),
             const SizedBox(width: 8),
-            Text(method.label, style: TextStyle(fontWeight: FontWeight.w600, color: isSelected ? green : Colors.black87)),
+            Expanded(
+              child: Text(
+                method.label,
+                style: TextStyle(fontWeight: FontWeight.w600, color: isSelected ? green : Colors.black87),
+              ),
+            ),
           ],
         ),
         subtitle: Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
