@@ -70,17 +70,6 @@ class EmployeeListScreen extends ConsumerWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700)),
                   subtitle: Text('${member.email}\n${member.phone}'),
                   isThreeLine: true,
-                  onTap: () async {
-                    final edited = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AddEmployeeDialog(existing: member),
-                    );
-                    if (edited == true && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Staff member updated.')),
-                      );
-                    }
-                  },
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -92,9 +81,27 @@ class EmployeeListScreen extends ConsumerWidget {
                             style: TextStyle(color: roleColor, fontWeight: FontWeight.w700, fontSize: 11)),
                       ),
                       if (!isSelf)
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: _red, size: 20),
-                          onPressed: () => _confirmRemove(context, ref, member),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 20),
+                          onSelected: (choice) async {
+                            if (choice == 'edit') {
+                              final edited = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AddEmployeeDialog(existing: member),
+                              );
+                              if (edited == true && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Staff member updated.')),
+                                );
+                              }
+                            } else if (choice == 'delete') {
+                              _confirmRemove(context, ref, member);
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: _red))),
+                          ],
                         ),
                     ],
                   ),

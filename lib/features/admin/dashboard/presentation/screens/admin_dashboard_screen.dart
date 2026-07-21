@@ -85,6 +85,13 @@ class AdminDashboardScreen extends ConsumerWidget {
               subtitle: 'Manage the scrolling promo cards on Home',
               onTap: () => context.push('/admin/offers'),
             ),
+            _AdminTile(
+              icon: Icons.person_search_outlined,
+              color: Colors.blueGrey,
+              title: 'Customer Order History',
+              subtitle: 'Look up all orders by phone or customer ID',
+              onTap: () => context.push('/admin/customer-orders'),
+            ),
           ],
         ],
       ),

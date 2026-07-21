@@ -9,4 +9,6 @@ abstract class CategoryRepository {
   Future<Result<List<CategoryEntity>>> getSubcategories(String parentCategoryId);
 
   Future<Result<CategoryEntity>> getCategoryById(String categoryId);
+
+  Future<Result<List<CategoryEntity>>> getCategoriesByOffer(String offerId);
 }

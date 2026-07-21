@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../employee_mgmt/presentation/providers/employee_providers.dart';
@@ -57,9 +58,20 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                   builder: (context, ref, _) {
                     final countAsync = ref.watch(customerOrderCountProvider(order.userId));
                     return countAsync.when(
-                      data: (count) => Text(
-                        count <= 1 ? 'First order from this customer' : '$count orders total from this customer',
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: _green),
+                      data: (count) => GestureDetector(
+                        onTap: () => context.push('/admin/customer-orders', extra: order.userId),
+                        child: Row(
+                          children: [
+                            Text(
+                              count <= 1 ? 'First order from this customer' : '$count orders total from this customer',
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: _green),
+                            ),
+                            if (count > 1) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.chevron_right, size: 16, color: _green),
+                            ],
+                          ],
+                        ),
                       ),
                       loading: () => const Text('Loading order history…', style: TextStyle(color: Colors.grey)),
                       error: (_, __) => const SizedBox.shrink(),

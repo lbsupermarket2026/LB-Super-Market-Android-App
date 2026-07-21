@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../categories/domain/entities/category_entity.dart';
 import '../../../../products/domain/entities/product_entity.dart';
+import '../../../offers_mgmt/presentation/providers/admin_offer_card_providers.dart';
 import '../providers/admin_inventory_providers.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -31,6 +32,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _stockController = TextEditingController();
   final _thresholdController = TextEditingController(text: '5');
   String? _categoryId;
+  String? _offerId;
   File? _pickedImage;
   bool _isFeatured = false;
   bool _isTrending = false;
@@ -52,6 +54,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _stockController.text = p.stockQty.toString();
       _thresholdController.text = p.lowStockThreshold.toString();
       _categoryId = p.categoryId;
+      _offerId = p.offerId;
       _isFeatured = p.isFeatured;
       _isTrending = p.isTrending;
       _isBestSeller = p.isBestSeller;
@@ -93,6 +96,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
           brand: _brandController.text.trim().isEmpty ? null : _brandController.text.trim(),
           categoryId: _categoryId!,
+          offerId: _offerId,
+          clearOfferId: _offerId == null,
           imageFile: _pickedImage,
           existingImageUrl: widget.existing?.thumbnailUrl,
           basePrice: double.tryParse(_priceController.text) ?? 0,
@@ -168,6 +173,25 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               decoration: const InputDecoration(labelText: 'Category'),
               items: widget.categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
               onChanged: (v) => setState(() => _categoryId = v),
+            ),
+            const SizedBox(height: 12),
+            Consumer(
+              builder: (context, ref, _) {
+                final offersAsync = ref.watch(allOfferCardsAdminProvider);
+                return offersAsync.when(
+                  data: (offers) => DropdownButtonFormField<String?>(
+                    value: _offerId,
+                    decoration: const InputDecoration(labelText: 'Part of an Offer (optional)'),
+                    items: [
+                      const DropdownMenuItem<String?>(value: null, child: Text('None')),
+                      ...offers.map((o) => DropdownMenuItem<String?>(value: o.id, child: Text(o.title))),
+                    ],
+                    onChanged: (v) => setState(() => _offerId = v),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
             ),
             const SizedBox(height: 12),
             Row(

@@ -23,6 +23,33 @@ class AdminOrderDataSource {
     return snapshot.count ?? 0;
   }
 
+  /// Runs two separate equality queries (userId, customerPhone) and
+  /// merges/dedupes rather than one combined query — Firestore doesn't
+  /// support OR across different fields natively, and this way the
+  /// admin can search by either without needing to specify which kind
+  /// of value they typed.
+  Future<List<OrderEntity>> searchCustomerOrders(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
+
+    final results = await Future.wait([
+      _orders.where('userId', isEqualTo: trimmed).get(),
+      _orders.where('customerPhone', isEqualTo: trimmed).get(),
+    ]);
+
+    final byId = <String, OrderEntity>{};
+    for (final snapshot in results) {
+      for (final doc in snapshot.docs) {
+        final order = OrderModel.fromFirestore(doc).toEntity();
+        byId[order.id] = order;
+      }
+    }
+
+    final orders = byId.values.toList();
+    orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return orders;
+  }
+
   Future<List<OrderEntity>> getAllOrders() async {
     final snapshot = await _orders.orderBy('createdAt', descending: true).get();
     return snapshot.docs.map((d) => OrderModel.fromFirestore(d).toEntity()).toList();

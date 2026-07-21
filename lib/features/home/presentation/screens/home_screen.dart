@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/widgets/loaders/shimmer_skeletons.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../../../core/widgets/search/search_bar_launcher.dart';
@@ -22,15 +23,12 @@ import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/providers/product_providers.dart';
 import '../../../products/presentation/widgets/product_card.dart';
 
-const _green = Color(0xFF2E7D32);
-const _ink = Color(0xFF232620);
-const _muted = Color(0xFF8A8D82);
-
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final user = ref.watch(currentUserProvider);
     final addressesAsync = ref.watch(addressListProvider);
     final defaultAddress = addressesAsync.valueOrNull?.isNotEmpty == true
@@ -43,7 +41,7 @@ class HomeScreen extends ConsumerWidget {
     final greeting = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
@@ -70,21 +68,21 @@ class HomeScreen extends ConsumerWidget {
                               onTap: () => context.push(RouteNames.addresses),
                               child: Row(
                                 children: [
-                                  const Text('Deliver to ', style: TextStyle(fontSize: 12, color: _muted)),
+                                  Text('Deliver to ', style: TextStyle(fontSize: 12, color: colors.muted)),
                                   Flexible(
                                     child: Text(
                                       '${defaultAddress.label} · ${defaultAddress.city}',
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 12, color: _ink, fontWeight: FontWeight.w700),
+                                      style: TextStyle(fontSize: 12, color: colors.ink, fontWeight: FontWeight.w700),
                                     ),
                                   ),
-                                  const Icon(Icons.keyboard_arrow_down, size: 16, color: _muted),
+                                  Icon(Icons.keyboard_arrow_down, size: 16, color: colors.muted),
                                 ],
                               ),
                             ),
                           Text(
                             '$greeting, ${user?.name?.split(' ').first ?? 'there'} 👋',
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink),
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.ink),
                           ),
                         ],
                       ),
@@ -121,6 +119,7 @@ class _WishlistIconButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final count = ref.watch(wishlistProvider).valueOrNull?.length ?? 0;
 
     return GestureDetector(
@@ -132,11 +131,11 @@ class _WishlistIconButton extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.card,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
             ),
-            child: const Icon(Icons.favorite_border, color: _ink, size: 20),
+            child: Icon(Icons.favorite_border, color: colors.ink, size: 20),
           ),
           if (count > 0)
             Positioned(
@@ -145,7 +144,7 @@ class _WishlistIconButton extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.all(3),
                 constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: colors.red, shape: BoxShape.circle),
                 child: Text(
                   '$count',
                   textAlign: TextAlign.center,
@@ -164,6 +163,7 @@ class _CartIconButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final count = ref.watch(cartItemCountProvider);
 
     return GestureDetector(
@@ -175,11 +175,11 @@ class _CartIconButton extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.card,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
             ),
-            child: const Icon(Icons.shopping_cart_outlined, color: _ink, size: 20),
+            child: Icon(Icons.shopping_cart_outlined, color: colors.ink, size: 20),
           ),
           if (count > 0)
             Positioned(
@@ -188,7 +188,7 @@ class _CartIconButton extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.all(3),
                 constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: colors.red, shape: BoxShape.circle),
                 child: Text(
                   '$count',
                   textAlign: TextAlign.center,
@@ -211,13 +211,14 @@ class _ActiveOrderCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final ordersAsync = ref.watch(myOrdersProvider);
     final activeOrder = ordersAsync.valueOrNull?.where((o) => o.status.isActive).toList() ?? [];
 
     if (activeOrder.isEmpty) return const SizedBox.shrink();
 
     final order = activeOrder.first;
-    const orange = Color(0xFFEF6C00);
+    final orange = colors.orange;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
@@ -226,7 +227,7 @@ class _ActiveOrderCard extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.card,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: orange.withOpacity(0.25)),
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
@@ -237,7 +238,7 @@ class _ActiveOrderCard extends ConsumerWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(color: orange.withOpacity(0.12), shape: BoxShape.circle),
-                child: const Icon(Icons.local_shipping_outlined, color: orange, size: 18),
+                child: Icon(Icons.local_shipping_outlined, color: orange, size: 18),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -245,13 +246,13 @@ class _ActiveOrderCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Order #${order.id.substring(0, order.id.length.clamp(0, 6))} · ${order.status.label}',
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: colors.ink)),
                     Text('${order.itemCount} items · ₹${order.totalAmount.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 11, color: _muted)),
+                        style: TextStyle(fontSize: 11, color: colors.muted)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: _muted),
+              Icon(Icons.chevron_right, color: colors.muted),
             ],
           ),
         ),
@@ -269,16 +270,17 @@ class _PlainSectionHead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+          Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.ink)),
           if (onSeeAll != null)
             GestureDetector(
               onTap: onSeeAll,
-              child: const Text('See all', style: TextStyle(fontSize: 12, color: _green, fontWeight: FontWeight.w700)),
+              child: Text('See all', style: TextStyle(fontSize: 12, color: colors.green, fontWeight: FontWeight.w700)),
             ),
         ],
       ),
@@ -299,7 +301,7 @@ class _OfferCardsSection extends ConsumerWidget {
         if (cards.isEmpty) return const SizedBox.shrink();
         return OfferCardCarousel(
           cards: cards,
-          onCardTap: (card) => context.push('/offers'),
+          onCardTap: (card) => context.push('/offer-products/${card.id}', extra: card.title),
         );
       },
       loading: () => const SizedBox(

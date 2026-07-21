@@ -15,6 +15,10 @@ final customerOrderCountProvider = FutureProvider.autoDispose.family<int, String
   return ref.watch(adminOrderDataSourceProvider).getCustomerOrderCount(userId);
 });
 
+final customerOrderSearchProvider = FutureProvider.autoDispose.family<List<OrderEntity>, String>((ref, query) {
+  return ref.watch(adminOrderDataSourceProvider).searchCustomerOrders(query);
+});
+
 final allOrderRequestsAdminProvider = FutureProvider.autoDispose<List<OrderRequestEntity>>((ref) {
   return ref.watch(adminOrderDataSourceProvider).getAllOrderRequests();
 });

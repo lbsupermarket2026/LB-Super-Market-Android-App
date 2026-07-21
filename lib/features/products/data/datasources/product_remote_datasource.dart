@@ -7,6 +7,16 @@ class ProductRemoteDataSource {
   final FirebaseFirestore _firestore;
   ProductRemoteDataSource({FirebaseFirestore? firestore}) : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// No orderBy — single equality filter avoids needing yet another
+  /// composite index, and results are filtered/sorted client-side,
+  /// same defensive pattern used elsewhere in this codebase.
+  Future<List<ProductModel>> getProductsByOffer(String offerId) async {
+    final snapshot = await _collection.where('offerId', isEqualTo: offerId).get();
+    final products = snapshot.docs.map(ProductModel.fromFirestore).where((p) => p.isActive).toList();
+    products.sort((a, b) => a.name.compareTo(b.name));
+    return products;
+  }
+
   CollectionReference<Map<String, dynamic>> get _collection => _firestore.collection(FirestorePaths.products);
 
   /// Each home-page section is a single small, indexed query — never a

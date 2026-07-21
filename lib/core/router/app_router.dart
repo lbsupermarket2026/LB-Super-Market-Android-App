@@ -14,10 +14,12 @@ import '../../features/offers/presentation/screens/offers_rewards_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/products/presentation/screens/category_detail_screen.dart';
+import '../../features/offers/presentation/screens/offer_products_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
 import '../../features/admin/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/employee_mgmt/presentation/screens/employee_list_screen.dart';
 import '../../features/admin/order_mgmt/presentation/screens/admin_orders_screen.dart';
+import '../../features/admin/order_mgmt/presentation/screens/customer_order_search_screen.dart';
 import '../../features/admin/inventory_mgmt/presentation/screens/admin_inventory_screen.dart';
 import '../../features/admin/sales_reports/presentation/screens/admin_sales_screen.dart';
 import '../../features/admin/offers_mgmt/presentation/screens/admin_offers_screen.dart';
@@ -99,6 +101,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/offer-products/:offerId',
+        builder: (context, state) => OfferProductsScreen(
+          offerId: state.pathParameters['offerId']!,
+          offerTitle: (state.extra as String?) ?? 'Offer',
+        ),
+      ),
+      GoRoute(
         path: '/product/:productId',
         builder: (context, state) => ProductDetailScreen(productId: state.pathParameters['productId']!),
       ),
@@ -135,6 +144,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: RouteNames.adminDashboard, builder: (context, state) => const AdminDashboardScreen()),
       GoRoute(path: '/admin/employees', builder: (context, state) => const EmployeeListScreen()),
       GoRoute(path: '/admin/orders', builder: (context, state) => const AdminOrdersScreen()),
+      GoRoute(
+        path: '/admin/customer-orders',
+        builder: (context, state) => CustomerOrderSearchScreen(initialQuery: state.extra as String?),
+      ),
       GoRoute(path: '/admin/inventory', builder: (context, state) => const AdminInventoryScreen()),
       GoRoute(path: '/admin/sales', builder: (context, state) => const AdminSalesScreen()),
       GoRoute(path: '/admin/offers', builder: (context, state) => const AdminOffersScreen()),

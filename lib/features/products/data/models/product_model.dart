@@ -18,6 +18,7 @@ class ProductModel {
   final List<Map<String, dynamic>> variants;
   final int stockQty;
   final int lowStockThreshold;
+  final String? offerId;
   final bool isFeatured;
   final bool isTrending;
   final bool isBestSeller;
@@ -42,6 +43,7 @@ class ProductModel {
     this.variants = const [],
     this.stockQty = 0,
     this.lowStockThreshold = 5,
+    this.offerId,
     this.isFeatured = false,
     this.isTrending = false,
     this.isBestSeller = false,
@@ -71,6 +73,7 @@ class ProductModel {
           : const [],
       stockQty: (data['stockQty'] as num?)?.toInt() ?? (data['stock'] as num?)?.toInt() ?? 0,
       lowStockThreshold: (data['lowStockThreshold'] as num?)?.toInt() ?? 5,
+      offerId: data['offerId'] as String?,
       isFeatured: (data['isFeatured'] as bool?) ?? false,
       isTrending: (data['isTrending'] as bool?) ?? false,
       isBestSeller: (data['isBestSeller'] as bool?) ?? false,
@@ -105,6 +108,7 @@ class ProductModel {
             .toList(),
         stockQty: stockQty,
         lowStockThreshold: lowStockThreshold,
+        offerId: offerId,
         isFeatured: isFeatured,
         isTrending: isTrending,
         isBestSeller: isBestSeller,

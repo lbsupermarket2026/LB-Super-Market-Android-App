@@ -9,6 +9,7 @@ class CategoryModel {
   final String? parentCategoryId;
   final int sortOrder;
   final bool isActive;
+  final String? offerId;
 
   const CategoryModel({
     required this.id,
@@ -18,6 +19,7 @@ class CategoryModel {
     this.parentCategoryId,
     this.sortOrder = 0,
     this.isActive = true,
+    this.offerId,
   });
 
   factory CategoryModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -30,6 +32,7 @@ class CategoryModel {
       parentCategoryId: data['parentCategoryId'] as String?,
       sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
       isActive: (data['isActive'] as bool?) ?? true,
+      offerId: data['offerId'] as String?,
     );
   }
 
@@ -41,5 +44,6 @@ class CategoryModel {
         parentCategoryId: parentCategoryId,
         sortOrder: sortOrder,
         isActive: isActive,
+        offerId: offerId,
       );
 }

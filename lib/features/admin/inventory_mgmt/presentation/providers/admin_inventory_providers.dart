@@ -38,19 +38,34 @@ class InventoryMutationNotifier extends StateNotifier<InventoryMutationState> {
     String? existingImageUrl,
     int sortOrder = 0,
     bool isActive = true,
+    // "picked no offer" (null) vs "hasn't touched the offer field"
+    // (also null, but nothing changes) look identical from a plain
+    // nullable param — clearOfferId is how the form says "yes, I really
+    // want this set to no offer" so an edit can remove a previously
+    // assigned offer, not just add one.
+    bool clearOfferId = false,
+    String? offerId,
   }) async {
     state = const InventoryMutationState(isSubmitting: true);
     try {
       final ds = _ref.read(adminInventoryDataSourceProvider);
       if (id == null) {
-        final newId = await ds.createCategory(name: name, sortOrder: sortOrder);
+        final newId = await ds.createCategory(name: name, sortOrder: sortOrder, offerId: offerId);
         final imageUrl = await _uploadIfNeeded('category_images', newId, imageFile);
         if (imageUrl != null) {
           await ds.updateCategory(id: newId, name: name, imageUrl: imageUrl);
         }
       } else {
         final imageUrl = await _uploadIfNeeded('category_images', id, imageFile) ?? existingImageUrl;
-        await ds.updateCategory(id: id, name: name, imageUrl: imageUrl, sortOrder: sortOrder, isActive: isActive);
+        await ds.updateCategory(
+          id: id,
+          name: name,
+          imageUrl: imageUrl,
+          sortOrder: sortOrder,
+          isActive: isActive,
+          offerId: offerId,
+          clearOfferId: clearOfferId,
+        );
       }
       state = const InventoryMutationState();
       _ref.invalidate(allCategoriesAdminProvider);
@@ -88,6 +103,8 @@ class InventoryMutationNotifier extends StateNotifier<InventoryMutationState> {
     required String unit,
     required int stockQty,
     int lowStockThreshold = 5,
+    bool clearOfferId = false,
+    String? offerId,
     bool isFeatured = false,
     bool isTrending = false,
     bool isBestSeller = false,
@@ -108,6 +125,7 @@ class InventoryMutationNotifier extends StateNotifier<InventoryMutationState> {
           unit: unit,
           stockQty: stockQty,
           lowStockThreshold: lowStockThreshold,
+          offerId: offerId,
           isFeatured: isFeatured,
           isTrending: isTrending,
           isBestSeller: isBestSeller,
@@ -149,6 +167,8 @@ class InventoryMutationNotifier extends StateNotifier<InventoryMutationState> {
           unit: unit,
           stockQty: stockQty,
           lowStockThreshold: lowStockThreshold,
+          clearOfferId: clearOfferId,
+          offerId: offerId,
           isFeatured: isFeatured,
           isTrending: isTrending,
           isBestSeller: isBestSeller,

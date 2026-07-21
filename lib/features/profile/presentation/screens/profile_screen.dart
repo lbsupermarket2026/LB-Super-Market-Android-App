@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
@@ -12,16 +13,12 @@ import '../../../orders/presentation/providers/order_providers.dart';
 import '../widgets/change_password_dialog.dart';
 import '../widgets/edit_profile_dialog.dart';
 
-const _green = Color(0xFF2E7D32);
-const _greenLight = Color(0xFFEAF3DE);
-const _ink = Color(0xFF232620);
-const _red = Color(0xFFE53935);
-
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final user = ref.watch(currentUserProvider);
     final ordersAsync = ref.watch(myOrdersProvider);
     final addressesAsync = ref.watch(addressListProvider);
@@ -30,7 +27,7 @@ class ProfileScreen extends ConsumerWidget {
     final addressCount = addressesAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -41,9 +38,9 @@ class ProfileScreen extends ConsumerWidget {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(AppSpacing.md, 40, AppSpacing.md, 24),
-              decoration: const BoxDecoration(
-                color: _green,
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: colors.green,
+                borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -57,7 +54,7 @@ class ProfileScreen extends ConsumerWidget {
                         ? null
                         : Text(
                             (user?.name?.isNotEmpty == true ? user!.name![0] : user?.email?[0] ?? '?').toUpperCase(),
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _green),
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: colors.green),
                           ),
                   ),
                   const SizedBox(height: 8),
@@ -142,8 +139,8 @@ class ProfileScreen extends ConsumerWidget {
                 _MenuItem(
                   icon: Icons.logout,
                   title: 'Log out',
-                  iconColor: _red,
-                  titleColor: _red,
+                  iconColor: colors.red,
+                  titleColor: colors.red,
                   onTap: () => ref.read(signOutUseCaseProvider).call(),
                 ),
               ],
@@ -187,33 +184,35 @@ class _ThemeModeMenuItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final mode = ref.watch(themeModeProvider);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEECE2)),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: Row(
         children: [
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: _greenLight, borderRadius: BorderRadius.circular(9)),
-            child: const Icon(Icons.dark_mode_outlined, size: 18, color: _green),
+            decoration: BoxDecoration(color: colors.green.withOpacity(0.14), borderRadius: BorderRadius.circular(9)),
+            child: Icon(Icons.dark_mode_outlined, size: 18, color: colors.green),
           ),
           const SizedBox(width: 12),
-          const Expanded(
-            child: Text('Appearance', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _ink)),
+          Expanded(
+            child: Text('Appearance', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.ink)),
           ),
           DropdownButton<ThemeMode>(
             value: mode,
             underline: const SizedBox.shrink(),
+            dropdownColor: colors.card,
             items: ThemeMode.values
-                .map((m) => DropdownMenuItem(value: m, child: Text(_label(m), style: const TextStyle(fontSize: 13))))
+                .map((m) => DropdownMenuItem(value: m, child: Text(_label(m), style: TextStyle(fontSize: 13, color: colors.ink))))
                 .toList(),
             onChanged: (m) {
               if (m != null) ref.read(themeModeProvider.notifier).setThemeMode(m);
@@ -244,14 +243,15 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final disabled = onTap == null;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEEECE2)),
+        border: Border.all(color: colors.cardBorder),
       ),
       child: InkWell(
         onTap: onTap ?? () {},
@@ -260,24 +260,24 @@ class _MenuItem extends StatelessWidget {
             Container(
               width: 34,
               height: 34,
-              decoration: BoxDecoration(color: _greenLight, borderRadius: BorderRadius.circular(9)),
-              child: Icon(icon, size: 18, color: disabled ? Colors.grey : (iconColor ?? _green)),
+              decoration: BoxDecoration(color: colors.green.withOpacity(0.14), borderRadius: BorderRadius.circular(9)),
+              child: Icon(icon, size: 18, color: disabled ? colors.muted : (iconColor ?? colors.green)),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: disabled ? Colors.grey : (titleColor ?? _ink))),
+                  Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: disabled ? colors.muted : (titleColor ?? colors.ink))),
                   if (subtitle != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(subtitle!, style: const TextStyle(fontSize: 10.5, color: Color(0xFF8A8D82))),
+                      child: Text(subtitle!, style: TextStyle(fontSize: 10.5, color: colors.muted)),
                     ),
                 ],
               ),
             ),
-            if (!disabled) const Icon(Icons.chevron_right, color: Color(0xFFC9C7BB)),
+            if (!disabled) Icon(Icons.chevron_right, color: colors.muted),
           ],
         ),
       ),

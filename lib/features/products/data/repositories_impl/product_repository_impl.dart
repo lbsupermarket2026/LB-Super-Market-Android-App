@@ -82,4 +82,12 @@ class ProductRepositoryImpl implements ProductRepository {
       return models.map((m) => m.toEntity()).toList();
     });
   }
+
+  @override
+  Future<Result<List<ProductEntity>>> getProductsByOffer(String offerId) {
+    return guard(() async {
+      final models = await _remote.getProductsByOffer(offerId);
+      return models.map((m) => m.toEntity()).toList();
+    });
+  }
 }

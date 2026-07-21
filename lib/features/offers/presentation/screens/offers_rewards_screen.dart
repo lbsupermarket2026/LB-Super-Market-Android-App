@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../providers/offer_card_providers.dart';
@@ -27,7 +28,13 @@ class OffersRewardsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.md),
             itemCount: cards.length,
             separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
-            itemBuilder: (context, index) => OfferCardTile(card: cards[index]),
+            itemBuilder: (context, index) {
+              final card = cards[index];
+              return OfferCardTile(
+                card: card,
+                onTap: () => context.push('/offer-products/${card.id}', extra: card.title),
+              );
+            },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

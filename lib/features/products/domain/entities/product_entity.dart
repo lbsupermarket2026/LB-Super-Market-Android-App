@@ -36,6 +36,7 @@ class ProductEntity extends Equatable {
   final List<ProductVariantEntity> variants;
   final int stockQty;
   final int lowStockThreshold;
+  final String? offerId;
   final bool isFeatured;
   final bool isTrending;
   final bool isBestSeller;
@@ -60,6 +61,7 @@ class ProductEntity extends Equatable {
     this.variants = const [],
     this.stockQty = 0,
     this.lowStockThreshold = 5,
+    this.offerId,
     this.isFeatured = false,
     this.isTrending = false,
     this.isBestSeller = false,
@@ -98,6 +100,7 @@ class ProductEntity extends Equatable {
         variants,
         stockQty,
         lowStockThreshold,
+        offerId,
         isFeatured,
         isTrending,
         isBestSeller,

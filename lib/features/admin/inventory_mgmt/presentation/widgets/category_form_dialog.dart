@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../categories/domain/entities/category_entity.dart';
+import '../../../offers_mgmt/presentation/providers/admin_offer_card_providers.dart';
 import '../providers/admin_inventory_providers.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -20,6 +21,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
   final _nameController = TextEditingController();
   File? _pickedImage;
   bool _isActive = true;
+  String? _offerId;
 
   @override
   void initState() {
@@ -27,6 +29,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
     if (widget.existing != null) {
       _nameController.text = widget.existing!.name;
       _isActive = widget.existing!.isActive;
+      _offerId = widget.existing!.offerId;
     }
   }
 
@@ -50,6 +53,8 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
           imageFile: _pickedImage,
           existingImageUrl: widget.existing?.imageUrl,
           isActive: _isActive,
+          offerId: _offerId,
+          clearOfferId: _offerId == null,
         );
 
     if (!mounted) return;
@@ -59,6 +64,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(inventoryMutationProvider);
+    final offersAsync = ref.watch(allOfferCardsAdminProvider);
 
     return AlertDialog(
       title: Text(widget.existing == null ? 'Add Category' : 'Edit Category'),
@@ -92,6 +98,20 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Category Name'),
+            ),
+            const SizedBox(height: 12),
+            offersAsync.when(
+              data: (offers) => DropdownButtonFormField<String?>(
+                value: _offerId,
+                decoration: const InputDecoration(labelText: 'Part of an Offer (optional)'),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text('None')),
+                  ...offers.map((o) => DropdownMenuItem<String?>(value: o.id, child: Text(o.title))),
+                ],
+                onChanged: (v) => setState(() => _offerId = v),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             if (widget.existing != null)
               SwitchListTile(

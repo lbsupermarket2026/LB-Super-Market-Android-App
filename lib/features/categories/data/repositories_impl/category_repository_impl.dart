@@ -30,4 +30,12 @@ class CategoryRepositoryImpl implements CategoryRepository {
       return model.toEntity();
     });
   }
+
+  @override
+  Future<Result<List<CategoryEntity>>> getCategoriesByOffer(String offerId) {
+    return guard(() async {
+      final models = await _remote.getCategoriesByOffer(offerId);
+      return models.map((m) => m.toEntity()).toList();
+    });
+  }
 }

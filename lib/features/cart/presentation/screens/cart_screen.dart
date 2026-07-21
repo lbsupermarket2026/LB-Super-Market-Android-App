@@ -3,14 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../providers/cart_providers.dart';
 import '../widgets/place_order_dialog.dart';
-
-const _green = Color(0xFF2E7D32);
-const _red = Color(0xFFE53935);
-const _ink = Color(0xFF232620);
-const _muted = Color(0xFF8A8D82);
 
 // Kept as simple constants for now — becomes real config (or gets
 // dropped entirely) once actual delivery/tax logic exists.
@@ -22,11 +18,12 @@ class CartScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final itemsAsync = ref.watch(cartProvider);
     final total = ref.watch(cartTotalProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: itemsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -35,11 +32,11 @@ class CartScreen extends ConsumerWidget {
             if (items.isEmpty) {
               return Column(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.all(AppSpacing.md),
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('My cart', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink)),
+                      child: Text('My cart', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.ink)),
                     ),
                   ),
                   const Expanded(
@@ -61,7 +58,7 @@ class CartScreen extends ConsumerWidget {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text('My cart · ${items.length} items',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _ink)),
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.ink)),
                   ),
                 ),
                 Expanded(
@@ -72,7 +69,7 @@ class CartScreen extends ConsumerWidget {
                       final item = items[index];
                       return Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+                        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: colors.divider))),
                         child: Row(
                           children: [
                             ClipRRect(
@@ -84,9 +81,9 @@ class CartScreen extends ConsumerWidget {
                                     ? CachedNetworkImage(
                                         imageUrl: item.imageUrl,
                                         fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) => Container(color: const Color(0xFFF3F3F3), child: const Icon(Icons.image_outlined, color: Colors.black38, size: 20)),
+                                        errorWidget: (_, __, ___) => Container(color: colors.chipBackground, child: Icon(Icons.image_outlined, color: colors.muted, size: 20)),
                                       )
-                                    : Container(color: const Color(0xFFF3F3F3), child: const Icon(Icons.image_outlined, color: Colors.black38, size: 20)),
+                                    : Container(color: colors.chipBackground, child: Icon(Icons.image_outlined, color: colors.muted, size: 20)),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -94,17 +91,17 @@ class CartScreen extends ConsumerWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _ink)),
+                                  Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.ink)),
                                   if (item.unit.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2, bottom: 6),
-                                      child: Text(item.unit, style: const TextStyle(fontSize: 10.5, color: _muted)),
+                                      child: Text(item.unit, style: TextStyle(fontSize: 10.5, color: colors.muted)),
                                     ),
                                   _QuantityStepper(productId: item.productId, quantity: item.quantity),
                                 ],
                               ),
                             ),
-                            Text('₹${item.lineTotal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+                            Text('₹${item.lineTotal.toStringAsFixed(0)}', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: colors.ink)),
                           ],
                         ),
                       );
@@ -114,17 +111,17 @@ class CartScreen extends ConsumerWidget {
                 Container(
                   margin: const EdgeInsets.all(AppSpacing.md),
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFEEECE2))),
+                  decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.cardBorder)),
                   child: Column(
                     children: [
                       _SummaryRow(label: 'Item total', value: '₹${total.toStringAsFixed(0)}'),
                       const SizedBox(height: 8),
-                      const _SummaryRow(label: 'Delivery fee', value: 'Free', valueColor: _green),
+                      _SummaryRow(label: 'Delivery fee', value: 'Free', valueColor: colors.green),
                       const SizedBox(height: 8),
                       _SummaryRow(label: 'Taxes', value: '₹${_taxAmount.toStringAsFixed(0)}'),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Divider(height: 1, color: Colors.grey.shade300),
+                        child: Divider(height: 1, color: colors.divider),
                       ),
                       _SummaryRow(label: 'To pay', value: '₹${grandTotal.toStringAsFixed(0)}', bold: true),
                     ],
@@ -136,7 +133,7 @@ class CartScreen extends ConsumerWidget {
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _green,
+                        backgroundColor: colors.green,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -170,11 +167,12 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontSize: bold ? 14 : 12, fontWeight: bold ? FontWeight.w700 : FontWeight.w400, color: bold ? _ink : Colors.grey.shade700)),
-        Text(value, style: TextStyle(fontSize: bold ? 14 : 12, fontWeight: bold ? FontWeight.w700 : FontWeight.w600, color: valueColor ?? (bold ? _ink : Colors.grey.shade700))),
+        Text(label, style: TextStyle(fontSize: bold ? 14 : 12, fontWeight: bold ? FontWeight.w700 : FontWeight.w400, color: bold ? colors.ink : colors.muted)),
+        Text(value, style: TextStyle(fontSize: bold ? 14 : 12, fontWeight: bold ? FontWeight.w700 : FontWeight.w600, color: valueColor ?? (bold ? colors.ink : colors.muted))),
       ],
     );
   }
@@ -187,13 +185,14 @@ class _QuantityStepper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _StepperButton(icon: Icons.remove, onTap: () => ref.read(cartProvider.notifier).setQuantity(productId, quantity - 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text('$quantity', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ink)),
+          child: Text('$quantity', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.ink)),
         ),
         _StepperButton(icon: Icons.add, onTap: () => ref.read(cartProvider.notifier).setQuantity(productId, quantity + 1)),
       ],
@@ -208,14 +207,15 @@ class _StepperButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
         width: 22,
         height: 22,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFDDDDDD))),
-        child: Icon(icon, size: 13, color: _ink),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: colors.divider)),
+        child: Icon(icon, size: 13, color: colors.ink),
       ),
     );
   }

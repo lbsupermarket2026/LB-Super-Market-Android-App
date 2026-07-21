@@ -36,4 +36,13 @@ class CategoryRemoteDataSource {
     }
     return CategoryModel.fromFirestore(doc);
   }
+
+  /// No orderBy — single equality filter avoids needing a composite
+  /// index, sorted client-side instead.
+  Future<List<CategoryModel>> getCategoriesByOffer(String offerId) async {
+    final snapshot = await _collection.where('offerId', isEqualTo: offerId).get();
+    final categories = snapshot.docs.map(CategoryModel.fromFirestore).where((c) => c.isActive).toList();
+    categories.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return categories;
+  }
 }

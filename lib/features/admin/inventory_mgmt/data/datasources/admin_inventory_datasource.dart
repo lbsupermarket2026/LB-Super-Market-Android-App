@@ -35,7 +35,7 @@ class AdminInventoryDataSource {
     return categories;
   }
 
-  Future<String> createCategory({required String name, String? imageUrl, int sortOrder = 0}) async {
+  Future<String> createCategory({required String name, String? imageUrl, int sortOrder = 0, String? offerId}) async {
     final docRef = await _categories.add({
       'name': name,
       'imageUrl': imageUrl,
@@ -43,6 +43,7 @@ class AdminInventoryDataSource {
       'parentCategoryId': null,
       'sortOrder': sortOrder,
       'isActive': true,
+      'offerId': offerId,
     });
     return docRef.id;
   }
@@ -53,11 +54,16 @@ class AdminInventoryDataSource {
     String? imageUrl,
     int? sortOrder,
     bool? isActive,
+    // Distinguishes "leave as-is" (not passed) from "clear it" (explicit
+    // null) — a plain nullable param can't tell those apart on its own.
+    bool clearOfferId = false,
+    String? offerId,
   }) async {
     final updates = <String, dynamic>{'name': name};
     if (imageUrl != null) updates['imageUrl'] = imageUrl;
     if (sortOrder != null) updates['sortOrder'] = sortOrder;
     if (isActive != null) updates['isActive'] = isActive;
+    if (offerId != null || clearOfferId) updates['offerId'] = offerId;
     await _categories.doc(id).update(updates);
   }
 
@@ -91,6 +97,7 @@ class AdminInventoryDataSource {
     required String unit,
     required int stockQty,
     int lowStockThreshold = 5,
+    String? offerId,
     bool isFeatured = false,
     bool isTrending = false,
     bool isBestSeller = false,
@@ -112,6 +119,7 @@ class AdminInventoryDataSource {
       'variants': <Map<String, dynamic>>[],
       'stockQty': stockQty,
       'lowStockThreshold': lowStockThreshold,
+      'offerId': offerId,
       'isFeatured': isFeatured,
       'isTrending': isTrending,
       'isBestSeller': isBestSeller,
@@ -136,6 +144,8 @@ class AdminInventoryDataSource {
     required String unit,
     required int stockQty,
     int lowStockThreshold = 5,
+    bool clearOfferId = false,
+    String? offerId,
     bool isFeatured = false,
     bool isTrending = false,
     bool isBestSeller = false,
@@ -158,6 +168,7 @@ class AdminInventoryDataSource {
       'isActive': isActive,
     };
     if (thumbnailUrl != null) updates['thumbnailUrl'] = thumbnailUrl;
+    if (offerId != null || clearOfferId) updates['offerId'] = offerId;
     await _products.doc(id).update(updates);
   }
 

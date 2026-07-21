@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../domain/entities/category_entity.dart';
@@ -29,10 +30,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final categoriesAsync = ref.watch(topLevelCategoriesProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,16 +44,16 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('All categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.black87)),
+                  Text('All categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: colors.ink)),
                   // Toggles between the image-tile grid and a compact
                   // list layout — list is handy once there are enough
                   // categories that scanning names quickly matters more
                   // than seeing each one's photo.
                   Material(
-                    color: Colors.white,
+                    color: colors.card,
                     borderRadius: BorderRadius.circular(10),
                     child: IconButton(
-                      icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20),
+                      icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20, color: colors.ink),
                       tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
                       onPressed: () => setState(() => _isTileView = !_isTileView),
                     ),
@@ -64,21 +66,22 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.card,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E2D6)),
+                  border: Border.all(color: colors.divider),
                 ),
                 child: TextField(
                   controller: _searchController,
+                  style: TextStyle(color: colors.ink),
                   onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     hintText: 'Search categories',
-                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                    prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey.shade600),
+                    hintStyle: TextStyle(fontSize: 13, color: colors.muted),
+                    prefixIcon: Icon(Icons.search, size: 18, color: colors.muted),
                     suffixIcon: _query.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.close, size: 18),
+                            icon: Icon(Icons.close, size: 18, color: colors.muted),
                             onPressed: () => setState(() {
                               _searchController.clear();
                               _query = '';
@@ -149,10 +152,11 @@ class _CategoryListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final imageUrl = category.imageUrl ?? category.iconUrl;
 
     return Material(
-      color: Colors.white,
+      color: colors.card,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -170,16 +174,16 @@ class _CategoryListRow extends StatelessWidget {
                       ? CachedNetworkImage(
                           imageUrl: imageUrl!,
                           fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Container(color: const Color(0xFFF3F3F3), child: const Icon(Icons.category_outlined, color: Colors.black38)),
+                          errorWidget: (_, __, ___) => Container(color: colors.chipBackground, child: Icon(Icons.category_outlined, color: colors.muted)),
                         )
-                      : Container(color: const Color(0xFFF3F3F3), child: const Icon(Icons.category_outlined, color: Colors.black38)),
+                      : Container(color: colors.chipBackground, child: Icon(Icons.category_outlined, color: colors.muted)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(category.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                child: Text(category.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.ink)),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: colors.muted),
             ],
           ),
         ),
