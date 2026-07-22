@@ -1,8 +1,16 @@
 /// ============================================================
-/// Razorpay test key is already set below. When you're ready to
-/// accept real money later: complete Razorpay's KYC/activation,
-/// generate a Live Key (starts with rzp_live_...), and swap it in
-/// here instead.
+/// Going LIVE: replace razorpayKeyId below with your Live Key
+/// (starts with rzp_live_...) from the Razorpay Dashboard.
+///
+/// Also update RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your
+/// deployed Cloud Functions to the LIVE pair too — the Key ID here
+/// and the ones the functions use must match each other and must
+/// both be Live, not a mix of test and live. See the functions
+/// README for the exact commands.
+///
+/// Server-side order creation + payment verification (Cloud
+/// Functions) are already wired in, so this is safe to flip to
+/// live once both sides use the matching Live key pair.
 /// ============================================================
 class PaymentConfig {
   PaymentConfig._();

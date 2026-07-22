@@ -1,14 +1,12 @@
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../../core/config/payment_config.dart';
 
-/// Thin wrapper around the Razorpay Flutter SDK. This is a client-side-only
-/// integration (no backend order creation or signature verification) —
-/// the right starting point to get UPI actually working in test mode
-/// today. Before going live with real money, the honest next step is
-/// adding a small server component (Cloud Function) that creates the
-/// Razorpay Order and verifies the payment signature after success, so a
-/// tampered client can't fake a successful payment. Fine to skip for
-/// test-mode development; not fine to skip once real money is involved.
+/// Thin wrapper around the Razorpay Flutter SDK. The order_id passed
+/// into checkout comes from a server-created Razorpay Order (see
+/// RazorpayServerService) — Razorpay ties the payment to that specific
+/// order, which is what makes it tamper-resistant: a modified client
+/// can't just claim a different amount was paid, since the order
+/// (and its amount) was decided server-side before checkout even opened.
 class RazorpayCheckoutService {
   final Razorpay _razorpay = Razorpay();
 
@@ -23,9 +21,13 @@ class RazorpayCheckoutService {
   }
 
   /// [amountInRupees] gets converted to paise (Razorpay's smallest unit)
-  /// internally — callers always pass a plain rupee amount.
+  /// internally — callers always pass a plain rupee amount. [orderId]
+  /// is the id returned by RazorpayServerService.createOrder — required
+  /// now, since Razorpay auto-refunds any live payment that isn't tied
+  /// to a server-created order.
   void openUpiCheckout({
     required double amountInRupees,
+    required String orderId,
     required String customerName,
     required String customerPhone,
     String? customerEmail,
@@ -34,6 +36,7 @@ class RazorpayCheckoutService {
     final options = {
       'key': PaymentConfig.razorpayKeyId,
       'amount': (amountInRupees * 100).round(), // paise
+      'order_id': orderId,
       'name': 'LB Super Market',
       'description': description,
       'prefill': {

@@ -9,6 +9,7 @@ import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../../../orders/presentation/providers/order_providers.dart';
 import '../../../payments/domain/razorpay_checkout_service.dart';
+import '../../../payments/domain/razorpay_server_service.dart';
 import '../providers/cart_providers.dart';
 
 class PlaceOrderDialog extends ConsumerStatefulWidget {
@@ -26,6 +27,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
   String? _error;
 
   late final RazorpayCheckoutService _razorpayService;
+  final _razorpayServerService = RazorpayServerService();
 
   @override
   void initState() {
@@ -41,19 +43,31 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
   }
 
   /// Bridges Razorpay's callback-based SDK into something this dialog's
-  /// normal async flow can just await — resolves with the payment ID on
-  /// success, or null on failure/cancel.
+  /// normal async flow can just await. Two server round-trips bracket
+  /// the actual checkout: an order is created server-side first (so the
+  /// charged amount is decided by the server, not whatever the client
+  /// claims), and the payment is verified server-side after (so a
+  /// tampered client can't just fake a success callback). Returns the
+  /// payment ID only once both of those have genuinely happened.
   Future<String?> _collectUpiPayment({
     required double amount,
     required String customerName,
     required String customerPhone,
     String? customerEmail,
-  }) {
-    final completer = Completer<String?>();
+  }) async {
+    final String razorpayOrderId;
+    try {
+      razorpayOrderId = await _razorpayServerService.createOrder(amount);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Could not start payment — please try again.');
+      return null;
+    }
+
+    final completer = Completer<PaymentSuccessResponse?>();
 
     _razorpayService.init(
       onSuccess: (PaymentSuccessResponse response) {
-        if (!completer.isCompleted) completer.complete(response.paymentId);
+        if (!completer.isCompleted) completer.complete(response);
       },
       onError: (PaymentFailureResponse response) {
         if (!completer.isCompleted) completer.complete(null);
@@ -67,12 +81,37 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
 
     _razorpayService.openUpiCheckout(
       amountInRupees: amount,
+      orderId: razorpayOrderId,
       customerName: customerName,
       customerPhone: customerPhone,
       customerEmail: customerEmail,
     );
 
-    return completer.future;
+    final response = await completer.future;
+    if (response == null) return null; // failed or cancelled at the checkout sheet
+
+    final paymentId = response.paymentId;
+    final signature = response.signature;
+    if (paymentId == null || signature == null) {
+      if (mounted) setState(() => _error = 'Payment response was incomplete — please try again.');
+      return null;
+    }
+
+    final verified = await _razorpayServerService.verifyPayment(
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: paymentId,
+      razorpaySignature: signature,
+    );
+
+    if (!verified) {
+      if (mounted) {
+        setState(() => _error =
+            'Payment could not be verified — if money was deducted, it will be refunded automatically. Please try again.');
+      }
+      return null;
+    }
+
+    return paymentId;
   }
 
   Future<void> _placeOrder() async {
@@ -117,7 +156,10 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
       if (paymentId == null) {
         setState(() {
           _isPlacing = false;
-          _error = 'Payment was not completed. Nothing has been charged — try again or choose a different payment method.';
+          // A more specific message may already be set (couldn't start
+          // payment / couldn't verify) — only fall back to the generic
+          // one if nothing more specific applies.
+          _error ??= 'Payment was not completed. Nothing has been charged — try again or choose a different payment method.';
         });
         return;
       }

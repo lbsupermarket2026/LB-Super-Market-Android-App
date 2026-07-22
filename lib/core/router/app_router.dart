@@ -24,6 +24,7 @@ import '../../features/admin/inventory_mgmt/presentation/screens/admin_inventory
 import '../../features/admin/sales_reports/presentation/screens/admin_sales_screen.dart';
 import '../../features/admin/offers_mgmt/presentation/screens/admin_offers_screen.dart';
 import '../../features/employee/presentation/screens/employee_home_screen.dart';
+import '../../features/profile/presentation/screens/staff_profile_screen.dart';
 import '../widgets/bottom_nav_shell.dart';
 import 'route_guards.dart';
 import 'route_names.dart';
@@ -143,6 +144,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       GoRoute(path: RouteNames.adminDashboard, builder: (context, state) => const AdminDashboardScreen()),
       GoRoute(path: '/admin/employees', builder: (context, state) => const EmployeeListScreen()),
+      GoRoute(path: '/admin/profile', builder: (context, state) => const StaffProfileScreen()),
       GoRoute(path: '/admin/orders', builder: (context, state) => const AdminOrdersScreen()),
       GoRoute(
         path: '/admin/customer-orders',
@@ -152,6 +154,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/sales', builder: (context, state) => const AdminSalesScreen()),
       GoRoute(path: '/admin/offers', builder: (context, state) => const AdminOffersScreen()),
       GoRoute(path: '/employee/home', builder: (context, state) => const EmployeeHomeScreen()),
+      GoRoute(path: '/employee/profile', builder: (context, state) => const StaffProfileScreen()),
 
       // Remaining routes (cart, checkout, wishlist, admin sub-sections)
       // are added as each feature module is built — the guard above

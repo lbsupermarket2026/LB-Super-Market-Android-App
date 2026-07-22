@@ -1,27 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../providers/employee_order_providers.dart';
-
-const _green = Color(0xFF2E7D32);
-const _orange = Color(0xFFEF6C00);
 
 class EmployeeHomeScreen extends ConsumerWidget {
   const EmployeeHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final user = ref.watch(currentUserProvider);
     final ordersAsync = ref.watch(myAssignedOrdersProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(
         title: const Text('My Deliveries'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'Profile',
+            onPressed: () => context.push('/employee/profile'),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
@@ -43,11 +48,11 @@ class EmployeeHomeScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Hi, ${user?.name ?? ''}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    Text('Hi, ${user?.name ?? ''}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.ink)),
                     const SizedBox(height: AppSpacing.md),
-                    const Icon(Icons.local_shipping_outlined, size: 48, color: Colors.grey),
+                    Icon(Icons.local_shipping_outlined, size: 48, color: colors.muted),
                     const SizedBox(height: AppSpacing.sm),
-                    const Text('No deliveries assigned to you yet.', textAlign: TextAlign.center),
+                    Text('No deliveries assigned to you yet.', textAlign: TextAlign.center, style: TextStyle(color: colors.muted)),
                   ],
                 ),
               ),
@@ -59,16 +64,16 @@ class EmployeeHomeScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                Text('Hi, ${user?.name ?? ''}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87)),
+                Text('Hi, ${user?.name ?? ''}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: colors.ink)),
                 const SizedBox(height: AppSpacing.lg),
                 if (active.isNotEmpty) ...[
-                  const Text('To Deliver', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text('To Deliver', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colors.ink)),
                   const SizedBox(height: AppSpacing.sm),
                   ...active.map((o) => _DeliveryCard(order: o)),
                   const SizedBox(height: AppSpacing.lg),
                 ],
                 if (completed.isNotEmpty) ...[
-                  Text('Completed (${completed.length})', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text('Completed (${completed.length})', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colors.ink)),
                   const SizedBox(height: AppSpacing.sm),
                   ...completed.map((o) => _DeliveryCard(order: o)),
                 ],
@@ -87,13 +92,15 @@ class _DeliveryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final isDelivered = order.status == OrderStatus.delivered;
     final isMarking = ref.watch(markDeliveredProvider);
+    final statusColor = isDelivered ? colors.green : colors.orange;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
@@ -105,24 +112,24 @@ class _DeliveryCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (isDelivered ? _green : _orange).withOpacity(0.12),
+                  color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(order.status.label,
-                    style: TextStyle(color: isDelivered ? _green : _orange, fontWeight: FontWeight.w700, fontSize: 11)),
+                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(order.deliveryAddress),
+          Text(order.deliveryAddress, style: TextStyle(color: colors.ink)),
           const SizedBox(height: 4),
           Text('${order.itemCount} items • ₹${order.totalAmount.toStringAsFixed(0)} • ${order.paymentMethod.label}',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+              style: TextStyle(color: colors.muted, fontSize: 12)),
           if (!isDelivered) ...[
             const SizedBox(height: AppSpacing.sm),
             Row(
@@ -130,7 +137,7 @@ class _DeliveryCard extends ConsumerWidget {
                 if (order.customerPhone?.isNotEmpty == true)
                   Expanded(
                     child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: _green, side: const BorderSide(color: _green)),
+                      style: OutlinedButton.styleFrom(foregroundColor: colors.green, side: BorderSide(color: colors.green)),
                       onPressed: () async {
                         final uri = Uri.parse('tel:${order.customerPhone}');
                         if (await canLaunchUrl(uri)) await launchUrl(uri);
@@ -142,7 +149,7 @@ class _DeliveryCard extends ConsumerWidget {
                 if (order.customerPhone?.isNotEmpty == true) const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(backgroundColor: colors.green, foregroundColor: Colors.white),
                     onPressed: isMarking
                         ? null
                         : () async {
