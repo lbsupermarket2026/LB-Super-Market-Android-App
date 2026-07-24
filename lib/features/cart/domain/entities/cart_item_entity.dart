@@ -5,6 +5,7 @@ class CartItemEntity {
   final String imageUrl;
   final double price; // snapshot of displayPrice at time of adding
   final int quantity;
+  final String? categoryId; // snapshot, used to look up GST % at checkout
 
   const CartItemEntity({
     required this.productId,
@@ -13,6 +14,7 @@ class CartItemEntity {
     required this.imageUrl,
     required this.price,
     required this.quantity,
+    this.categoryId,
   });
 
   double get lineTotal => price * quantity;
@@ -24,6 +26,7 @@ class CartItemEntity {
         imageUrl: imageUrl,
         price: price,
         quantity: quantity ?? this.quantity,
+        categoryId: categoryId,
       );
 
   Map<String, dynamic> toJson() => {
@@ -33,6 +36,7 @@ class CartItemEntity {
         'imageUrl': imageUrl,
         'price': price,
         'quantity': quantity,
+        'categoryId': categoryId,
       };
 
   factory CartItemEntity.fromJson(Map<String, dynamic> json) => CartItemEntity(
@@ -42,5 +46,6 @@ class CartItemEntity {
         imageUrl: json['imageUrl'] as String? ?? '',
         price: (json['price'] as num).toDouble(),
         quantity: json['quantity'] as int,
+        categoryId: json['categoryId'] as String?,
       );
 }

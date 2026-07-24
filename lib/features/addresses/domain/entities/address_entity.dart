@@ -8,6 +8,8 @@ class AddressEntity {
   final String pincode;
   final String phone;
   final bool isDefault;
+  final double? latitude;
+  final double? longitude;
 
   const AddressEntity({
     required this.id,
@@ -19,7 +21,11 @@ class AddressEntity {
     required this.pincode,
     this.phone = '',
     this.isDefault = false,
+    this.latitude,
+    this.longitude,
   });
+
+  bool get hasCoordinates => latitude != null && longitude != null;
 
   String get formatted => [
         line1,
@@ -36,6 +42,8 @@ class AddressEntity {
     String? pincode,
     String? phone,
     bool? isDefault,
+    double? latitude,
+    double? longitude,
   }) {
     return AddressEntity(
       id: id,
@@ -47,6 +55,8 @@ class AddressEntity {
       pincode: pincode ?? this.pincode,
       phone: phone ?? this.phone,
       isDefault: isDefault ?? this.isDefault,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -60,6 +70,8 @@ class AddressEntity {
         'pincode': pincode,
         'phone': phone,
         'isDefault': isDefault,
+        'latitude': latitude,
+        'longitude': longitude,
       };
 
   factory AddressEntity.fromJson(Map<String, dynamic> json) => AddressEntity(
@@ -72,5 +84,7 @@ class AddressEntity {
         pincode: json['pincode'] as String,
         phone: json['phone'] as String? ?? '',
         isDefault: json['isDefault'] as bool? ?? false,
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
       );
 }

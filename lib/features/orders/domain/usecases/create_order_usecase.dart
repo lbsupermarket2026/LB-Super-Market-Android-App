@@ -11,6 +11,8 @@ class CreateOrderUseCase {
     required double totalAmount,
     required String deliveryAddress,
     String? customerPhone,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   }) {
@@ -20,6 +22,8 @@ class CreateOrderUseCase {
       totalAmount: totalAmount,
       deliveryAddress: deliveryAddress,
       customerPhone: customerPhone,
+          deliveryLatitude: deliveryLatitude,
+          deliveryLongitude: deliveryLongitude,
       paymentMethod: paymentMethod,
       razorpayPaymentId: razorpayPaymentId,
     );

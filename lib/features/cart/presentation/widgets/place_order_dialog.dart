@@ -6,10 +6,14 @@ import '../../../../core/config/payment_config.dart';
 import '../../../addresses/domain/entities/address_entity.dart';
 import '../../../addresses/presentation/providers/address_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
+import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categories/presentation/providers/category_providers.dart';
+import '../../../admin/delivery_settings/presentation/providers/delivery_settings_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../../../orders/presentation/providers/order_providers.dart';
 import '../../../payments/domain/razorpay_checkout_service.dart';
 import '../../../payments/domain/razorpay_server_service.dart';
+import '../../domain/utils/checkout_calculator.dart';
 import '../providers/cart_providers.dart';
 
 class PlaceOrderDialog extends ConsumerStatefulWidget {
@@ -22,6 +26,7 @@ class PlaceOrderDialog extends ConsumerStatefulWidget {
 class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
   final _addressController = TextEditingController();
   String? _selectedAddressId;
+  AddressEntity? _selectedAddress;
   PaymentMethod _paymentMethod = PaymentMethod.cod;
   bool _isPlacing = false;
   String? _error;
@@ -114,7 +119,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     return paymentId;
   }
 
-  Future<void> _placeOrder() async {
+  Future<void> _placeOrder(CheckoutPricing? pricing) async {
     if (_addressController.text.trim().isEmpty) {
       setState(() => _error = 'Please enter a delivery address.');
       return;
@@ -129,7 +134,11 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     final cartItems = ref.read(cartProvider).valueOrNull ?? [];
     if (cartItems.isEmpty) return;
 
-    final total = ref.read(cartTotalProvider);
+    // Falls back to a plain subtotal only if delivery settings genuinely
+    // haven't loaded yet — the button itself is already disabled
+    // whenever pricing says checkout isn't allowed, so reaching here
+    // with a below-minimum or out-of-range order shouldn't happen.
+    final total = pricing?.total ?? cartItems.fold<double>(0.0, (sum, i) => sum + i.lineTotal);
     String? razorpayPaymentId;
 
     if (_paymentMethod == PaymentMethod.upi) {
@@ -186,6 +195,8 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
           totalAmount: total,
           deliveryAddress: _addressController.text.trim(),
           customerPhone: user.phone,
+          deliveryLatitude: _selectedAddress?.latitude,
+          deliveryLongitude: _selectedAddress?.longitude,
           paymentMethod: _paymentMethod.name,
           razorpayPaymentId: razorpayPaymentId,
         );
@@ -212,6 +223,22 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
   Widget build(BuildContext context) {
     final addressesAsync = ref.watch(addressListProvider);
     final addresses = addressesAsync.valueOrNull ?? [];
+    final cartItems = ref.watch(cartProvider).valueOrNull ?? [];
+    final categoriesAsync = ref.watch(topLevelCategoriesProvider);
+    final deliverySettingsAsync = ref.watch(deliverySettingsProvider);
+
+    final categoriesById = <String, CategoryEntity>{
+      for (final c in categoriesAsync.valueOrNull ?? <CategoryEntity>[]) c.id: c,
+    };
+
+    final pricing = deliverySettingsAsync.valueOrNull == null
+        ? null
+        : CheckoutCalculator.calculate(
+            items: cartItems,
+            categoriesById: categoriesById,
+            deliverySettings: deliverySettingsAsync.valueOrNull!,
+            deliveryAddress: _selectedAddress,
+          );
 
     return AlertDialog(
       title: const Text('Place Order'),
@@ -276,6 +303,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
                     labelStyle: TextStyle(color: isSelected ? Colors.white : null),
                     onSelected: (_) => setState(() {
                       _selectedAddressId = address.id;
+                      _selectedAddress = address;
                       _addressController.text = address.formatted.replaceAll('\n', ', ');
                     }),
                   );
@@ -287,22 +315,88 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
               controller: _addressController,
               maxLines: 3,
               onChanged: (_) {
-                if (_selectedAddressId != null) setState(() => _selectedAddressId = null);
+                if (_selectedAddressId != null) {
+                  setState(() {
+                    _selectedAddressId = null;
+                    _selectedAddress = null;
+                  });
+                }
               },
               decoration: const InputDecoration(labelText: 'Delivery Address', border: OutlineInputBorder()),
             ),
+            if (pricing != null) ...[
+              const SizedBox(height: 16),
+              _PricingSummary(pricing: pricing, minimumOrder: deliverySettingsAsync.valueOrNull!.minimumOrderAmount),
+            ],
           ],
         ),
       ),
       actions: [
         TextButton(onPressed: _isPlacing ? null : () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(
-          onPressed: _isPlacing ? null : _placeOrder,
+          onPressed: (_isPlacing || pricing?.canCheckout == false) ? null : () => _placeOrder(pricing),
           child: _isPlacing
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(_paymentMethod == PaymentMethod.upi ? 'Pay & Place Order' : 'Place Order'),
         ),
       ],
+    );
+  }
+}
+
+class _PricingSummary extends StatelessWidget {
+  final CheckoutPricing pricing;
+  final double minimumOrder;
+  const _PricingSummary({required this.pricing, required this.minimumOrder});
+
+  @override
+  Widget build(BuildContext context) {
+    const red = Color(0xFFE53935);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _row('Item total', '₹${pricing.subtotal.toStringAsFixed(0)}'),
+          if (pricing.gstAmount > 0) _row('GST', '₹${pricing.gstAmount.toStringAsFixed(0)}'),
+          if (pricing.deliveryCharge != null)
+            _row('Delivery${pricing.distanceKm != null ? ' (${pricing.distanceKm!.toStringAsFixed(1)} km)' : ''}',
+                '₹${pricing.deliveryCharge!.toStringAsFixed(0)}')
+          else if (!pricing.outOfDeliveryRange)
+            _row('Delivery', 'Calculated after address'),
+          const Divider(height: 16),
+          _row('To pay', '₹${pricing.total.toStringAsFixed(0)}', bold: true),
+          if (pricing.belowMinimumOrder) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Minimum order for delivery is ₹${minimumOrder.toStringAsFixed(0)} — add ₹${(minimumOrder - pricing.subtotal).toStringAsFixed(0)} more to checkout.',
+              style: const TextStyle(color: red, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+          if (pricing.outOfDeliveryRange) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'This address is outside our delivery range. Please choose a closer address or contact the store.',
+              style: TextStyle(color: red, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: bold ? 14 : 12.5, fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+          Text(value, style: TextStyle(fontSize: bold ? 14 : 12.5, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: bold ? const Color(0xFF2E7D32) : null)),
+        ],
+      ),
     );
   }
 }

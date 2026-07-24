@@ -45,12 +45,13 @@ class InventoryMutationNotifier extends StateNotifier<InventoryMutationState> {
     // assigned offer, not just add one.
     bool clearOfferId = false,
     String? offerId,
+    double gstPercent = 0,
   }) async {
     state = const InventoryMutationState(isSubmitting: true);
     try {
       final ds = _ref.read(adminInventoryDataSourceProvider);
       if (id == null) {
-        final newId = await ds.createCategory(name: name, sortOrder: sortOrder, offerId: offerId);
+        final newId = await ds.createCategory(name: name, sortOrder: sortOrder, offerId: offerId, gstPercent: gstPercent);
         final imageUrl = await _uploadIfNeeded('category_images', newId, imageFile);
         if (imageUrl != null) {
           await ds.updateCategory(id: newId, name: name, imageUrl: imageUrl);
@@ -65,6 +66,7 @@ class InventoryMutationNotifier extends StateNotifier<InventoryMutationState> {
           isActive: isActive,
           offerId: offerId,
           clearOfferId: clearOfferId,
+          gstPercent: gstPercent,
         );
       }
       state = const InventoryMutationState();

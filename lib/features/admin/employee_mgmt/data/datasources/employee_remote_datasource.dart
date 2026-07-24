@@ -10,8 +10,13 @@ class EmployeeRemoteDataSource {
   CollectionReference<Map<String, dynamic>> get _collection => _firestore.collection('staff_users');
 
   Future<List<StaffMemberEntity>> getAllStaff() async {
-    final snapshot = await _collection.orderBy('createdAt', descending: true).get();
-    return snapshot.docs.map((doc) {
+    // No orderBy — if any staff_users doc is missing createdAt (however
+    // that might happen), Firestore's orderBy silently EXCLUDES it from
+    // results entirely rather than erroring, which would make that
+    // employee quietly disappear from every staff list and picker in
+    // the app. Sorting client-side instead can't drop anyone.
+    final snapshot = await _collection.get();
+    final staff = snapshot.docs.map((doc) {
       final data = doc.data();
       return StaffMemberEntity(
         uid: doc.id,
@@ -22,6 +27,8 @@ class EmployeeRemoteDataSource {
         createdAt: ((data['createdAt'] as Timestamp?) ?? Timestamp.now()).toDate(),
       );
     }).toList();
+    staff.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return staff;
   }
 
   /// Creating a Firebase Auth user via the client SDK normally signs the

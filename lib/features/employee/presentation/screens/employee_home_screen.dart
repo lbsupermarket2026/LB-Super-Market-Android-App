@@ -147,6 +147,21 @@ class _DeliveryCard extends ConsumerWidget {
                     ),
                   ),
                 if (order.customerPhone?.isNotEmpty == true) const SizedBox(width: 8),
+                if (order.deliveryLatitude != null && order.deliveryLongitude != null)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(foregroundColor: colors.orange, side: BorderSide(color: colors.orange)),
+                      onPressed: () async {
+                        final uri = Uri.parse(
+                          'https://www.google.com/maps/search/?api=1&query=${order.deliveryLatitude},${order.deliveryLongitude}',
+                        );
+                        if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.map_outlined, size: 18),
+                      label: const Text('Map'),
+                    ),
+                  ),
+                if (order.deliveryLatitude != null && order.deliveryLongitude != null) const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: colors.green, foregroundColor: Colors.white),

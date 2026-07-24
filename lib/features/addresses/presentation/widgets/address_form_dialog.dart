@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../domain/entities/address_entity.dart';
 import '../providers/address_providers.dart';
 
@@ -26,6 +27,9 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
   late final TextEditingController _pincode;
   late final TextEditingController _phone;
   bool _isDefault = false;
+  bool _isSaving = false;
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
@@ -39,6 +43,8 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
     _pincode = TextEditingController(text: e?.pincode ?? '');
     _phone = TextEditingController(text: e?.phone ?? '');
     _isDefault = e?.isDefault ?? false;
+    _latitude = e?.latitude;
+    _longitude = e?.longitude;
   }
 
   @override
@@ -55,6 +61,26 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+
+    // Geocode the typed address into coordinates — used for both the
+    // "View on Map" link and for calculating distance-based delivery
+    // charges at checkout. Best-effort: if it fails (unusual/informal
+    // address, no network), the address still saves fine, it just won't
+    // have a map link or count toward delivery-distance calculation
+    // until edited again with a more specific address.
+    double? lat = _latitude;
+    double? lng = _longitude;
+    try {
+      final fullAddress = '${_line1.text} ${_line2.text}, ${_city.text}, ${_state.text} ${_pincode.text}';
+      final locations = await locationFromAddress(fullAddress);
+      if (locations.isNotEmpty) {
+        lat = locations.first.latitude;
+        lng = locations.first.longitude;
+      }
+    } catch (_) {
+      // Keep whatever coordinates (if any) were already on this address.
+    }
 
     final address = AddressEntity(
       id: widget.existing?.id ?? _generateId(),
@@ -66,6 +92,8 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
       pincode: _pincode.text.trim(),
       phone: _phone.text.trim(),
       isDefault: _isDefault,
+      latitude: lat,
+      longitude: lng,
     );
 
     await ref.read(addressListProvider.notifier).addOrUpdate(address);
@@ -141,8 +169,13 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        ElevatedButton(onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: _isSaving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: _isSaving ? null : _save,
+          child: _isSaving
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Save'),
+        ),
       ],
     );
   }

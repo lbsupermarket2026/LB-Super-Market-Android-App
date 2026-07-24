@@ -12,6 +12,8 @@ abstract class OrderRepository {
     required double totalAmount,
     required String deliveryAddress,
     String? customerPhone,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   });

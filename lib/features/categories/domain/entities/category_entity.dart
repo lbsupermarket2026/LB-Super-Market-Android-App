@@ -9,6 +9,7 @@ class CategoryEntity extends Equatable {
   final int sortOrder;
   final bool isActive;
   final String? offerId;
+  final double gstPercent;
 
   const CategoryEntity({
     required this.id,
@@ -19,10 +20,11 @@ class CategoryEntity extends Equatable {
     this.sortOrder = 0,
     this.isActive = true,
     this.offerId,
+    this.gstPercent = 0,
   });
 
   bool get isTopLevel => parentCategoryId == null;
 
   @override
-  List<Object?> get props => [id, name, imageUrl, iconUrl, parentCategoryId, sortOrder, isActive, offerId];
+  List<Object?> get props => [id, name, imageUrl, iconUrl, parentCategoryId, sortOrder, isActive, offerId, gstPercent];
 }

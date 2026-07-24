@@ -89,6 +89,8 @@ class OrderEntity extends Equatable {
   final DateTime createdAt;
   final String deliveryAddress;
   final String? customerPhone;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   final PaymentMethod paymentMethod;
   final String? razorpayPaymentId;
   final String? refundStatus; // null | 'processing' | 'processed' | 'failed'
@@ -109,6 +111,8 @@ class OrderEntity extends Equatable {
     required this.createdAt,
     required this.deliveryAddress,
     this.customerPhone,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
     this.paymentMethod = PaymentMethod.cod,
     this.razorpayPaymentId,
     this.refundStatus,
@@ -136,6 +140,8 @@ class OrderEntity extends Equatable {
         createdAt,
         deliveryAddress,
         customerPhone,
+        deliveryLatitude,
+        deliveryLongitude,
         paymentMethod,
         razorpayPaymentId,
         refundStatus,

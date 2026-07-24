@@ -10,6 +10,8 @@ class OrderModel {
   final Timestamp createdAt;
   final String deliveryAddress;
   final String? customerPhone;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   final String paymentMethod;
   final String? razorpayPaymentId;
   final String? refundStatus;
@@ -30,6 +32,8 @@ class OrderModel {
     required this.createdAt,
     required this.deliveryAddress,
     this.customerPhone,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
     this.paymentMethod = 'cod',
     this.razorpayPaymentId,
     this.refundStatus,
@@ -64,6 +68,8 @@ class OrderModel {
       createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
       deliveryAddress: (data['deliveryAddress'] as String?) ?? '',
       customerPhone: data['customerPhone'] as String?,
+      deliveryLatitude: (data['deliveryLatitude'] as num?)?.toDouble(),
+      deliveryLongitude: (data['deliveryLongitude'] as num?)?.toDouble(),
       razorpayPaymentId: data['razorpayPaymentId'] as String?,
       refundStatus: data['refundStatus'] as String?,
       refundId: data['refundId'] as String?,
@@ -95,6 +101,8 @@ class OrderModel {
         createdAt: createdAt.toDate(),
         deliveryAddress: deliveryAddress,
         customerPhone: customerPhone,
+        deliveryLatitude: deliveryLatitude,
+        deliveryLongitude: deliveryLongitude,
         paymentMethod: PaymentMethodX.fromString(paymentMethod),
         razorpayPaymentId: razorpayPaymentId,
         refundStatus: refundStatus,
@@ -113,6 +121,8 @@ class OrderModel {
     required double totalAmount,
     required String deliveryAddress,
     String? customerPhone,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   }) {
@@ -124,6 +134,8 @@ class OrderModel {
       'createdAt': FieldValue.serverTimestamp(),
       'deliveryAddress': deliveryAddress,
       'customerPhone': customerPhone,
+      'deliveryLatitude': deliveryLatitude,
+      'deliveryLongitude': deliveryLongitude,
       'paymentMethod': paymentMethod,
       'razorpayPaymentId': razorpayPaymentId,
       'deliveryPersonName': null,

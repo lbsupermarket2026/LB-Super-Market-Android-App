@@ -22,6 +22,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
   File? _pickedImage;
   bool _isActive = true;
   String? _offerId;
+  final _gstController = TextEditingController(text: '0');
 
   @override
   void initState() {
@@ -30,12 +31,14 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
       _nameController.text = widget.existing!.name;
       _isActive = widget.existing!.isActive;
       _offerId = widget.existing!.offerId;
+      _gstController.text = widget.existing!.gstPercent.toStringAsFixed(widget.existing!.gstPercent % 1 == 0 ? 0 : 1);
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _gstController.dispose();
     super.dispose();
   }
 
@@ -55,6 +58,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
           isActive: _isActive,
           offerId: _offerId,
           clearOfferId: _offerId == null,
+          gstPercent: double.tryParse(_gstController.text) ?? 0,
         );
 
     if (!mounted) return;
@@ -112,6 +116,12 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
               ),
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _gstController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'GST %', suffixText: '%'),
             ),
             if (widget.existing != null)
               SwitchListTile(

@@ -35,7 +35,7 @@ class AdminInventoryDataSource {
     return categories;
   }
 
-  Future<String> createCategory({required String name, String? imageUrl, int sortOrder = 0, String? offerId}) async {
+  Future<String> createCategory({required String name, String? imageUrl, int sortOrder = 0, String? offerId, double gstPercent = 0}) async {
     final docRef = await _categories.add({
       'name': name,
       'imageUrl': imageUrl,
@@ -44,6 +44,7 @@ class AdminInventoryDataSource {
       'sortOrder': sortOrder,
       'isActive': true,
       'offerId': offerId,
+      'gstPercent': gstPercent,
     });
     return docRef.id;
   }
@@ -58,11 +59,13 @@ class AdminInventoryDataSource {
     // null) — a plain nullable param can't tell those apart on its own.
     bool clearOfferId = false,
     String? offerId,
+    double? gstPercent,
   }) async {
     final updates = <String, dynamic>{'name': name};
     if (imageUrl != null) updates['imageUrl'] = imageUrl;
     if (sortOrder != null) updates['sortOrder'] = sortOrder;
     if (isActive != null) updates['isActive'] = isActive;
+    if (gstPercent != null) updates['gstPercent'] = gstPercent;
     if (offerId != null || clearOfferId) updates['offerId'] = offerId;
     await _categories.doc(id).update(updates);
   }

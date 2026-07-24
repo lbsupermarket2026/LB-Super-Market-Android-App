@@ -32,6 +32,7 @@ class FirestorePaths {
   static const String adminConfigAppSettings = 'appSettings';
   static const String adminConfigBusinessInfo = 'businessInfo';
   static const String adminConfigBannerHome = 'bannerHome';
+  static const String adminConfigDeliverySettings = 'deliverySettings';
 
   static const String adminConfigTermsConditions = 'termsConditions';
   static const String adminConfigPrivacyPolicy = 'privacyPolicy';

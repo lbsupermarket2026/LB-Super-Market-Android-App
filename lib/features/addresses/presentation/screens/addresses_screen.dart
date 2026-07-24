@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/address_providers.dart';
 import '../widgets/address_form_dialog.dart';
@@ -125,6 +126,25 @@ class AddressesScreen extends ConsumerWidget {
                       if (address.phone.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(address.phone, style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                      if (address.hasCoordinates) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        InkWell(
+                          onTap: () async {
+                            final uri = Uri.parse(
+                              'https://www.google.com/maps/search/?api=1&query=${address.latitude},${address.longitude}',
+                            );
+                            if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.map_outlined, size: 16, color: _green),
+                              const SizedBox(width: 4),
+                              Text('View on Map', style: TextStyle(color: _green, fontSize: 12, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
                       ],
                     ],
                   ),

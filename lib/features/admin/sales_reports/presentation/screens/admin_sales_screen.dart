@@ -8,13 +8,11 @@ import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../products/domain/entities/product_entity.dart';
 import '../../domain/entities/sales_bucket_entity.dart';
 import '../providers/sales_report_providers.dart';
+import 'low_stock_products_screen.dart';
 
 const _green = Color(0xFF2E7D32);
 const _orange = Color(0xFFEF6C00);
 const _red = Color(0xFFE53935);
-
-// Products at or below this stock level count toward the "Low Stock" KPI.
-const _lowStockThreshold = 5;
 
 class AdminSalesScreen extends ConsumerWidget {
   const AdminSalesScreen({super.key});
@@ -105,7 +103,7 @@ class _KpiGrid extends StatelessWidget {
     final pendingRequests = requests.where((r) => r.status == OrderRequestStatus.pending).length;
 
     final products = productsAsync.valueOrNull ?? [];
-    final lowStockCount = products.where((p) => p.stockQty <= _lowStockThreshold).length;
+    final lowStockCount = products.where((p) => p.isLowStock).length;
 
     return GridView.count(
       crossAxisCount: 2,
@@ -119,10 +117,11 @@ class _KpiGrid extends StatelessWidget {
         _KpiCard(label: 'Total Orders', value: '$totalOrders', icon: Icons.receipt_long_outlined, color: _orange),
         _KpiCard(label: 'Pending Requests', value: '$pendingRequests', icon: Icons.pending_actions_outlined, color: Colors.blueGrey),
         _KpiCard(
-          label: 'Low Stock (≤$_lowStockThreshold)',
+          label: 'Low Stock',
           value: '$lowStockCount',
           icon: Icons.warning_amber_outlined,
           color: _red,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LowStockProductsScreen())),
         ),
       ],
     );
@@ -134,25 +133,30 @@ class _KpiCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  const _KpiCard({required this.label, required this.value, required this.icon, required this.color});
+  final VoidCallback? onTap;
+  const _KpiCard({required this.label, required this.value, required this.icon, required this.color, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const Spacer(),
-          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
-        ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const Spacer(),
+            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+            Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+        ),
       ),
     );
   }

@@ -30,6 +30,8 @@ class OrderRepositoryImpl implements OrderRepository {
     required double totalAmount,
     required String deliveryAddress,
     String? customerPhone,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   }) {
@@ -39,6 +41,8 @@ class OrderRepositoryImpl implements OrderRepository {
           totalAmount: totalAmount,
           deliveryAddress: deliveryAddress,
           customerPhone: customerPhone,
+          deliveryLatitude: deliveryLatitude,
+          deliveryLongitude: deliveryLongitude,
           paymentMethod: paymentMethod,
           razorpayPaymentId: razorpayPaymentId,
         ));

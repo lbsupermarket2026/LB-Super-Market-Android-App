@@ -32,10 +32,32 @@ class AdminOrderDataSource {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return [];
 
-    final results = await Future.wait([
+    // customerPhone on an order is a snapshot of whatever the phone
+    // number was AT THE TIME that order was placed — if a customer's
+    // profile phone changed (or was blank) between orders, older orders
+    // keep the old value, so a literal customerPhone match alone can
+    // miss real history for the same person. Resolving the searched
+    // phone to their actual account first, then also searching by that
+    // userId, closes that gap — the userId never changes.
+    String? resolvedUserId;
+    try {
+      final userQuery = await _firestore.collection('users').where('phone', isEqualTo: trimmed).limit(1).get();
+      if (userQuery.docs.isNotEmpty) {
+        resolvedUserId = userQuery.docs.first.id;
+      }
+    } catch (_) {
+      // Non-fatal — falls back to the direct matches below.
+    }
+
+    final queries = [
       _orders.where('userId', isEqualTo: trimmed).get(),
       _orders.where('customerPhone', isEqualTo: trimmed).get(),
-    ]);
+    ];
+    if (resolvedUserId != null && resolvedUserId != trimmed) {
+      queries.add(_orders.where('userId', isEqualTo: resolvedUserId).get());
+    }
+
+    final results = await Future.wait(queries);
 
     final byId = <String, OrderEntity>{};
     for (final snapshot in results) {
@@ -55,8 +77,55 @@ class AdminOrderDataSource {
     return snapshot.docs.map((d) => OrderModel.fromFirestore(d).toEntity()).toList();
   }
 
+  /// Decrements stock for every item on the order the FIRST time it's
+  /// marked confirmed — the stockDecremented flag inside the same
+  /// transaction stops it from happening twice if status ever gets
+  /// flipped back and forth (placed → confirmed → placed → confirmed).
+  /// Uses a transaction specifically so two people confirming different
+  /// orders for the same low-stock product at the same moment can't
+  /// both read the same starting stockQty and both "successfully"
+  /// oversell it.
   Future<void> updateOrderStatus(String orderId, OrderStatus status) async {
-    await _orders.doc(orderId).update({'status': status.name});
+    if (status != OrderStatus.confirmed) {
+      await _orders.doc(orderId).update({'status': status.name});
+      return;
+    }
+
+    await _firestore.runTransaction((transaction) async {
+      final orderRef = _orders.doc(orderId);
+      final orderSnap = await transaction.get(orderRef);
+      final orderData = orderSnap.data();
+      if (orderData == null) return;
+
+      final alreadyDecremented = orderData['stockDecremented'] == true;
+      final items = (orderData['items'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? [];
+
+      // Firestore transactions require every read to happen before any
+      // write — so every product doc gets read first (into this list),
+      // and only once all reads are done do the actual stock updates
+      // get written.
+      final updates = <DocumentReference<Map<String, dynamic>>, int>{};
+      if (!alreadyDecremented) {
+        for (final item in items) {
+          final productId = item['productId'] as String?;
+          final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
+          if (productId == null || productId.isEmpty || quantity <= 0) continue;
+
+          final productRef = _firestore.collection('products').doc(productId);
+          final productSnap = await transaction.get(productRef);
+          if (!productSnap.exists) continue;
+
+          final currentStock = (productSnap.data()?['stockQty'] as num?)?.toInt() ?? 0;
+          final newStock = currentStock - quantity;
+          updates[productRef] = newStock < 0 ? 0 : newStock;
+        }
+      }
+
+      for (final entry in updates.entries) {
+        transaction.update(entry.key, {'stockQty': entry.value});
+      }
+      transaction.update(orderRef, {'status': status.name, 'stockDecremented': true});
+    });
   }
 
   Future<void> assignDelivery(String orderId, String employeeUid, String name, String phone) async {

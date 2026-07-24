@@ -10,6 +10,7 @@ class CategoryModel {
   final int sortOrder;
   final bool isActive;
   final String? offerId;
+  final double gstPercent;
 
   const CategoryModel({
     required this.id,
@@ -20,6 +21,7 @@ class CategoryModel {
     this.sortOrder = 0,
     this.isActive = true,
     this.offerId,
+    this.gstPercent = 0,
   });
 
   factory CategoryModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -33,6 +35,7 @@ class CategoryModel {
       sortOrder: (data['sortOrder'] as num?)?.toInt() ?? 0,
       isActive: (data['isActive'] as bool?) ?? true,
       offerId: data['offerId'] as String?,
+      gstPercent: (data['gstPercent'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -45,5 +48,6 @@ class CategoryModel {
         sortOrder: sortOrder,
         isActive: isActive,
         offerId: offerId,
+        gstPercent: gstPercent,
       );
 }

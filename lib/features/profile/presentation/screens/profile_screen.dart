@@ -130,11 +130,6 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'Terms & Conditions',
                   onTap: () => context.push('/terms-conditions'),
                 ),
-                _MenuItem(
-                  icon: Icons.science_outlined,
-                  title: 'Seed Sample Products (Dev)',
-                  onTap: () => context.push('/dev/seed-products'),
-                ),
                 const SizedBox(height: AppSpacing.sm),
                 _MenuItem(
                   icon: Icons.logout,
