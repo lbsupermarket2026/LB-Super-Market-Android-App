@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../offers/domain/entities/offer_card_entity.dart';
 import '../../../../offers/presentation/widgets/offer_card_tile.dart';
 import '../providers/admin_offer_card_providers.dart';
@@ -20,6 +22,7 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
   final _highlightController = TextEditingController();
   OfferTemplate _template = OfferTemplate.percentageOff;
   bool _isEnabled = true;
+  File? _pickedImage;
 
   @override
   void initState() {
@@ -42,6 +45,11 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked != null) setState(() => _pickedImage = File(picked.path));
+  }
+
   Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty) return;
 
@@ -51,6 +59,8 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
           title: _titleController.text.trim(),
           subtitle: _subtitleController.text.trim(),
           highlightText: _highlightController.text.trim().isEmpty ? null : _highlightController.text.trim(),
+          imageFile: _pickedImage,
+          existingImageUrl: widget.existing?.imageUrl,
           isEnabled: _isEnabled,
         );
 
@@ -70,6 +80,7 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
       title: _titleController.text.isEmpty ? 'Card title' : _titleController.text,
       subtitle: _subtitleController.text.isEmpty ? 'Subtitle text' : _subtitleController.text,
       highlightText: _highlightController.text.isEmpty ? null : _highlightController.text,
+      imageUrl: widget.existing?.imageUrl,
       isEnabled: _isEnabled,
     );
 
@@ -84,7 +95,23 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(state.error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
               ),
-            OfferCardTile(card: preview),
+            // Shows the picked file directly if one was just chosen
+            // (hasn't been uploaded yet), otherwise the live card
+            // preview with whatever's already saved.
+            _pickedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(_pickedImage!, height: 140, width: double.infinity, fit: BoxFit.cover),
+                  )
+                : OfferCardTile(card: preview),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _pickImage,
+              icon: const Icon(Icons.image_outlined, size: 18),
+              label: Text(_pickedImage != null || widget.existing?.imageUrl?.isNotEmpty == true
+                  ? 'Change Photo'
+                  : 'Add Photo (optional)'),
+            ),
             const SizedBox(height: 16),
             DropdownButtonFormField<OfferTemplate>(
               value: _template,

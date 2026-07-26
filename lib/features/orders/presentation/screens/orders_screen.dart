@@ -110,7 +110,7 @@ class OrdersScreen extends ConsumerWidget {
 class _WhatsAppOrderCard extends StatelessWidget {
   const _WhatsAppOrderCard();
 
-  static const _whatsappNumber = '7989694819';
+  static const _whatsappNumber = '9885545708';
 
   Future<void> _openWhatsApp() async {
     final uri = Uri.parse(

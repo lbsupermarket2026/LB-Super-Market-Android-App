@@ -21,6 +21,7 @@ class DeliverySettingsDataSource {
       storeLongitude: (data['storeLongitude'] as num?)?.toDouble(),
       storeAddress: (data['storeAddress'] as String?) ?? '',
       minimumOrderAmount: (data['minimumOrderAmount'] as num?)?.toDouble() ?? 200,
+      onlinePaymentsEnabled: (data['onlinePaymentsEnabled'] as bool?) ?? true,
       slabs: rawSlabs
           .cast<Map<String, dynamic>>()
           .map((s) => DeliverySlabEntity(
@@ -38,6 +39,7 @@ class DeliverySettingsDataSource {
       'storeLongitude': settings.storeLongitude,
       'storeAddress': settings.storeAddress,
       'minimumOrderAmount': settings.minimumOrderAmount,
+      'onlinePaymentsEnabled': settings.onlinePaymentsEnabled,
       'slabs': settings.slabs
           .map((s) => {'minKm': s.minKm, 'maxKm': s.maxKm, 'charge': s.charge})
           .toList(),

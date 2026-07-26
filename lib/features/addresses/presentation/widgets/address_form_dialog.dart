@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import '../../../../core/widgets/location/location_picker_screen.dart';
 import '../../domain/entities/address_entity.dart';
 import '../providers/address_providers.dart';
 
@@ -28,6 +31,7 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
   late final TextEditingController _phone;
   bool _isDefault = false;
   bool _isSaving = false;
+  bool _isLoadingLocation = false;
   double? _latitude;
   double? _longitude;
 
@@ -57,6 +61,64 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
     _pincode.dispose();
     _phone.dispose();
     super.dispose();
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final requested = await Geolocator.requestPermission();
+        if (requested == LocationPermission.denied || requested == LocationPermission.deniedForever) {
+          throw Exception('Location permission was denied.');
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission is permanently denied — enable it in phone Settings.');
+      }
+
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw Exception('Turn on Location/GPS on this phone first.');
+
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+      });
+
+      // Best-effort reverse geocode to prefill the text fields too, so
+      // the customer doesn't have to type the address by hand after
+      // capturing their location — they can still edit anything it gets
+      // wrong before saving.
+      try {
+        final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        if (placemarks.isNotEmpty) {
+          final p = placemarks.first;
+          setState(() {
+            if (_line1.text.trim().isEmpty) {
+              _line1.text = [p.street, p.subLocality].where((s) => s?.isNotEmpty == true).join(', ');
+            }
+            if (_city.text.trim().isEmpty) _city.text = p.locality ?? '';
+            if (_state.text.trim().isEmpty) _state.text = p.administrativeArea ?? '';
+            if (_pincode.text.trim().isEmpty) _pincode.text = p.postalCode ?? '';
+          });
+        }
+      } catch (_) {
+        // Coordinates are captured either way — the address fields just
+        // stay whatever the customer already typed if reverse geocoding
+        // doesn't resolve to anything.
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location captured.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not get location: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingLocation = false);
+    }
   }
 
   Future<void> _save() async {
@@ -119,6 +181,43 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
                   DropdownMenuItem(value: 'Other', child: Text('Other')),
                 ],
                 onChanged: (v) => setState(() => _label.text = v ?? 'Other'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoadingLocation ? null : _useCurrentLocation,
+                      icon: _isLoadingLocation
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Icon(_latitude != null ? Icons.check_circle : Icons.my_location, size: 18),
+                      label: Text(_isLoadingLocation
+                          ? 'Locating…'
+                          : (_latitude != null ? 'Located' : 'Use GPS'), overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.push<LatLng>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LocationPickerScreen(initialLatitude: _latitude, initialLongitude: _longitude),
+                          ),
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _latitude = result.latitude;
+                            _longitude = result.longitude;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.map_outlined, size: 18),
+                      label: const Text('Pinpoint on Map', overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               TextFormField(

@@ -38,7 +38,15 @@ class EmployeeListScreen extends ConsumerWidget {
       body: staffAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Could not load staff: $error')),
-        data: (staff) {
+        data: (allStaff) {
+          // A doc with neither a name nor an email isn't something
+          // anyone can meaningfully act on — most likely a leftover
+          // from a partially-failed "Add Staff" attempt (e.g. the
+          // login account got created but the profile write didn't).
+          // Hidden here rather than shown as an unusable "?" row; worth
+          // checking Firestore's staff_users collection directly if
+          // you want to actually delete these.
+          final staff = allStaff.where((s) => s.name.isNotEmpty || s.email.isNotEmpty).toList();
           if (staff.isEmpty) {
             return const Center(child: Text('No staff members yet. Tap "Add Staff" to create one.'));
           }
@@ -81,9 +89,12 @@ class EmployeeListScreen extends ConsumerWidget {
                             style: TextStyle(color: roleColor, fontWeight: FontWeight.w700, fontSize: 11)),
                       ),
                       if (!isSelf)
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 20),
-                          onSelected: (choice) async {
+                        SizedBox(
+                          height: 28,
+                          child: PopupMenuButton<String>(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.more_vert, size: 20),
+                            onSelected: (choice) async {
                             if (choice == 'edit') {
                               final edited = await showDialog<bool>(
                                 context: context,
@@ -102,6 +113,7 @@ class EmployeeListScreen extends ConsumerWidget {
                             PopupMenuItem(value: 'edit', child: Text('Edit')),
                             PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: _red))),
                           ],
+                          ),
                         ),
                     ],
                   ),

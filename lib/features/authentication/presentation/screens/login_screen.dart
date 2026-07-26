@@ -66,7 +66,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10)],
                     ),
                     padding: const EdgeInsets.all(12),
-                    child: Image.asset('assets/images/bs_logo.png', fit: BoxFit.contain),
+                    child: Image.asset(
+                      'assets/images/bs_logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.storefront, size: 56, color: Color(0xFF2E7D32)),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),

@@ -10,7 +10,7 @@ import 'review_order_request_screen.dart';
 
 // Same store contact number used for WhatsApp Order — kept here too so
 // the call button on this screen doesn't depend on the Orders screen.
-const _callNumber = '7989694819';
+const _callNumber = '9885545708';
 
 class PlaceOrderScreen extends StatefulWidget {
   const PlaceOrderScreen({super.key});

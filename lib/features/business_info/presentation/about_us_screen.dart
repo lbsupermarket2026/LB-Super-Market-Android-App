@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/states/error_state.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/states/error_state.dart';
 import 'package:freshcart/features/business_info/presentation/providers/business_info_providers.dart';
 import 'package:freshcart/features/business_info/domain/entities/business_info_entity.dart';
 
@@ -70,7 +70,11 @@ class _AboutUsContent extends StatelessWidget {
                   color: cs.primaryContainer,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Image.asset('assets/images/bs_logo.png', fit: BoxFit.contain),
+                child: Image.asset(
+                  'assets/images/bs_logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.storefront, size: 56, color: Color(0xFF2E7D32)),
+                ),
               );
               final text = Text(
                 info.aboutUsText.isNotEmpty ? info.aboutUsText : 'About us content coming soon.',

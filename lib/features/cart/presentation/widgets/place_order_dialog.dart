@@ -227,6 +227,13 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     final categoriesAsync = ref.watch(topLevelCategoriesProvider);
     final deliverySettingsAsync = ref.watch(deliverySettingsProvider);
 
+    final onlinePaymentsEnabled = deliverySettingsAsync.valueOrNull?.onlinePaymentsEnabled ?? true;
+    if (!onlinePaymentsEnabled && _paymentMethod == PaymentMethod.upi) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _paymentMethod = PaymentMethod.cod);
+      });
+    }
+
     final categoriesById = <String, CategoryEntity>{
       for (final c in categoriesAsync.valueOrNull ?? <CategoryEntity>[]) c.id: c,
     };
@@ -247,18 +254,21 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'UPI charges you now, through Razorpay. Cash and Card Swipe are settled in person on delivery/pickup.',
-              style: TextStyle(fontSize: 13),
+            Text(
+              onlinePaymentsEnabled
+                  ? 'UPI charges you now, through Razorpay. Cash and Card Swipe are settled in person on delivery/pickup.'
+                  : 'Cash and Card Swipe are settled in person on delivery/pickup.',
+              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 12),
-            _PaymentMethodTile(
-              method: PaymentMethod.upi,
-              icon: Icons.qr_code_scanner,
-              subtitle: 'PhonePe, GPay, Paytm, CRED, or any UPI app',
-              selected: _paymentMethod,
-              onSelect: (m) => setState(() => _paymentMethod = m),
-            ),
+            if (onlinePaymentsEnabled)
+              _PaymentMethodTile(
+                method: PaymentMethod.upi,
+                icon: Icons.qr_code_scanner,
+                subtitle: 'PhonePe, GPay, Paytm, CRED, or any UPI app',
+                selected: _paymentMethod,
+                onSelect: (m) => setState(() => _paymentMethod = m),
+              ),
             _PaymentMethodTile(
               method: PaymentMethod.cod,
               icon: Icons.payments_outlined,

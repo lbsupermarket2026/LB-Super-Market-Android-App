@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../offers/data/datasources/offer_cards_datasource.dart';
 import '../../../../offers/domain/entities/offer_card_entity.dart';
@@ -28,6 +29,8 @@ class OfferCardMutationNotifier extends StateNotifier<OfferCardMutationState> {
     required String title,
     required String subtitle,
     String? highlightText,
+    File? imageFile,
+    String? existingImageUrl,
     required bool isEnabled,
     int sortOrder = 0,
   }) async {
@@ -35,7 +38,7 @@ class OfferCardMutationNotifier extends StateNotifier<OfferCardMutationState> {
     try {
       final ds = _ref.read(offerCardsDataSourceProvider);
       if (id == null) {
-        await ds.createOfferCard(
+        final newId = await ds.createOfferCard(
           template: template,
           title: title,
           subtitle: subtitle,
@@ -43,13 +46,28 @@ class OfferCardMutationNotifier extends StateNotifier<OfferCardMutationState> {
           isEnabled: isEnabled,
           sortOrder: sortOrder,
         );
+        if (imageFile != null) {
+          final imageUrl = await ds.uploadImage(newId, imageFile);
+          await ds.updateOfferCard(
+            id: newId,
+            template: template,
+            title: title,
+            subtitle: subtitle,
+            highlightText: highlightText,
+            imageUrl: imageUrl,
+            isEnabled: isEnabled,
+            sortOrder: sortOrder,
+          );
+        }
       } else {
+        final imageUrl = imageFile != null ? await ds.uploadImage(id, imageFile) : existingImageUrl;
         await ds.updateOfferCard(
           id: id,
           template: template,
           title: title,
           subtitle: subtitle,
           highlightText: highlightText,
+          imageUrl: imageUrl,
           isEnabled: isEnabled,
           sortOrder: sortOrder,
         );

@@ -28,6 +28,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   String _selectedCategoryKey = kAllProductsKey;
   _SortOption _sort = _SortOption.popular;
   String? _selectedBrand;
+  bool _isTileView = true;
 
   @override
   void initState() {
@@ -112,16 +113,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: theme.colorScheme.error.withOpacity(0.4)),
+                border: Border.all(color: const Color(0xFFE5E2D6)),
               ),
               child: TextField(
                 controller: _controller,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   hintText: 'Search in Browse...',
-                  prefixIcon: const Icon(Icons.search),
+                  hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
                   suffixIcon: _controller.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear),
@@ -140,6 +142,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   setState(() {});
                 },
               ),
+            ),
+          ),
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            child: IconButton(
+              icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20),
+              tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
+              onPressed: () => setState(() => _isTileView = !_isTileView),
             ),
           ),
         ],
@@ -254,6 +265,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         if (filtered.isEmpty) {
           return const EmptyStateWidget(message: 'No products found.', icon: Icons.shopping_bag_outlined);
         }
+        if (!_isTileView) {
+          return ListView.separated(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
+            itemCount: filtered.length + (state.isLoadingMore ? 1 : 0),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              if (index >= filtered.length) return const SizedBox(height: 84, child: ProductCardSkeleton());
+              final product = filtered[index];
+              return _BrowseListRow(product: product, onTap: () => context.push('/product/${product.id}'));
+            },
+          );
+        }
         return GridView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
@@ -261,7 +285,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacing.sm,
             crossAxisSpacing: AppSpacing.sm,
-            childAspectRatio: 0.72,
+            childAspectRatio: 0.66,
           ),
           itemCount: filtered.length + (state.isLoadingMore ? 2 : 0),
           itemBuilder: (context, index) {
@@ -281,13 +305,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         if (filtered.isEmpty) {
           return const EmptyStateWidget(message: 'No products found.', icon: Icons.search_off);
         }
+        if (!_isTileView) {
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
+            itemCount: filtered.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final product = filtered[index];
+              return _BrowseListRow(product: product, onTap: () => context.push('/product/${product.id}'));
+            },
+          );
+        }
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacing.sm,
             crossAxisSpacing: AppSpacing.sm,
-            childAspectRatio: 0.72,
+            childAspectRatio: 0.66,
           ),
           itemCount: filtered.length,
           itemBuilder: (context, index) {
@@ -310,7 +345,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: AppSpacing.sm,
           crossAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.72,
+          childAspectRatio: 0.66,
         ),
         itemCount: 6,
         itemBuilder: (_, __) => const ProductCardSkeleton(),
@@ -372,6 +407,75 @@ class _RailItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact horizontal row for list view — mirrors the Categories tab's
+/// list row, kept as its own local copy here rather than shared, so
+/// changes to one don't unexpectedly ripple into the other.
+class _BrowseListRow extends StatelessWidget {
+  final ProductEntity product;
+  final VoidCallback onTap;
+  const _BrowseListRow({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: product.primaryImage.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: product.primaryImage,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(color: const Color(0xFFF3F3F3), child: const Icon(Icons.image_outlined, color: Colors.black38)),
+                        )
+                      : Container(color: const Color(0xFFF3F3F3), child: const Icon(Icons.image_outlined, color: Colors.black38)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                    if (product.unit.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(product.unit, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text('₹${product.displayPrice.toStringAsFixed(0)}',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF2E7D32))),
+                        if (product.hasDiscount) ...[
+                          const SizedBox(width: 6),
+                          Text('₹${product.basePrice.toStringAsFixed(0)}',
+                              style: TextStyle(fontSize: 11, decoration: TextDecoration.lineThrough, color: Colors.grey.shade500)),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
         ),
       ),
     );

@@ -153,7 +153,13 @@ class AuthRemoteDataSource {
     final user = _firebaseAuth.currentUser;
     if (user == null) throw const AuthException('Not signed in.');
 
-    final ref = _storage.ref('profile_photos/${user.uid}.jpg');
+    // uid gets its own path segment (not baked into the filename) so
+    // the Storage rule can just check the segment directly — no
+    // string-splitting needed, which sidesteps a real gotcha: Storage
+    // rules' split() takes a REGEX, not a literal string, so split('.')
+    // was matching every character (since '.' is a regex wildcard),
+    // not just the actual period.
+    final ref = _storage.ref('profile_photos/${user.uid}/photo.jpg');
     final snapshot = await ref.putFile(file);
     if (snapshot.state != TaskState.success) {
       throw Exception('Photo upload did not complete (state: ${snapshot.state}).');

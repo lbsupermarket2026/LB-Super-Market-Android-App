@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/widgets/location/location_picker_screen.dart';
 import '../../domain/entities/delivery_settings_entity.dart';
 import '../providers/delivery_settings_providers.dart';
 
@@ -18,6 +20,7 @@ class AdminDeliverySettingsScreen extends ConsumerStatefulWidget {
 class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySettingsScreen> {
   final _addressController = TextEditingController();
   final _minOrderController = TextEditingController(text: '200');
+  bool _onlinePaymentsEnabled = true;
   double? _lat;
   double? _lng;
   List<_SlabDraft> _slabs = [];
@@ -36,6 +39,7 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
     _initialized = true;
     _addressController.text = settings.storeAddress;
     _minOrderController.text = settings.minimumOrderAmount.toStringAsFixed(0);
+    _onlinePaymentsEnabled = settings.onlinePaymentsEnabled;
     _lat = settings.storeLatitude;
     _lng = settings.storeLongitude;
     _slabs = settings.slabs
@@ -91,6 +95,7 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
       storeLongitude: _lng,
       storeAddress: _addressController.text.trim(),
       minimumOrderAmount: double.tryParse(_minOrderController.text) ?? 200,
+      onlinePaymentsEnabled: _onlinePaymentsEnabled,
       slabs: _slabs
           .where((s) => s.minKmController.text.isNotEmpty && s.maxKmController.text.isNotEmpty && s.chargeController.text.isNotEmpty)
           .map((s) => DeliverySlabEntity(
@@ -157,6 +162,25 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                           : const Icon(Icons.my_location),
                       label: Text(_isLoadingLocation ? 'Getting location…' : 'Use My Current Location'),
                     ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.push<LatLng>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LocationPickerScreen(initialLatitude: _lat, initialLongitude: _lng),
+                          ),
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _lat = result.latitude;
+                            _lng = result.longitude;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.map_outlined),
+                      label: const Text('Fine-tune on Map'),
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _addressController,
@@ -171,6 +195,21 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                   controller: _minOrderController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Minimum amount'),
+                ),
+              ),
+              _Card(
+                title: 'Payment Methods',
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _onlinePaymentsEnabled,
+                  title: const Text('Accept online payments (UPI)'),
+                  subtitle: Text(
+                    _onlinePaymentsEnabled
+                        ? 'Customers can pay via UPI at checkout, alongside Cash and Card Swipe.'
+                        : 'UPI is hidden at checkout — customers can only choose Cash or Card Swipe.',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  onChanged: (v) => setState(() => _onlinePaymentsEnabled = v),
                 ),
               ),
               _Card(
@@ -241,26 +280,21 @@ class _SlabRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: draft.minKmController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'From (km)', isDense: true, filled: true, fillColor: Colors.white),
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('to')),
-                  Expanded(
-                    child: TextField(
-                      controller: draft.maxKmController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'To (km)', isDense: true, filled: true, fillColor: Colors.white),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: TextField(
+                  controller: draft.minKmController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'From (km)', isDense: true, filled: true, fillColor: Colors.white),
+                ),
+              ),
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('to')),
+              Expanded(
+                child: TextField(
+                  controller: draft.maxKmController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'To (km)', isDense: true, filled: true, fillColor: Colors.white),
+                ),
               ),
             ],
           ),

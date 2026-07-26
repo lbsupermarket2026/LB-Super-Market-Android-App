@@ -15,7 +15,7 @@
 class PaymentConfig {
   PaymentConfig._();
 
-  static const String razorpayKeyId = 'rzp_test_TEXKRMkg62Lws0';
+  static const String razorpayKeyId = 'rzp_live_THl1huJbVJ6Aig';
 
   // Checks the key actually looks like a real Razorpay key (correct
   // prefix + reasonable length) instead of comparing against a

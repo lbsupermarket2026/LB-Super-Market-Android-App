@@ -78,6 +78,51 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     super.dispose();
   }
 
+  // Whichever field the admin is actively typing in drives the other
+  // two — editing Selling Price recomputes Discount %, editing
+  // Discount % recomputes Selling Price, and editing MRP recomputes
+  // whichever of the other two currently has a value (preferring to
+  // keep Discount % fixed, since that's usually the "policy" the admin
+  // is setting, and let the actual price move with it).
+  //
+  // These only ever assign controller.text directly rather than
+  // calling setState — TextEditingController already notifies its own
+  // TextField on a text change, and since none of this touches other
+  // state, there's nothing extra a full setState would accomplish here.
+  void _recalculateFromPrice() {
+    final mrp = double.tryParse(_mrpController.text);
+    final price = double.tryParse(_priceController.text);
+    if (mrp == null || mrp <= 0 || price == null) return;
+    final discount = ((mrp - price) / mrp * 100).clamp(0, 100);
+    _discountController.text = discount.toStringAsFixed(1);
+  }
+
+  void _recalculateFromDiscount() {
+    final mrp = double.tryParse(_mrpController.text);
+    final discount = double.tryParse(_discountController.text);
+    if (mrp == null || mrp <= 0 || discount == null) return;
+    final price = mrp * (1 - discount.clamp(0, 100) / 100);
+    _priceController.text = price.toStringAsFixed(2);
+  }
+
+  void _recalculateFromMrp() {
+    final mrp = double.tryParse(_mrpController.text);
+    if (mrp == null || mrp <= 0) return;
+
+    final discount = double.tryParse(_discountController.text);
+    if (discount != null) {
+      final price = mrp * (1 - discount.clamp(0, 100) / 100);
+      _priceController.text = price.toStringAsFixed(2);
+      return;
+    }
+
+    final price = double.tryParse(_priceController.text);
+    if (price != null) {
+      final newDiscount = ((mrp - price) / mrp * 100).clamp(0, 100);
+      _discountController.text = newDiscount.toStringAsFixed(1);
+    }
+  }
+
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked != null) setState(() => _pickedImage = File(picked.path));
@@ -202,6 +247,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'Selling Price (₹)'),
                     validator: (v) => (double.tryParse(v ?? '') == null) ? 'Enter a number' : null,
+                    onChanged: (_) => _recalculateFromPrice(),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -210,6 +256,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     controller: _mrpController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'MRP (optional)'),
+                    onChanged: (_) => _recalculateFromMrp(),
                   ),
                 ),
               ],
@@ -222,6 +269,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     controller: _discountController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'Discount %'),
+                    onChanged: (_) => _recalculateFromDiscount(),
                   ),
                 ),
                 const SizedBox(width: 8),

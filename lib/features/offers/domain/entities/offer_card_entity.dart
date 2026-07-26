@@ -20,14 +20,17 @@ extension OfferTemplateX on OfferTemplate {
 }
 
 /// A single scrolling promo card on Home — built from a fixed template
-/// (layout + color, defined in code) with admin-editable text on top,
-/// so no image upload is required to run a new offer.
+/// (layout + color, defined in code) with admin-editable text on top.
+/// imageUrl is optional — cards work fine without one (falls back to
+/// the template's gradient), but admin can attach a photo to make the
+/// card feel less like a plain color block.
 class OfferCardEntity {
   final String id;
   final OfferTemplate template;
   final String title;
   final String subtitle;
   final String? highlightText; // e.g. "25" for a percentage-off card
+  final String? imageUrl;
   final bool isEnabled;
   final int sortOrder;
 
@@ -37,6 +40,7 @@ class OfferCardEntity {
     required this.title,
     required this.subtitle,
     this.highlightText,
+    this.imageUrl,
     required this.isEnabled,
     this.sortOrder = 0,
   });

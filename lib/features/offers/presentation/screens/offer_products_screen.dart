@@ -66,7 +66,7 @@ class OfferProductsScreen extends ConsumerWidget {
                     crossAxisCount: 2,
                     mainAxisSpacing: AppSpacing.sm,
                     crossAxisSpacing: AppSpacing.sm,
-                    childAspectRatio: 0.72,
+                    childAspectRatio: 0.66,
                   ),
                   itemCount: products.length,
                   itemBuilder: (context, index) {

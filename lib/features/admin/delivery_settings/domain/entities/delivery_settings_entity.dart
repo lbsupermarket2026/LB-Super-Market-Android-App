@@ -12,6 +12,7 @@ class DeliverySettingsEntity {
   final String storeAddress;
   final double minimumOrderAmount;
   final List<DeliverySlabEntity> slabs;
+  final bool onlinePaymentsEnabled;
 
   const DeliverySettingsEntity({
     this.storeLatitude,
@@ -19,6 +20,7 @@ class DeliverySettingsEntity {
     this.storeAddress = '',
     this.minimumOrderAmount = 200,
     this.slabs = const [],
+    this.onlinePaymentsEnabled = true,
   });
 
   bool get hasStoreLocation => storeLatitude != null && storeLongitude != null;

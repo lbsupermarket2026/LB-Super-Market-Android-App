@@ -4,12 +4,19 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_semantic_colors.dart';
+import '../../../../core/widgets/loaders/shimmer_skeletons.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
-import '../../domain/entities/category_entity.dart';
+import '../../../cart/presentation/providers/cart_providers.dart';
+import '../../../cart/presentation/widgets/cart_bar.dart';
+import '../../../products/domain/entities/product_entity.dart';
+import '../../../products/presentation/providers/browse_products_notifier.dart';
+import '../../../products/presentation/widgets/browse_product_tile.dart';
 import '../providers/category_providers.dart';
-import '../widgets/category_card.dart';
 
+/// Zepto/Blinkit-style layout — categories fixed on the left, products
+/// for whichever one's selected on the right, with a tile/list toggle
+/// for how those products are shown.
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
 
@@ -18,9 +25,10 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
-  final _searchController = TextEditingController();
-  String _query = '';
+  String _selectedCategoryKey = kAllProductsKey;
   bool _isTileView = true;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void dispose() {
@@ -31,112 +39,171 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final categoriesAsync = ref.watch(topLevelCategoriesProvider);
 
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('All categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: colors.ink)),
-                  // Toggles between the image-tile grid and a compact
-                  // list layout — list is handy once there are enough
-                  // categories that scanning names quickly matters more
-                  // than seeing each one's photo.
-                  Material(
-                    color: colors.card,
-                    borderRadius: BorderRadius.circular(10),
-                    child: IconButton(
-                      icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20, color: colors.ink),
-                      tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
-                      onPressed: () => setState(() => _isTileView = !_isTileView),
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: colors.ink)),
+                      Material(
+                        color: colors.card,
+                        borderRadius: BorderRadius.circular(10),
+                        child: IconButton(
+                          icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20, color: colors.ink),
+                          tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
+                          onPressed: () => setState(() => _isTileView = !_isTileView),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: colors.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.divider),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      style: TextStyle(color: colors.ink),
+                      onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Search products',
+                        hintStyle: TextStyle(fontSize: 13, color: colors.muted),
+                        prefixIcon: Icon(Icons.search, size: 18, color: colors.muted),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close, size: 18, color: colors.muted),
+                                onPressed: () => setState(() {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                }),
+                              )
+                            : null,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: colors.card,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.divider),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  style: TextStyle(color: colors.ink),
-                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'Search categories',
-                    hintStyle: TextStyle(fontSize: 13, color: colors.muted),
-                    prefixIcon: Icon(Icons.search, size: 18, color: colors.muted),
-                    suffixIcon: _query.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.close, size: 18, color: colors.muted),
-                            onPressed: () => setState(() {
-                              _searchController.clear();
-                              _query = '';
-                            }),
-                          )
-                        : null,
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _CategoryRail(
+                        selectedKey: _selectedCategoryKey,
+                        onSelect: (key) => setState(() => _selectedCategoryKey = key),
+                      ),
+                      Expanded(child: _ProductsArea(categoryKey: _selectedCategoryKey, isTileView: _isTileView, searchQuery: _searchQuery)),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ),
-            Expanded(
-              child: categoriesAsync.when(
-                data: (categories) {
-                  final filtered = _query.isEmpty
-                      ? categories
-                      : categories.where((c) => c.name.toLowerCase().contains(_query)).toList();
+            const Align(alignment: Alignment.bottomCenter, child: CartBar()),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                  if (filtered.isEmpty) {
-                    return EmptyStateWidget(
-                      message: _query.isEmpty ? 'No categories available yet.' : 'No categories match "$_query".',
-                      icon: Icons.category_outlined,
-                    );
-                  }
+class _CategoryRail extends ConsumerWidget {
+  final String selectedKey;
+  final ValueChanged<String> onSelect;
+  const _CategoryRail({required this.selectedKey, required this.onSelect});
 
-                  return _isTileView
-                      ? GridView.builder(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: AppSpacing.sm,
-                            crossAxisSpacing: AppSpacing.sm,
-                            childAspectRatio: 1.35,
-                          ),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final category = filtered[index];
-                            return CategoryCard(
-                              category: category,
-                              index: index,
-                              onTap: () => context.push('/category/${category.id}', extra: category.name),
-                            );
-                          },
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          itemCount: filtered.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) => _CategoryListRow(category: filtered[index]),
-                        );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => ErrorStateWidget(
-                  message: 'Could not load categories.',
-                  onRetry: () => ref.invalidate(topLevelCategoriesProvider),
-                ),
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
+    final categoriesAsync = ref.watch(topLevelCategoriesProvider);
+
+    return Container(
+      width: 84,
+      decoration: BoxDecoration(color: colors.card, border: Border(right: BorderSide(color: colors.divider))),
+      child: categoriesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => const SizedBox.shrink(),
+        data: (categories) => ListView(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          children: [
+            _RailItem(
+              label: 'All',
+              isSelected: selectedKey == kAllProductsKey,
+              onTap: () => onSelect(kAllProductsKey),
+            ),
+            ...categories.map((c) => _RailItem(
+                  label: c.name,
+                  imageUrl: c.imageUrl ?? c.iconUrl,
+                  isSelected: selectedKey == c.id,
+                  onTap: () => onSelect(c.id),
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RailItem extends StatelessWidget {
+  final String label;
+  final String? imageUrl;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RailItem({required this.label, this.imageUrl, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? colors.green.withOpacity(0.1) : null,
+          border: Border(left: BorderSide(color: isSelected ? colors.green : Colors.transparent, width: 3)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 6),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: colors.chipBackground, borderRadius: BorderRadius.circular(12)),
+              clipBehavior: Clip.antiAlias,
+              child: imageUrl?.isNotEmpty == true
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Icon(Icons.category_outlined, size: 20, color: colors.muted),
+                    )
+                  : Icon(
+                      label == 'All' ? Icons.apps : Icons.category_outlined,
+                      size: 20,
+                      color: isSelected ? colors.green : colors.muted,
+                    ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                color: isSelected ? colors.green : colors.ink,
               ),
             ),
           ],
@@ -146,44 +213,165 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 }
 
-class _CategoryListRow extends StatelessWidget {
-  final CategoryEntity category;
-  const _CategoryListRow({required this.category});
+class _ProductsArea extends ConsumerWidget {
+  final String categoryKey;
+  final bool isTileView;
+  final String searchQuery;
+  const _ProductsArea({required this.categoryKey, required this.isTileView, required this.searchQuery});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stateAsync = ref.watch(browseProductsProvider(categoryKey));
+
+    return stateAsync.when(
+      loading: () => _skeleton(isTileView),
+      error: (error, _) => ErrorStateWidget(
+        message: 'Could not load products.',
+        onRetry: () => ref.invalidate(browseProductsProvider(categoryKey)),
+      ),
+      data: (state) {
+        if (state.errorMessage != null && state.items.isEmpty) {
+          return ErrorStateWidget(
+            message: state.errorMessage!,
+            onRetry: () => ref.invalidate(browseProductsProvider(categoryKey)),
+          );
+        }
+
+        final items = searchQuery.isEmpty
+            ? state.items
+            : state.items.where((p) => p.name.toLowerCase().contains(searchQuery)).toList();
+
+        if (items.isEmpty) {
+          return EmptyStateWidget(
+            message: searchQuery.isEmpty ? 'No products found.' : 'No products match "$searchQuery".',
+            icon: Icons.shopping_bag_outlined,
+          );
+        }
+
+        return isTileView
+            ? GridView.builder(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: AppSpacing.sm,
+                  crossAxisSpacing: AppSpacing.sm,
+                  childAspectRatio: 0.66,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final product = items[index];
+                  return BrowseProductTile(product: product, onTap: () => context.push('/product/${product.id}'));
+                },
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, 96),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final product = items[index];
+                  return _ProductListRow(product: product, onTap: () => context.push('/product/${product.id}'));
+                },
+              );
+      },
+    );
+  }
+
+  Widget _skeleton(bool tileView) {
+    if (!tileView) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        itemCount: 5,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, __) => const SizedBox(height: 84, child: ProductCardSkeleton()),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacing.sm,
+        crossAxisSpacing: AppSpacing.sm,
+        childAspectRatio: 0.66,
+      ),
+      itemCount: 6,
+      itemBuilder: (_, __) => const ProductCardSkeleton(),
+    );
+  }
+}
+
+/// Compact horizontal row for list view — image, name/unit, price, and
+/// a quick add button, all in one line instead of a tile's stacked layout.
+class _ProductListRow extends ConsumerWidget {
+  final ProductEntity product;
+  final VoidCallback onTap;
+  const _ProductListRow({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
-    final imageUrl = category.imageUrl ?? category.iconUrl;
 
     return Material(
       color: colors.card,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.push('/category/${category.id}', extra: category.name),
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           child: Row(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: imageUrl?.isNotEmpty == true
+                  width: 64,
+                  height: 64,
+                  child: product.primaryImage.isNotEmpty
                       ? CachedNetworkImage(
-                          imageUrl: imageUrl!,
+                          imageUrl: product.primaryImage,
                           fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Container(color: colors.chipBackground, child: Icon(Icons.category_outlined, color: colors.muted)),
+                          errorWidget: (_, __, ___) => Container(color: colors.chipBackground, child: Icon(Icons.image_outlined, color: colors.muted)),
                         )
-                      : Container(color: colors.chipBackground, child: Icon(Icons.category_outlined, color: colors.muted)),
+                      : Container(color: colors.chipBackground, child: Icon(Icons.image_outlined, color: colors.muted)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(category.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.ink)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: colors.ink)),
+                    if (product.unit.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(product.unit, style: TextStyle(fontSize: 11, color: colors.muted)),
+                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text('₹${product.displayPrice.toStringAsFixed(0)}',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: colors.green)),
+                        if (product.hasDiscount) ...[
+                          const SizedBox(width: 6),
+                          Text('₹${product.basePrice.toStringAsFixed(0)}',
+                              style: TextStyle(fontSize: 11, decoration: TextDecoration.lineThrough, color: colors.muted)),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              Icon(Icons.chevron_right, color: colors.muted),
+              Material(
+                color: colors.green,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: product.isInStock ? () => ref.read(cartProvider.notifier).addProduct(product) : null,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
