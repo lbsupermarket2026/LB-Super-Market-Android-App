@@ -373,7 +373,7 @@ class _PricingSummary extends StatelessWidget {
           _row('Item total', '₹${pricing.subtotal.toStringAsFixed(0)}'),
           if (pricing.gstAmount > 0) _row('GST', '₹${pricing.gstAmount.toStringAsFixed(0)}'),
           if (pricing.deliveryCharge != null)
-            _row('Delivery',
+            _row('Delivery${pricing.distanceKm != null ? ' (${pricing.distanceKm!.toStringAsFixed(1)} km)' : ''}',
                 '₹${pricing.deliveryCharge!.toStringAsFixed(0)}')
           else if (!pricing.outOfDeliveryRange)
             _row('Delivery', 'Calculated after address'),

@@ -1,3 +1,4 @@
+import 'package:geolocator/geolocator.dart';
 import '../../../addresses/domain/entities/address_entity.dart';
 import '../../../admin/delivery_settings/domain/entities/delivery_settings_entity.dart';
 import '../../domain/entities/cart_item_entity.dart';
@@ -6,9 +7,10 @@ import '../../../categories/domain/entities/category_entity.dart';
 class CheckoutPricing {
   final double subtotal;
   final double gstAmount;
-  final double? deliveryCharge; // null = out of delivery range or no pincode yet
+  final double? deliveryCharge; // null = out of delivery range or no address/store location yet
   final bool belowMinimumOrder;
   final bool outOfDeliveryRange;
+  final double? distanceKm;
 
   const CheckoutPricing({
     required this.subtotal,
@@ -16,6 +18,7 @@ class CheckoutPricing {
     required this.deliveryCharge,
     required this.belowMinimumOrder,
     required this.outOfDeliveryRange,
+    required this.distanceKm,
   });
 
   double get total => subtotal + gstAmount + (deliveryCharge ?? 0);
@@ -24,10 +27,11 @@ class CheckoutPricing {
 
 class CheckoutCalculator {
   /// Pure function — no Firestore calls of its own, everything it needs
-  /// is passed in. Delivery is priced by pincode (exact match against
-  /// what admin has configured) rather than measured distance — more
-  /// reliable than geocoding informal address text, and matches how a
-  /// local delivery service actually decides where it delivers.
+  /// is passed in. Back to distance-based delivery pricing — the
+  /// accuracy of this depends entirely on the ADDRESS having real
+  /// coordinates, which is why "Pinpoint on Map" (confirming the exact
+  /// spot rather than trusting geocoded address text) matters so much
+  /// for this to work correctly.
   static CheckoutPricing calculate({
     required List<CartItemEntity> items,
     required Map<String, CategoryEntity> categoriesById,
@@ -47,18 +51,27 @@ class CheckoutCalculator {
 
     final belowMinimum = subtotal < deliverySettings.minimumOrderAmount;
 
+    double? distanceKm;
     double? deliveryCharge;
     bool outOfRange = false;
 
-    final pincode = deliveryAddress?.pincode.trim();
-    if (pincode != null && pincode.isNotEmpty) {
-      deliveryCharge = deliverySettings.chargeForPincode(pincode);
+    if (deliverySettings.hasStoreLocation && deliveryAddress?.hasCoordinates == true) {
+      final meters = Geolocator.distanceBetween(
+        deliverySettings.storeLatitude!,
+        deliverySettings.storeLongitude!,
+        deliveryAddress!.latitude!,
+        deliveryAddress.longitude!,
+      );
+      distanceKm = meters / 1000;
+      deliveryCharge = deliverySettings.chargeForDistance(distanceKm);
       outOfRange = deliveryCharge == null;
     }
-    // No address/pincode yet → delivery charge stays null without
-    // flagging out-of-range, same "not yet calculable" treatment as
-    // before — this is the checkout screen waiting on input, not a
-    // real delivery problem.
+    // If store location isn't set up yet, or the address has no
+    // coordinates (geocoding failed / pinpoint was never used when it
+    // was saved), delivery charge stays null rather than blocking
+    // checkout — treated as "not yet calculable" rather than "too
+    // far," since that's admin/data setup catching up, not a real
+    // distance problem.
 
     return CheckoutPricing(
       subtotal: subtotal,
@@ -66,6 +79,7 @@ class CheckoutCalculator {
       deliveryCharge: deliveryCharge,
       belowMinimumOrder: belowMinimum,
       outOfDeliveryRange: outOfRange,
+      distanceKm: distanceKm,
     );
   }
 }
