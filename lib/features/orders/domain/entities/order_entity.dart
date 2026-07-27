@@ -64,6 +64,7 @@ class OrderItemEntity extends Equatable {
   final String imageUrl;
   final double price;
   final int quantity;
+  final String? categoryId; // snapshot at order time — used for GST on the bill
 
   const OrderItemEntity({
     required this.productId,
@@ -72,12 +73,13 @@ class OrderItemEntity extends Equatable {
     required this.imageUrl,
     required this.price,
     required this.quantity,
+    this.categoryId,
   });
 
   double get lineTotal => price * quantity;
 
   @override
-  List<Object?> get props => [productId, name, unit, imageUrl, price, quantity];
+  List<Object?> get props => [productId, name, unit, imageUrl, price, quantity, categoryId];
 }
 
 class OrderEntity extends Equatable {
@@ -91,6 +93,7 @@ class OrderEntity extends Equatable {
   final String? customerPhone;
   final double? deliveryLatitude;
   final double? deliveryLongitude;
+  final String? orderNumber; // human-readable display ID, e.g. "ORD-0001" — see SequentialIdService
   final PaymentMethod paymentMethod;
   final String? razorpayPaymentId;
   final String? refundStatus; // null | 'processing' | 'processed' | 'failed'
@@ -113,6 +116,7 @@ class OrderEntity extends Equatable {
     this.customerPhone,
     this.deliveryLatitude,
     this.deliveryLongitude,
+    this.orderNumber,
     this.paymentMethod = PaymentMethod.cod,
     this.razorpayPaymentId,
     this.refundStatus,
@@ -142,6 +146,7 @@ class OrderEntity extends Equatable {
         customerPhone,
         deliveryLatitude,
         deliveryLongitude,
+        orderNumber,
         paymentMethod,
         razorpayPaymentId,
         refundStatus,

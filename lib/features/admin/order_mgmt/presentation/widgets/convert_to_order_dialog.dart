@@ -84,6 +84,11 @@ class _ConvertToOrderDialogState extends ConsumerState<ConvertToOrderDialog> {
                 'Enter the final priced items after calling the customer.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
+              if (mutation.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(mutation.error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                ),
               const SizedBox(height: 12),
               ..._lines.asMap().entries.map((entry) {
                 final row = entry.value;

@@ -12,6 +12,7 @@ class OrderModel {
   final String? customerPhone;
   final double? deliveryLatitude;
   final double? deliveryLongitude;
+  final String? orderNumber;
   final String paymentMethod;
   final String? razorpayPaymentId;
   final String? refundStatus;
@@ -34,6 +35,7 @@ class OrderModel {
     this.customerPhone,
     this.deliveryLatitude,
     this.deliveryLongitude,
+    this.orderNumber,
     this.paymentMethod = 'cod',
     this.razorpayPaymentId,
     this.refundStatus,
@@ -70,6 +72,7 @@ class OrderModel {
       customerPhone: data['customerPhone'] as String?,
       deliveryLatitude: (data['deliveryLatitude'] as num?)?.toDouble(),
       deliveryLongitude: (data['deliveryLongitude'] as num?)?.toDouble(),
+      orderNumber: data['orderNumber'] as String?,
       razorpayPaymentId: data['razorpayPaymentId'] as String?,
       refundStatus: data['refundStatus'] as String?,
       refundId: data['refundId'] as String?,
@@ -94,6 +97,7 @@ class OrderModel {
                   imageUrl: (i['imageUrl'] as String?) ?? '',
                   price: (i['price'] as num?)?.toDouble() ?? 0,
                   quantity: (i['quantity'] as num?)?.toInt() ?? 0,
+                  categoryId: i['categoryId'] as String?,
                 ))
             .toList(),
         totalAmount: totalAmount,
@@ -103,6 +107,7 @@ class OrderModel {
         customerPhone: customerPhone,
         deliveryLatitude: deliveryLatitude,
         deliveryLongitude: deliveryLongitude,
+        orderNumber: orderNumber,
         paymentMethod: PaymentMethodX.fromString(paymentMethod),
         razorpayPaymentId: razorpayPaymentId,
         refundStatus: refundStatus,
@@ -123,6 +128,7 @@ class OrderModel {
     String? customerPhone,
     double? deliveryLatitude,
     double? deliveryLongitude,
+    String? orderNumber,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   }) {
@@ -136,6 +142,7 @@ class OrderModel {
       'customerPhone': customerPhone,
       'deliveryLatitude': deliveryLatitude,
       'deliveryLongitude': deliveryLongitude,
+      'orderNumber': orderNumber,
       'paymentMethod': paymentMethod,
       'razorpayPaymentId': razorpayPaymentId,
       'deliveryPersonName': null,

@@ -10,6 +10,7 @@ class UserModel {
   final String? email;
   final String? phone;
   final String? photoUrl;
+  final String? customerCode;
   final String role; // raw string as stored: "customer" | "employee" | "admin"
   final int loyaltyPoints;
   final String? defaultAddressId;
@@ -22,6 +23,7 @@ class UserModel {
     this.email,
     this.phone,
     this.photoUrl,
+    this.customerCode,
     this.role = 'customer',
     this.loyaltyPoints = 0,
     this.defaultAddressId,
@@ -37,6 +39,7 @@ class UserModel {
       email: data['email'] as String?,
       phone: data['phone'] as String?,
       photoUrl: data['photoUrl'] as String?,
+      customerCode: data['customerCode'] as String?,
       role: (data['role'] as String?) ?? 'customer',
       loyaltyPoints: (data['loyaltyPoints'] as num?)?.toInt() ?? 0,
       defaultAddressId: data['defaultAddressId'] as String?,
@@ -50,6 +53,7 @@ class UserModel {
         'email': email,
         'phone': phone,
         'photoUrl': photoUrl,
+        'customerCode': customerCode,
         'role': role,
         'loyaltyPoints': loyaltyPoints,
         'defaultAddressId': defaultAddressId,
@@ -69,6 +73,7 @@ class UserModel {
         email: email,
         phone: phone,
         photoUrl: photoUrl,
+        customerCode: customerCode,
         role: userRoleFromString(role),
         loyaltyPoints: loyaltyPoints,
         defaultAddressId: defaultAddressId,

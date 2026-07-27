@@ -33,6 +33,7 @@ class UserEntity extends Equatable {
   final String? email;
   final String? phone;
   final String? photoUrl;
+  final String? customerCode; // human-readable display ID, e.g. "CUST-0001"
   final UserRole role;
   final int loyaltyPoints;
   final String? defaultAddressId;
@@ -44,6 +45,7 @@ class UserEntity extends Equatable {
     this.email,
     this.phone,
     this.photoUrl,
+    this.customerCode,
     this.role = UserRole.customer,
     this.loyaltyPoints = 0,
     this.defaultAddressId,
@@ -55,5 +57,5 @@ class UserEntity extends Equatable {
   bool get isStaff => isAdmin || isEmployee;
 
   @override
-  List<Object?> get props => [uid, name, email, phone, photoUrl, role, loyaltyPoints, defaultAddressId, isBlocked];
+  List<Object?> get props => [uid, name, email, phone, photoUrl, customerCode, role, loyaltyPoints, defaultAddressId, isBlocked];
 }

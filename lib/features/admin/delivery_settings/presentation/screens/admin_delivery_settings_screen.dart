@@ -19,17 +19,19 @@ class AdminDeliverySettingsScreen extends ConsumerStatefulWidget {
 
 class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySettingsScreen> {
   final _addressController = TextEditingController();
+  final _gstController = TextEditingController();
   final _minOrderController = TextEditingController(text: '200');
   bool _onlinePaymentsEnabled = true;
   double? _lat;
   double? _lng;
-  List<_SlabDraft> _slabs = [];
+  List<_PincodeDraft> _pincodes = [];
   bool _isLoadingLocation = false;
   bool _initialized = false;
 
   @override
   void dispose() {
     _addressController.dispose();
+    _gstController.dispose();
     _minOrderController.dispose();
     super.dispose();
   }
@@ -38,20 +40,17 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
     if (_initialized) return;
     _initialized = true;
     _addressController.text = settings.storeAddress;
+    _gstController.text = settings.gstNumber;
     _minOrderController.text = settings.minimumOrderAmount.toStringAsFixed(0);
     _onlinePaymentsEnabled = settings.onlinePaymentsEnabled;
     _lat = settings.storeLatitude;
     _lng = settings.storeLongitude;
-    _slabs = settings.slabs
-        .map((s) => _SlabDraft(minKm: s.minKm, maxKm: s.maxKm, charge: s.charge))
+    _pincodes = settings.pincodeCharges
+        .map((s) => _PincodeDraft(pincode: s.pincode, charge: s.charge))
         .toList();
-    if (_slabs.isEmpty) {
-      // Sensible starting point so admin isn't staring at a blank list —
-      // matches the example ranges given when this was requested.
-      _slabs = [
-        _SlabDraft(minKm: 0, maxKm: 5, charge: 30),
-        _SlabDraft(minKm: 5, maxKm: 10, charge: 50),
-      ];
+    if (_pincodes.isEmpty) {
+      // One blank row so admin isn't staring at an empty list.
+      _pincodes = [_PincodeDraft(pincode: '', charge: 30)];
     }
   }
 
@@ -96,12 +95,12 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
       storeAddress: _addressController.text.trim(),
       minimumOrderAmount: double.tryParse(_minOrderController.text) ?? 200,
       onlinePaymentsEnabled: _onlinePaymentsEnabled,
-      slabs: _slabs
-          .where((s) => s.minKmController.text.isNotEmpty && s.maxKmController.text.isNotEmpty && s.chargeController.text.isNotEmpty)
-          .map((s) => DeliverySlabEntity(
-                minKm: double.tryParse(s.minKmController.text) ?? 0,
-                maxKm: double.tryParse(s.maxKmController.text) ?? 0,
-                charge: double.tryParse(s.chargeController.text) ?? 0,
+      gstNumber: _gstController.text.trim(),
+      pincodeCharges: _pincodes
+          .where((p) => p.pincodeController.text.trim().isNotEmpty && p.chargeController.text.isNotEmpty)
+          .map((p) => PincodeChargeEntity(
+                pincode: p.pincodeController.text.trim(),
+                charge: double.tryParse(p.chargeController.text) ?? 0,
               ))
           .toList(),
     );
@@ -135,7 +134,7 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'This is the fixed point delivery distance is measured from. Stand at the store when capturing it.',
+                      'Used for the "view on map" links employees see for each delivery — not used for pricing, which is by pincode below.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
@@ -186,6 +185,11 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                       controller: _addressController,
                       decoration: const InputDecoration(labelText: 'Store Address (for display only)'),
                     ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _gstController,
+                      decoration: const InputDecoration(labelText: 'GST Number (shown on customer bills)'),
+                    ),
                   ],
                 ),
               ),
@@ -213,23 +217,23 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                 ),
               ),
               _Card(
-                title: 'Delivery Charges by Distance',
+                title: 'Delivery Charges by Pincode',
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Ranges shouldn\'t overlap or leave gaps you want covered — e.g. 0–5 km, then 5–10 km, and so on.',
+                      'Add every pincode you deliver to, with its charge. An address whose pincode isn\'t listed here is treated as outside your delivery range.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
-                    ..._slabs.asMap().entries.map((entry) => _SlabRow(
+                    ..._pincodes.asMap().entries.map((entry) => _PincodeRow(
                           draft: entry.value,
-                          onRemove: () => setState(() => _slabs.removeAt(entry.key)),
+                          onRemove: () => setState(() => _pincodes.removeAt(entry.key)),
                         )),
                     TextButton.icon(
-                      onPressed: () => setState(() => _slabs.add(_SlabDraft(minKm: 0, maxKm: 0, charge: 0))),
+                      onPressed: () => setState(() => _pincodes.add(_PincodeDraft(pincode: '', charge: 30))),
                       icon: const Icon(Icons.add),
-                      label: const Text('Add Range'),
+                      label: const Text('Add Pincode'),
                     ),
                   ],
                 ),
@@ -254,21 +258,19 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
   }
 }
 
-class _SlabDraft {
-  final TextEditingController minKmController;
-  final TextEditingController maxKmController;
+class _PincodeDraft {
+  final TextEditingController pincodeController;
   final TextEditingController chargeController;
 
-  _SlabDraft({required double minKm, required double maxKm, required double charge})
-      : minKmController = TextEditingController(text: minKm.toStringAsFixed(minKm % 1 == 0 ? 0 : 1)),
-        maxKmController = TextEditingController(text: maxKm.toStringAsFixed(maxKm % 1 == 0 ? 0 : 1)),
+  _PincodeDraft({required String pincode, required double charge})
+      : pincodeController = TextEditingController(text: pincode),
         chargeController = TextEditingController(text: charge.toStringAsFixed(0));
 }
 
-class _SlabRow extends StatelessWidget {
-  final _SlabDraft draft;
+class _PincodeRow extends StatelessWidget {
+  final _PincodeDraft draft;
   final VoidCallback onRemove;
-  const _SlabRow({required this.draft, required this.onRemove});
+  const _PincodeRow({required this.draft, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -276,51 +278,30 @@ class _SlabRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: const Color(0xFFF6F8ED), borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: draft.minKmController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'From (km)', isDense: true, filled: true, fillColor: Colors.white),
-                ),
-              ),
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('to')),
-              Expanded(
-                child: TextField(
-                  controller: draft.maxKmController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'To (km)', isDense: true, filled: true, fillColor: Colors.white),
-                ),
-              ),
-            ],
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: draft.pincodeController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(labelText: 'Pincode', isDense: true, filled: true, fillColor: Colors.white, counterText: ''),
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: draft.chargeController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    prefixText: '₹ ',
-                    labelText: 'Delivery Charge',
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: _red),
-                onPressed: onRemove,
-                tooltip: 'Remove this range',
-              ),
-            ],
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: TextField(
+              controller: draft.chargeController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Charge', isDense: true, filled: true, fillColor: Colors.white),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: _red),
+            onPressed: onRemove,
+            tooltip: 'Remove this pincode',
           ),
         ],
       ),

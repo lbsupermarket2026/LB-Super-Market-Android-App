@@ -8,6 +8,7 @@ import '../../../../authentication/domain/entities/user_entity.dart';
 import '../../../order_mgmt/presentation/providers/admin_order_providers.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
+import '../../../notifications/presentation/providers/admin_notifications_providers.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -23,6 +24,7 @@ class AdminDashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         actions: [
+          _NotificationBell(),
           IconButton(
             icon: const Icon(Icons.person_outline),
             tooltip: 'Profile',
@@ -204,6 +206,44 @@ class _AdminTile extends StatelessWidget {
         trailing: disabled ? null : Icon(Icons.chevron_right, color: colors.muted),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+class _NotificationBell extends ConsumerWidget {
+  const _NotificationBell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Just watching for the count here — the actual list/read-state is
+    // fetched again on the notifications screen itself, keeping this
+    // widget cheap to rebuild every time a badge-relevant change comes in.
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          tooltip: 'Notifications',
+          onPressed: () => context.push('/admin/notifications'),
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+              child: Text(
+                unreadCount > 9 ? '9+' : '$unreadCount',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

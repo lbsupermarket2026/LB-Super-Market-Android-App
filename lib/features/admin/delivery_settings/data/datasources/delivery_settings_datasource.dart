@@ -15,19 +15,19 @@ class DeliverySettingsDataSource {
     final data = snapshot.data();
     if (data == null) return const DeliverySettingsEntity();
 
-    final rawSlabs = (data['slabs'] as List<dynamic>?) ?? const [];
+    final rawPincodes = (data['pincodeCharges'] as List<dynamic>?) ?? const [];
     return DeliverySettingsEntity(
       storeLatitude: (data['storeLatitude'] as num?)?.toDouble(),
       storeLongitude: (data['storeLongitude'] as num?)?.toDouble(),
       storeAddress: (data['storeAddress'] as String?) ?? '',
       minimumOrderAmount: (data['minimumOrderAmount'] as num?)?.toDouble() ?? 200,
       onlinePaymentsEnabled: (data['onlinePaymentsEnabled'] as bool?) ?? true,
-      slabs: rawSlabs
+      gstNumber: (data['gstNumber'] as String?) ?? '',
+      pincodeCharges: rawPincodes
           .cast<Map<String, dynamic>>()
-          .map((s) => DeliverySlabEntity(
-                minKm: (s['minKm'] as num).toDouble(),
-                maxKm: (s['maxKm'] as num).toDouble(),
-                charge: (s['charge'] as num).toDouble(),
+          .map((s) => PincodeChargeEntity(
+                pincode: (s['pincode'] as String?) ?? '',
+                charge: (s['charge'] as num?)?.toDouble() ?? 0,
               ))
           .toList(),
     );
@@ -40,8 +40,9 @@ class DeliverySettingsDataSource {
       'storeAddress': settings.storeAddress,
       'minimumOrderAmount': settings.minimumOrderAmount,
       'onlinePaymentsEnabled': settings.onlinePaymentsEnabled,
-      'slabs': settings.slabs
-          .map((s) => {'minKm': s.minKm, 'maxKm': s.maxKm, 'charge': s.charge})
+      'gstNumber': settings.gstNumber,
+      'pincodeCharges': settings.pincodeCharges
+          .map((s) => {'pincode': s.pincode, 'charge': s.charge})
           .toList(),
     });
   }

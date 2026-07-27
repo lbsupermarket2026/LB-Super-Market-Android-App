@@ -1,8 +1,8 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret, defineString } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
 const crypto = require("crypto");
 
@@ -185,3 +185,47 @@ exports.autoRefundOnCancel = onDocumentUpdated(
     }
   }
 );
+
+// ============================================================
+// 4. Admin notifications — new order placed / stock ran low.
+// ============================================================
+// Written via the Admin SDK (this function), which bypasses
+// Firestore rules entirely — that's deliberate: a customer placing
+// an order shouldn't need write access to a notifications collection
+// just so the admin can be told about it. Same reasoning applies to
+// the low-stock check, which is triggered by an ordinary product
+// update (e.g. a stock decrement after an order is confirmed).
+exports.notifyOnNewOrder = onDocumentCreated("orders/{orderId}", async (event) => {
+  const order = event.data.data();
+  await db.collection("notifications").add({
+    type: "new_order",
+    title: "New order placed",
+    body: `Order ${order.orderNumber || event.params.orderId} — Rs. ${order.totalAmount}`,
+    orderId: event.params.orderId,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+});
+
+exports.notifyOnLowStock = onDocumentUpdated("products/{productId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+
+  const threshold = after.lowStockThreshold ?? 5;
+  const wasLow = before.stockQty <= threshold;
+  const isLowNow = after.stockQty <= threshold && after.stockQty > 0;
+
+  // Only fires the moment stock crosses INTO low territory — not on
+  // every single update to an already-low product, which would spam
+  // the same alert repeatedly.
+  if (wasLow || !isLowNow) return;
+
+  await db.collection("notifications").add({
+    type: "low_stock",
+    title: "Low stock alert",
+    body: `${after.name} — only ${after.stockQty} left (threshold: ${threshold})`,
+    productId: event.params.productId,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+});

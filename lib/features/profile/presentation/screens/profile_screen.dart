@@ -70,8 +70,6 @@ class ProfileScreen extends ConsumerWidget {
                     children: [
                       _StatItem(value: '$orderCount', label: 'Orders'),
                       const SizedBox(width: 26),
-                      _StatItem(value: '${user?.loyaltyPoints ?? 0}', label: 'Points'),
-                      const SizedBox(width: 26),
                       _StatItem(value: '$addressCount', label: 'Addresses'),
                     ],
                   ),

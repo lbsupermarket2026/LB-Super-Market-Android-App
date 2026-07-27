@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../employee_mgmt/presentation/providers/employee_providers.dart';
 import '../../../employee_mgmt/domain/entities/staff_member_entity.dart';
+import '../../../../orders/presentation/widgets/order_bill_actions.dart';
 import '../providers/admin_order_providers.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -39,7 +40,16 @@ class AdminOrderDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8ED),
-      appBar: AppBar(title: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}')),
+      appBar: AppBar(
+        title: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'Download Bill',
+            onPressed: () => generateAndShareOrderBill(context, ref, order),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [

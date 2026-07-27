@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../domain/entities/order_entity.dart';
 import '../providers/order_providers.dart';
+import '../widgets/order_bill_actions.dart';
 import '../widgets/order_status_stepper.dart';
 import '../widgets/rate_order_dialog.dart';
 
@@ -28,6 +29,14 @@ class OrderDetailScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.canPop() ? context.pop() : context.go('/orders'),
         ),
+        actions: [
+          if (orderAsync.valueOrNull != null)
+            IconButton(
+              icon: const Icon(Icons.receipt_long_outlined),
+              tooltip: 'Download Bill',
+              onPressed: () => generateAndShareOrderBill(context, ref, orderAsync.valueOrNull!),
+            ),
+        ],
       ),
       body: orderAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

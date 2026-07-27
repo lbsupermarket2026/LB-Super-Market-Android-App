@@ -16,7 +16,7 @@ class ProductCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 150,
+        width: 128,
         decoration: BoxDecoration(
           // Hardcoded white/dark-text, same reasoning as CategoryCard —
           // this should always look like the (light-themed) website,

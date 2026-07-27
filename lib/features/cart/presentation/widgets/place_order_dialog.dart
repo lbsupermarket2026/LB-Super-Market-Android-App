@@ -190,6 +190,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
                     'imageUrl': i.imageUrl,
                     'price': i.price,
                     'quantity': i.quantity,
+                    'categoryId': i.categoryId,
                   })
               .toList(),
           totalAmount: total,
@@ -372,7 +373,7 @@ class _PricingSummary extends StatelessWidget {
           _row('Item total', '₹${pricing.subtotal.toStringAsFixed(0)}'),
           if (pricing.gstAmount > 0) _row('GST', '₹${pricing.gstAmount.toStringAsFixed(0)}'),
           if (pricing.deliveryCharge != null)
-            _row('Delivery${pricing.distanceKm != null ? ' (${pricing.distanceKm!.toStringAsFixed(1)} km)' : ''}',
+            _row('Delivery',
                 '₹${pricing.deliveryCharge!.toStringAsFixed(0)}')
           else if (!pricing.outOfDeliveryRange)
             _row('Delivery', 'Calculated after address'),

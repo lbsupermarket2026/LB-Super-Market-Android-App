@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/firestore_paths.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/services/sequential_id_service.dart';
 import '../../domain/entities/order_entity.dart';
 import '../models/order_model.dart';
 
@@ -9,6 +10,19 @@ class OrderRemoteDataSource {
   OrderRemoteDataSource({FirebaseFirestore? firestore}) : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _collection => _firestore.collection(FirestorePaths.orders);
+
+  /// Assigns a "CUST-0001" style code the first time this customer ever
+  /// places an order that has one — covers both new signups and
+  /// existing accounts created before this feature existed, without
+  /// needing a separate one-off migration script.
+  Future<void> _ensureCustomerCode(String userId) async {
+    final userRef = _firestore.collection(FirestorePaths.users).doc(userId);
+    final snapshot = await userRef.get();
+    if (snapshot.data()?['customerCode'] != null) return;
+
+    final code = await SequentialIdService().next(counterField: 'nextCustomerNumber', prefix: 'CUST');
+    await userRef.set({'customerCode': code}, SetOptions(merge: true));
+  }
 
   /// Customer-initiated cancellation — only touches the status field, so
   /// it matches the narrow Firestore rule exception that lets a customer
@@ -42,6 +56,9 @@ class OrderRemoteDataSource {
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   }) async {
+    final orderNumber = await SequentialIdService().next(counterField: 'nextOrderNumber', prefix: 'ORD');
+    await _ensureCustomerCode(userId);
+
     final docRef = await _collection.add(OrderModel.toFirestoreMap(
       userId: userId,
       items: items,
@@ -50,6 +67,7 @@ class OrderRemoteDataSource {
       customerPhone: customerPhone,
           deliveryLatitude: deliveryLatitude,
           deliveryLongitude: deliveryLongitude,
+      orderNumber: orderNumber,
       paymentMethod: paymentMethod,
       razorpayPaymentId: razorpayPaymentId,
     ));
