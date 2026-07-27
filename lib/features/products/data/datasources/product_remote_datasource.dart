@@ -128,11 +128,20 @@ class ProductRemoteDataSource {
     final normalized = query.trim().toLowerCase();
     if (normalized.isEmpty) return const [];
 
-    final snapshot = await _collection
-        .where('isActive', isEqualTo: true)
-        .where('searchKeywords', arrayContains: normalized)
-        .limit(limit)
-        .get();
-    return snapshot.docs.map(ProductModel.fromFirestore).toList();
+    // Was filtering on a 'searchKeywords' array field that's never
+    // actually populated anywhere products get created or edited —
+    // meaning this always returned zero results, for every product,
+    // since the day this was written. Filtering by name client-side
+    // instead works immediately for every existing product too, with
+    // no backfill needed. Fine for a single local store's catalog
+    // size; would need revisiting if the catalog ever grows into the
+    // thousands.
+    final snapshot = await _collection.where('isActive', isEqualTo: true).get();
+    final matches = snapshot.docs
+        .map(ProductModel.fromFirestore)
+        .where((p) => p.name.toLowerCase().contains(normalized))
+        .take(limit)
+        .toList();
+    return matches;
   }
 }

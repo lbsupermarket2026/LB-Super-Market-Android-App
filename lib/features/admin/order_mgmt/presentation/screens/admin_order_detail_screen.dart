@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../employee_mgmt/presentation/providers/employee_providers.dart';
 import '../../../employee_mgmt/domain/entities/staff_member_entity.dart';
 import '../../../../orders/presentation/widgets/order_bill_actions.dart';
+import '../../../../orders/presentation/widgets/edit_order_dialog.dart';
 import '../providers/admin_order_providers.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -38,14 +40,29 @@ class AdminOrderDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mutation = ref.watch(adminOrderMutationProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(
         title: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}'),
         actions: [
+          if (order.status == OrderStatus.placed)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Order',
+              onPressed: () async {
+                final edited = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => EditOrderDialog(order: order),
+                );
+                if (edited == true && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order updated.')));
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.receipt_long_outlined),
-            tooltip: 'Download Bill',
+            tooltip: 'Bill',
             onPressed: () => generateAndShareOrderBill(context, ref, order),
           ),
         ],

@@ -5,14 +5,21 @@ import '../../domain/entities/offer_card_entity.dart';
 /// Renders one offer card in the style baked into its template —
 /// admin only ever supplies the text, never the layout/colors, so
 /// every card stays visually consistent no matter who fills it in.
-/// Always sized by the caller (full-width in the carousel) rather than
-/// choosing its own width, so it works the same on Home and the
-/// Offers screen.
+///
+/// Sets its own height by default (150) rather than relying on
+/// whatever wraps it to provide bounded constraints — this widget
+/// used to require a StackFit.expand parent with an explicit height,
+/// and every place that got that wrong (a dialog preview, a plain
+/// ListView item) crashed the whole surrounding layout instead of
+/// just this card. Self-sizing means it can't happen again regardless
+/// of where this gets used next. Pass [height] to override when a
+/// caller genuinely wants a different size (the Home carousel does).
 class OfferCardTile extends StatelessWidget {
   final OfferCardEntity card;
   final VoidCallback? onTap;
+  final double height;
 
-  const OfferCardTile({super.key, required this.card, this.onTap});
+  const OfferCardTile({super.key, required this.card, this.onTap, this.height = 150});
 
   ({List<Color> gradient, Color fg, IconData icon}) _styleFor(OfferTemplate template) {
     switch (template) {
@@ -27,15 +34,30 @@ class OfferCardTile extends StatelessWidget {
     }
   }
 
+  /// Only trusts imageUrl if it's genuinely a usable http(s) URL — a
+  /// partially-failed upload (a real thing we've hit — Storage rules
+  /// blocking the write) could otherwise leave a blank or malformed
+  /// string in this field, and CachedNetworkImage can throw
+  /// synchronously on a URL that isn't parseable at all, which is a
+  /// different failure mode than "image failed to load" and doesn't
+  /// go through errorWidget.
+  bool get _hasUsableImage {
+    final url = card.imageUrl;
+    if (url == null || url.trim().isEmpty) return false;
+    final uri = Uri.tryParse(url);
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = _styleFor(card.template);
-    final hasImage = card.imageUrl?.isNotEmpty == true;
+    final hasImage = _hasUsableImage;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
+        height: height,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),

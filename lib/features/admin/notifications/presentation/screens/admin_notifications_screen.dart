@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/admin_notification_entity.dart';
 import '../providers/admin_notifications_providers.dart';
@@ -15,8 +16,9 @@ class AdminNotificationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsAsync = ref.watch(adminNotificationsProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(
         title: const Text('Notifications'),
         actions: [

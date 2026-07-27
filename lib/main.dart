@@ -20,6 +20,15 @@ Future<void> main() async {
 Future<void> bootstrap({FirebaseOptions? firebaseOptions}) async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // A widget-level build/layout exception anywhere in the app renders
+  // as a small placeholder in just that spot instead of taking down
+  // the whole screen — this doesn't fix the underlying cause of any
+  // specific crash, but it means one bad widget can no longer become
+  // a full app crash while we track down what's actually wrong.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const SizedBox.shrink();
+  };
+
   await Firebase.initializeApp(
     options: firebaseOptions ?? DefaultFirebaseOptions.currentPlatform,
   );

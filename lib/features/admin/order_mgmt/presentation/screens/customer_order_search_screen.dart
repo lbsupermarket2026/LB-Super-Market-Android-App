@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../providers/admin_order_providers.dart';
@@ -43,8 +44,9 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Customer Order History')),
       body: Column(
         children: [

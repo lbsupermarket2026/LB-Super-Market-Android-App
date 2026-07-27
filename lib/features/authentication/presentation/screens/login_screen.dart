@@ -47,26 +47,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final signInState = ref.watch(signInNotifierProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: AppSpacing.xl),
-                Center(
-                  child: Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10)],
-                    ),
-                    padding: const EdgeInsets.all(12),
-                    child: Image.asset(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFE8F0DE), Color(0xFFF6F8ED), Color(0xFFDCEBD4)],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: AppSpacing.xl),
+                  Center(
+                    child: Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10)],
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(
                       'assets/images/bs_logo.png',
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => const Icon(Icons.storefront, size: 56, color: Color(0xFF2E7D32)),
@@ -135,6 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

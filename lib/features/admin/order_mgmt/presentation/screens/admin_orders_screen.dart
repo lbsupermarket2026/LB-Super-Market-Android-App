@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
@@ -16,10 +17,11 @@ class AdminOrdersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F8ED),
+        backgroundColor: colors.surface,
         appBar: AppBar(
           title: const Text('Orders'),
           bottom: const TabBar(

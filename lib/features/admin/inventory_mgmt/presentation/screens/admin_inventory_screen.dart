@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../categories/domain/entities/category_entity.dart';
 import '../../../../products/domain/entities/product_entity.dart';
@@ -16,10 +17,11 @@ class AdminInventoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F8ED),
+        backgroundColor: colors.surface,
         appBar: AppBar(
           title: const Text('Inventory'),
           bottom: const TabBar(

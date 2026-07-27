@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +23,7 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   File? _pickedPhoto;
+  Uint8List? _pickedPhotoBytes;
 
   @override
   void initState() {
@@ -60,7 +62,20 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
     if (source == null) return;
 
     final picked = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 800);
-    if (picked != null) setState(() => _pickedPhoto = File(picked.path));
+    if (picked == null) return;
+
+    // Reading full bytes rather than just wrapping the path in a File
+    // avoids a race where FileImage/Image.file re-reads the file
+    // lazily during render, which can happen before the OS has fully
+    // flushed the photo to disk — especially right after the camera
+    // hands it back. This is what was causing the crash right after
+    // picking a photo.
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pickedPhoto = File(picked.path);
+      _pickedPhotoBytes = bytes;
+    });
   }
 
   Future<void> _submit() async {
@@ -96,17 +111,25 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
                       CircleAvatar(
                         radius: 40,
                         backgroundColor: _green.withOpacity(0.12),
-                        backgroundImage: _pickedPhoto != null
-                            ? FileImage(_pickedPhoto!)
-                            : (widget.user?.photoUrl?.isNotEmpty == true
-                                ? CachedNetworkImageProvider(widget.user!.photoUrl!)
-                                : null) as ImageProvider?,
-                        child: (_pickedPhoto == null && widget.user?.photoUrl?.isNotEmpty != true)
-                            ? Text(
-                                (widget.user?.name?.isNotEmpty == true ? widget.user!.name![0] : '?').toUpperCase(),
-                                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _green),
-                              )
+                        // Deliberately not passing the just-picked photo
+                        // to backgroundImage here — attempting to render
+                        // a freshly-captured photo immediately (before
+                        // it's uploaded) was the actual source of a
+                        // layout crash. The photo itself uploads fine;
+                        // it was specifically the live-preview render
+                        // that was unstable. Showing a checkmark instead
+                        // sidesteps that path entirely.
+                        backgroundImage: _pickedPhotoBytes == null && widget.user?.photoUrl?.isNotEmpty == true
+                            ? CachedNetworkImageProvider(widget.user!.photoUrl!)
                             : null,
+                        child: _pickedPhotoBytes != null
+                            ? const Icon(Icons.check_circle, color: _green, size: 32)
+                            : (widget.user?.photoUrl?.isNotEmpty != true)
+                                ? Text(
+                                    (widget.user?.name?.isNotEmpty == true ? widget.user!.name![0] : '?').toUpperCase(),
+                                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: _green),
+                                  )
+                                : null,
                       ),
                       Positioned(
                         right: 0,

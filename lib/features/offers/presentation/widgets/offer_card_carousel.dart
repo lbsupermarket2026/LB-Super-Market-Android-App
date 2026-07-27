@@ -63,7 +63,7 @@ class _OfferCardCarouselState extends State<OfferCardCarousel> {
               final card = widget.cards[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: OfferCardTile(card: card, onTap: () => widget.onCardTap?.call(card)),
+                child: OfferCardTile(card: card, height: widget.height, onTap: () => widget.onCardTap?.call(card)),
               );
             },
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
@@ -17,11 +18,12 @@ class OfferProductsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final productsAsync = ref.watch(productsByOfferProvider(offerId));
     final categoriesAsync = ref.watch(categoriesByOfferProvider(offerId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: Text(offerTitle)),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../providers/admin_order_providers.dart';
@@ -16,8 +17,9 @@ class AdminOrderRequestDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mutation = ref.watch(adminOrderMutationProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Order Request')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),

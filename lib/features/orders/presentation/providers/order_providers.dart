@@ -70,6 +70,48 @@ final cancelOrderProvider = StateNotifierProvider.autoDispose<CancelOrderNotifie
   return CancelOrderNotifier(ref);
 });
 
+class EditOrderState {
+  final bool isSubmitting;
+  final String? error;
+  const EditOrderState({this.isSubmitting = false, this.error});
+}
+
+class EditOrderNotifier extends StateNotifier<EditOrderState> {
+  final Ref _ref;
+  EditOrderNotifier(this._ref) : super(const EditOrderState());
+
+  Future<bool> save({
+    required String orderId,
+    required List<Map<String, dynamic>> items,
+    required double totalAmount,
+    required String deliveryAddress,
+  }) async {
+    state = const EditOrderState(isSubmitting: true);
+    final result = await _ref.read(orderRepositoryProvider).updateOrderItems(
+          orderId: orderId,
+          items: items,
+          totalAmount: totalAmount,
+          deliveryAddress: deliveryAddress,
+        );
+    return result.match(
+      (failure) {
+        state = EditOrderState(error: failure.message);
+        return false;
+      },
+      (_) {
+        state = const EditOrderState();
+        _ref.invalidate(myOrdersProvider);
+        _ref.invalidate(orderByIdProvider(orderId));
+        return true;
+      },
+    );
+  }
+}
+
+final editOrderProvider = StateNotifierProvider.autoDispose<EditOrderNotifier, EditOrderState>((ref) {
+  return EditOrderNotifier(ref);
+});
+
 /// Watches currentUserProvider so this automatically refreshes on
 /// sign-in/out rather than caching a stale empty list for a guest.
 final myOrdersProvider = FutureProvider.autoDispose<List<OrderEntity>>((ref) async {

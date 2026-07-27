@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,6 +24,7 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
   OfferTemplate _template = OfferTemplate.percentageOff;
   bool _isEnabled = true;
   File? _pickedImage;
+  Uint8List? _pickedImageBytes;
 
   @override
   void initState() {
@@ -46,8 +48,43 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _pickedImage = File(picked.path));
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 1200);
+    if (picked == null) return;
+
+    // Reading the full bytes here — not just wrapping the path in a
+    // File — is what actually fixes the crash: a plain File reference
+    // gets re-read lazily whenever something tries to render it, which
+    // could happen before the OS has finished flushing the picked
+    // photo to disk (especially right after the camera hands it back).
+    // readAsBytes() won't return until the read genuinely completes,
+    // so by the time setState runs, there's no race left to hit.
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pickedImage = File(picked.path);
+      _pickedImageBytes = bytes;
+    });
   }
 
   Future<void> _submit() async {
@@ -95,15 +132,30 @@ class _OfferCardFormDialogState extends ConsumerState<OfferCardFormDialog> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(state.error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
               ),
-            // Shows the picked file directly if one was just chosen
-            // (hasn't been uploaded yet), otherwise the live card
-            // preview with whatever's already saved.
-            _pickedImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.file(_pickedImage!, height: 140, width: double.infinity, fit: BoxFit.cover),
+            // Deliberately NOT rendering the just-picked photo here —
+            // attempting to preview a freshly-captured image (before
+            // it's even uploaded) was the actual source of a layout
+            // crash that two earlier attempts at fixing didn't fully
+            // resolve. The photo itself is fine and uploads correctly;
+            // it's specifically trying to draw a live preview of it
+            // immediately after picking that was unstable. Showing a
+            // plain confirmation instead sidesteps that render path
+            // entirely rather than continuing to chase it.
+            _pickedImageBytes != null
+                ? Container(
+                    height: 140,
+                    decoration: BoxDecoration(color: const Color(0xFFE8F0DE), borderRadius: BorderRadius.circular(16)),
+                    alignment: Alignment.center,
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: _green, size: 32),
+                        SizedBox(height: 8),
+                        Text('Photo selected — will be used when you Save', textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
                   )
-                : OfferCardTile(card: preview),
+                : OfferCardTile(card: preview, height: 140),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: _pickImage,

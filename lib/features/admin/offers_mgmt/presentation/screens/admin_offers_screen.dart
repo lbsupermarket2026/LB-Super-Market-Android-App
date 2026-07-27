@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../offers/domain/entities/offer_card_entity.dart';
 import '../providers/admin_offer_card_providers.dart';
@@ -13,10 +14,11 @@ class AdminOffersScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final cardsAsync = ref.watch(allOfferCardsAdminProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Home Offer Cards')),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: _green,

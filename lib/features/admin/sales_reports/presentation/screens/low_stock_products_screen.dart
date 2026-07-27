@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../inventory_mgmt/presentation/providers/admin_inventory_providers.dart';
 
@@ -14,8 +15,9 @@ class LowStockProductsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(allProductsAdminProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Low Stock Products')),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

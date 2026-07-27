@@ -21,10 +21,10 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
   final _addressController = TextEditingController();
   final _gstController = TextEditingController();
   final _minOrderController = TextEditingController(text: '200');
+  final _flatChargeController = TextEditingController(text: '30');
   bool _onlinePaymentsEnabled = true;
   double? _lat;
   double? _lng;
-  List<_SlabDraft> _slabs = [];
   bool _isLoadingLocation = false;
   bool _initialized = false;
 
@@ -33,6 +33,7 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
     _addressController.dispose();
     _gstController.dispose();
     _minOrderController.dispose();
+    _flatChargeController.dispose();
     super.dispose();
   }
 
@@ -42,19 +43,10 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
     _addressController.text = settings.storeAddress;
     _gstController.text = settings.gstNumber;
     _minOrderController.text = settings.minimumOrderAmount.toStringAsFixed(0);
+    _flatChargeController.text = settings.flatDeliveryCharge.toStringAsFixed(0);
     _onlinePaymentsEnabled = settings.onlinePaymentsEnabled;
     _lat = settings.storeLatitude;
     _lng = settings.storeLongitude;
-    _slabs = settings.slabs
-        .map((s) => _SlabDraft(minKm: s.minKm, maxKm: s.maxKm, charge: s.charge))
-        .toList();
-    if (_slabs.isEmpty) {
-      // Sensible starting point so admin isn't staring at a blank list.
-      _slabs = [
-        _SlabDraft(minKm: 0, maxKm: 5, charge: 30),
-        _SlabDraft(minKm: 5, maxKm: 10, charge: 50),
-      ];
-    }
   }
 
   Future<void> _useCurrentLocation() async {
@@ -97,16 +89,9 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
       storeLongitude: _lng,
       storeAddress: _addressController.text.trim(),
       minimumOrderAmount: double.tryParse(_minOrderController.text) ?? 200,
+      flatDeliveryCharge: double.tryParse(_flatChargeController.text) ?? 30,
       onlinePaymentsEnabled: _onlinePaymentsEnabled,
       gstNumber: _gstController.text.trim(),
-      slabs: _slabs
-          .where((s) => s.minKmController.text.isNotEmpty && s.maxKmController.text.isNotEmpty && s.chargeController.text.isNotEmpty)
-          .map((s) => DeliverySlabEntity(
-                minKm: double.tryParse(s.minKmController.text) ?? 0,
-                maxKm: double.tryParse(s.maxKmController.text) ?? 0,
-                charge: double.tryParse(s.chargeController.text) ?? 0,
-              ))
-          .toList(),
     );
 
     final success = await ref.read(deliverySettingsMutationProvider.notifier).save(settings);
@@ -138,7 +123,7 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'This is the fixed point delivery distance is measured from. Use "Pinpoint on Map" to confirm the exact spot — this drives real pricing, so accuracy here matters.',
+                      'Used for the "view on map" links employees see for each delivery.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 10),
@@ -206,6 +191,24 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                 ),
               ),
               _Card(
+                title: 'Delivery Charge',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'One flat charge for every delivery — no distance calculation. As long as a customer\'s address is confirmed (a saved address, or a new one pinpointed on the map), this is what they\'re charged.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _flatChargeController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Delivery charge'),
+                    ),
+                  ],
+                ),
+              ),
+              _Card(
                 title: 'Payment Methods',
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -218,28 +221,6 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                     style: const TextStyle(fontSize: 12),
                   ),
                   onChanged: (v) => setState(() => _onlinePaymentsEnabled = v),
-                ),
-              ),
-              _Card(
-                title: 'Delivery Charges by Distance',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ranges shouldn\'t overlap or leave gaps you want covered — e.g. 0–5 km, then 5–10 km, and so on.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 10),
-                    ..._slabs.asMap().entries.map((entry) => _SlabRow(
-                          draft: entry.value,
-                          onRemove: () => setState(() => _slabs.removeAt(entry.key)),
-                        )),
-                    TextButton.icon(
-                      onPressed: () => setState(() => _slabs.add(_SlabDraft(minKm: 0, maxKm: 0, charge: 0))),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Range'),
-                    ),
-                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -257,80 +238,6 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _SlabDraft {
-  final TextEditingController minKmController;
-  final TextEditingController maxKmController;
-  final TextEditingController chargeController;
-
-  _SlabDraft({required double minKm, required double maxKm, required double charge})
-      : minKmController = TextEditingController(text: minKm.toStringAsFixed(minKm % 1 == 0 ? 0 : 1)),
-        maxKmController = TextEditingController(text: maxKm.toStringAsFixed(maxKm % 1 == 0 ? 0 : 1)),
-        chargeController = TextEditingController(text: charge.toStringAsFixed(0));
-}
-
-class _SlabRow extends StatelessWidget {
-  final _SlabDraft draft;
-  final VoidCallback onRemove;
-  const _SlabRow({required this.draft, required this.onRemove});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: const Color(0xFFF6F8ED), borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: draft.minKmController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'From (km)', isDense: true, filled: true, fillColor: Colors.white),
-                ),
-              ),
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('to')),
-              Expanded(
-                child: TextField(
-                  controller: draft.maxKmController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'To (km)', isDense: true, filled: true, fillColor: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: draft.chargeController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    prefixText: '₹ ',
-                    labelText: 'Delivery Charge',
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: _red),
-                onPressed: onRemove,
-                tooltip: 'Remove this range',
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

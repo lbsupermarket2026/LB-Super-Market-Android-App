@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../authentication/presentation/providers/auth_providers.dart';
 import '../../domain/entities/staff_member_entity.dart';
@@ -15,11 +16,12 @@ class EmployeeListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final staffAsync = ref.watch(allStaffProvider);
     final currentUser = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Employees')),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: _green,

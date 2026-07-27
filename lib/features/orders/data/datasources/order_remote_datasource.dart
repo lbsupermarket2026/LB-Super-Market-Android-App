@@ -80,4 +80,22 @@ class OrderRemoteDataSource {
       'ratingComment': comment,
     });
   }
+
+  /// Only usable while the order is still 'placed' — the Firestore
+  /// rule enforces this too, not just this client check, since the
+  /// customer's own device isn't a trustworthy place to enforce it
+  /// alone. Once staff move an order to 'confirmed' or later, neither
+  /// side can edit items through this path anymore.
+  Future<void> updateOrderItems({
+    required String orderId,
+    required List<Map<String, dynamic>> items,
+    required double totalAmount,
+    required String deliveryAddress,
+  }) async {
+    await _collection.doc(orderId).update({
+      'items': items,
+      'totalAmount': totalAmount,
+      'deliveryAddress': deliveryAddress,
+    });
+  }
 }

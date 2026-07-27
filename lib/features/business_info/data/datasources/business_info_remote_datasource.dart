@@ -18,6 +18,16 @@ class BusinessInfoRemoteDataSource {
     final socialLinks = (data['socialLinks'] as Map<String, dynamic>?) ?? const {};
     final rawHours = (data['businessHours'] as List<dynamic>?) ?? const [];
 
+    final businessHours = <BusinessHourEntity>[];
+    for (final raw in rawHours) {
+      if (raw is! Map) continue;
+      businessHours.add(BusinessHourEntity(
+        day: (raw['day'] as String?) ?? '',
+        openTime: (raw['openTime'] as String?) ?? '',
+        closeTime: (raw['closeTime'] as String?) ?? '',
+      ));
+    }
+
     return BusinessInfoEntity(
       aboutUsText: (data['aboutUsText'] as String?) ?? '',
       physicalAddress: data['physicalAddress'] as String?,
@@ -26,14 +36,7 @@ class BusinessInfoRemoteDataSource {
       instagram: socialLinks['instagram'] as String?,
       facebook: socialLinks['facebook'] as String?,
       whatsappBusinessNumber: socialLinks['whatsappBusinessNumber'] as String?,
-      businessHours: rawHours
-          .cast<Map<String, dynamic>>()
-          .map((h) => BusinessHourEntity(
-                day: (h['day'] as String?) ?? '',
-                openTime: (h['openTime'] as String?) ?? '',
-                closeTime: (h['closeTime'] as String?) ?? '',
-              ))
-          .toList(),
+      businessHours: businessHours,
     );
   }
 }

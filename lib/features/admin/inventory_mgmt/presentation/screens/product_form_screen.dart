@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../categories/domain/entities/category_entity.dart';
 import '../../../../products/domain/entities/product_entity.dart';
@@ -34,6 +36,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   String? _categoryId;
   String? _offerId;
   File? _pickedImage;
+  Uint8List? _pickedImageBytes;
   bool _isFeatured = false;
   bool _isTrending = false;
   bool _isBestSeller = false;
@@ -124,8 +127,40 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _pickedImage = File(picked.path));
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 1200);
+    if (picked == null) return;
+
+    // Reading full bytes rather than just wrapping the path in a File —
+    // this is what actually avoids the isFinite/layout crash, since a
+    // bare File reference gets re-read lazily whenever rendered, which
+    // can race with the OS still flushing the picked photo to disk.
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pickedImage = File(picked.path);
+      _pickedImageBytes = bytes;
+    });
   }
 
   Future<void> _submit() async {
@@ -171,8 +206,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(inventoryMutationProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: Text(widget.existing == null ? 'Add Product' : 'Edit Product')),
       body: Form(
         key: _formKey,
@@ -187,8 +223,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   height: 120,
                   decoration: BoxDecoration(color: const Color(0xFFF3F3F3), borderRadius: BorderRadius.circular(16)),
                   clipBehavior: Clip.antiAlias,
-                  child: _pickedImage != null
-                      ? Image.file(_pickedImage!, fit: BoxFit.cover)
+                  child: _pickedImageBytes != null
+                      ? const Center(
+                          child: Icon(Icons.check_circle, color: _green, size: 40),
+                        )
                       : widget.existing?.thumbnailUrl?.isNotEmpty == true
                           ? CachedNetworkImage(imageUrl: widget.existing!.thumbnailUrl!, fit: BoxFit.cover)
                           : const Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.black38),

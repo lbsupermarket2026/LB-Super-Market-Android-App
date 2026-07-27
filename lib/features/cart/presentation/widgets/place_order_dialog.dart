@@ -373,10 +373,9 @@ class _PricingSummary extends StatelessWidget {
           _row('Item total', '₹${pricing.subtotal.toStringAsFixed(0)}'),
           if (pricing.gstAmount > 0) _row('GST', '₹${pricing.gstAmount.toStringAsFixed(0)}'),
           if (pricing.deliveryCharge != null)
-            _row('Delivery${pricing.distanceKm != null ? ' (${pricing.distanceKm!.toStringAsFixed(1)} km)' : ''}',
-                '₹${pricing.deliveryCharge!.toStringAsFixed(0)}')
-          else if (!pricing.outOfDeliveryRange)
-            _row('Delivery', 'Calculated after address'),
+            _row('Delivery', '₹${pricing.deliveryCharge!.toStringAsFixed(0)}')
+          else if (pricing.needsAddress)
+            _row('Delivery', 'Select an address'),
           const Divider(height: 16),
           _row('To pay', '₹${pricing.total.toStringAsFixed(0)}', bold: true),
           if (pricing.belowMinimumOrder) ...[
@@ -386,10 +385,10 @@ class _PricingSummary extends StatelessWidget {
               style: const TextStyle(color: red, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
-          if (pricing.outOfDeliveryRange) ...[
+          if (pricing.needsAddress) ...[
             const SizedBox(height: 8),
             const Text(
-              'This address is outside our delivery range. Please choose a closer address or contact the store.',
+              'Pick a saved address, or add a new one and confirm its exact location with "Pinpoint on Map" — we need this to place the order.',
               style: TextStyle(color: red, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],

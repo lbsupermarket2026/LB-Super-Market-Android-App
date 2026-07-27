@@ -63,6 +63,26 @@ final currentUserProvider = Provider<UserEntity?>((ref) {
   return ref.watch(authStateChangesProvider).valueOrNull;
 });
 
+/// A counter that profile-editing bumps to signal "re-fetch my
+/// profile" — watched by currentUserProfileProvider below, kept
+/// completely separate from authStateChangesProvider on purpose.
+/// That stream also drives the app's router (see its doc comment),
+/// so refreshing profile display data needs its own path that can
+/// never touch routing, however indirectly.
+final profileRefreshTriggerProvider = StateProvider<int>((ref) => 0);
+
+/// What Profile screens should actually watch to display name/photo/
+/// phone — reflects edits immediately without going anywhere near the
+/// stream that decides whether you're logged in and where the router
+/// sends you.
+final currentUserProfileProvider = FutureProvider<UserEntity?>((ref) async {
+  ref.watch(profileRefreshTriggerProvider);
+  final uid = ref.read(currentUserProvider)?.uid;
+  if (uid == null) return null;
+  final model = await ref.read(authRemoteDataSourceProvider).resolveUserProfile(uid);
+  return model.toEntity();
+});
+
 // ---- Sign-in view model ----
 
 class SignInState {
@@ -138,7 +158,14 @@ class EditProfileNotifier extends Notifier<SignInState> {
       },
       (_) {
         state = state.copyWith(isLoading: false, errorMessage: null);
-        ref.invalidate(authStateChangesProvider);
+        // Bumps a counter that only currentUserProfileProvider watches —
+        // deliberately NOT touching authStateChangesProvider, since that
+        // one also drives the app's router. An earlier version of this
+        // invalidated that stream directly, and the resulting brief
+        // AsyncLoading state was enough to bounce the router back to
+        // Home mid-edit — exactly the "saves, then dumps you on the
+        // home screen" bug this replaces.
+        ref.read(profileRefreshTriggerProvider.notifier).state++;
         return true;
       },
     );

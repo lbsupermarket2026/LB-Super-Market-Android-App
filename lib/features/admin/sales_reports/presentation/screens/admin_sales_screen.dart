@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../inventory_mgmt/presentation/providers/admin_inventory_providers.dart';
 import '../../../order_mgmt/presentation/providers/admin_order_providers.dart';
@@ -25,8 +26,9 @@ class AdminSalesScreen extends ConsumerWidget {
     final requestsAsync = ref.watch(allOrderRequestsAdminProvider);
     final productsAsync = ref.watch(allProductsAdminProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Sales Reports')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),

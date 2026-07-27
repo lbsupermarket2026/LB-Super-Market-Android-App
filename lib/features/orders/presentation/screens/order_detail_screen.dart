@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../domain/entities/order_entity.dart';
 import '../providers/order_providers.dart';
+import '../widgets/edit_order_dialog.dart';
 import '../widgets/order_bill_actions.dart';
 import '../widgets/order_status_stepper.dart';
 import '../widgets/rate_order_dialog.dart';
@@ -30,10 +31,24 @@ class OrderDetailScreen extends ConsumerWidget {
           onPressed: () => context.canPop() ? context.pop() : context.go('/orders'),
         ),
         actions: [
+          if (orderAsync.valueOrNull?.status == OrderStatus.placed)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Order',
+              onPressed: () async {
+                final edited = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => EditOrderDialog(order: orderAsync.valueOrNull!),
+                );
+                if (edited == true && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order updated.')));
+                }
+              },
+            ),
           if (orderAsync.valueOrNull != null)
             IconButton(
               icon: const Icon(Icons.receipt_long_outlined),
-              tooltip: 'Download Bill',
+              tooltip: 'Bill',
               onPressed: () => generateAndShareOrderBill(context, ref, orderAsync.valueOrNull!),
             ),
         ],

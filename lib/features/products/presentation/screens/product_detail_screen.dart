@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../../cart/presentation/providers/cart_providers.dart';
@@ -16,10 +17,11 @@ class ProductDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final productAsync = ref.watch(productByIdProvider(productId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       body: productAsync.when(
         data: (product) => CustomScrollView(
           slivers: [

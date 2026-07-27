@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,6 +21,7 @@ class CategoryFormDialog extends ConsumerStatefulWidget {
 class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
   final _nameController = TextEditingController();
   File? _pickedImage;
+  Uint8List? _pickedImageBytes;
   bool _isActive = true;
   String? _offerId;
   final _gstController = TextEditingController(text: '0');
@@ -43,8 +45,36 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
   }
 
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) setState(() => _pickedImage = File(picked.path));
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 1200);
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pickedImage = File(picked.path);
+      _pickedImageBytes = bytes;
+    });
   }
 
   Future<void> _submit() async {
@@ -91,8 +121,10 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
                   borderRadius: BorderRadius.circular(48),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: _pickedImage != null
-                    ? Image.file(_pickedImage!, fit: BoxFit.cover)
+                child: _pickedImageBytes != null
+                    ? const Center(
+                        child: Icon(Icons.check_circle, color: _green, size: 32),
+                      )
                     : widget.existing?.imageUrl?.isNotEmpty == true
                         ? CachedNetworkImage(imageUrl: widget.existing!.imageUrl!, fit: BoxFit.cover)
                         : const Icon(Icons.add_a_photo_outlined, color: Colors.black38),

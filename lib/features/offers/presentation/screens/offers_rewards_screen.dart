@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../providers/offer_card_providers.dart';
@@ -11,10 +12,11 @@ class OffersRewardsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final cardsAsync = ref.watch(enabledOfferCardsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Offers & Rewards')),
       body: cardsAsync.when(
         data: (cards) {
@@ -32,6 +34,7 @@ class OffersRewardsScreen extends ConsumerWidget {
               final card = cards[index];
               return OfferCardTile(
                 card: card,
+                height: 160,
                 onTap: () => context.push('/offer-products/${card.id}', extra: card.title),
               );
             },

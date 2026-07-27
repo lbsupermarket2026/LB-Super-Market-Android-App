@@ -20,5 +20,12 @@ abstract class OrderRepository {
 
   Future<Result<void>> submitRating(String orderId, double rating, String? comment);
 
+  Future<Result<void>> updateOrderItems({
+    required String orderId,
+    required List<Map<String, dynamic>> items,
+    required double totalAmount,
+    required String deliveryAddress,
+  });
+
   Future<Result<void>> cancelOrder(String orderId);
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/staff_member_entity.dart';
 import '../providers/employee_providers.dart';
@@ -17,8 +18,9 @@ class EmployeePerformanceScreen extends ConsumerWidget {
     final statsAsync = ref.watch(employeeStatsProvider);
     final period = ref.watch(performancePeriodProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Employee Work')),
       body: Column(
         children: [

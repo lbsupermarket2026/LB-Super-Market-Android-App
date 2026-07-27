@@ -19,7 +19,7 @@ class StaffProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
-    final user = ref.watch(currentUserProvider);
+    final user = ref.watch(currentUserProfileProvider).valueOrNull ?? ref.watch(currentUserProvider);
     final isAdmin = user?.role == UserRole.admin;
 
     return Scaffold(
@@ -129,38 +129,50 @@ class _ThemeModeMenuItem extends ConsumerWidget {
     final colors = context.appColors;
     final mode = ref.watch(themeModeProvider);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.cardBorder),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (dialogContext) => SimpleDialog(
+          title: const Text('Appearance'),
+          children: ThemeMode.values.map((m) {
+            return RadioListTile<ThemeMode>(
+              value: m,
+              groupValue: mode,
+              title: Text(_label(m)),
+              activeColor: colors.green,
+              onChanged: (selected) {
+                if (selected != null) ref.read(themeModeProvider.notifier).setThemeMode(selected);
+                Navigator.pop(dialogContext);
+              },
+            );
+          }).toList(),
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(color: colors.green.withOpacity(0.14), borderRadius: BorderRadius.circular(9)),
-            child: Icon(Icons.dark_mode_outlined, size: 18, color: colors.green),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text('Appearance', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.ink)),
-          ),
-          DropdownButton<ThemeMode>(
-            value: mode,
-            underline: const SizedBox.shrink(),
-            dropdownColor: colors.card,
-            items: ThemeMode.values
-                .map((m) => DropdownMenuItem(value: m, child: Text(_label(m), style: TextStyle(fontSize: 13, color: colors.ink))))
-                .toList(),
-            onChanged: (m) {
-              if (m != null) ref.read(themeModeProvider.notifier).setThemeMode(m);
-            },
-          ),
-        ],
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: colors.green.withOpacity(0.14), borderRadius: BorderRadius.circular(9)),
+              child: Icon(Icons.dark_mode_outlined, size: 18, color: colors.green),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('Appearance', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.ink)),
+            ),
+            Text(_label(mode), style: TextStyle(fontSize: 13, color: colors.muted)),
+            Icon(Icons.chevron_right, color: colors.muted),
+          ],
+        ),
       ),
     );
   }

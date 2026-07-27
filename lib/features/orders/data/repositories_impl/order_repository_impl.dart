@@ -54,6 +54,21 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
+  Future<Result<void>> updateOrderItems({
+    required String orderId,
+    required List<Map<String, dynamic>> items,
+    required double totalAmount,
+    required String deliveryAddress,
+  }) {
+    return guard(() => _remote.updateOrderItems(
+          orderId: orderId,
+          items: items,
+          totalAmount: totalAmount,
+          deliveryAddress: deliveryAddress,
+        ));
+  }
+
+  @override
   Future<Result<void>> cancelOrder(String orderId) {
     return guard(() => _remote.cancelOrder(orderId));
   }
