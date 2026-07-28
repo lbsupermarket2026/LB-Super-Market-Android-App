@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/authentication/domain/entities/user_entity.dart';
 import '../../features/authentication/presentation/providers/auth_providers.dart';
@@ -39,6 +40,20 @@ class RouteGuard {
     // Signed in but currently sitting on splash/auth routes: send them
     // to the correct home for their role.
     if (isOnSplash || isOnAuthRoute) {
+      return _homeForRole(user.role);
+    }
+
+    // Email/password accounts must verify before using the app — phone
+    // accounts have no email at all, so this only applies when one's
+    // actually on file. Checked directly against Firebase's live flag
+    // rather than anything cached in Firestore, since verification
+    // status is decided client-side by Firebase itself.
+    final firebaseUser = fb.FirebaseAuth.instance.currentUser;
+    final needsEmailVerification = firebaseUser != null && firebaseUser.email != null && !firebaseUser.emailVerified;
+    if (needsEmailVerification) {
+      return currentLocation == RouteNames.verifyEmail ? null : RouteNames.verifyEmail;
+    }
+    if (currentLocation == RouteNames.verifyEmail) {
       return _homeForRole(user.role);
     }
 

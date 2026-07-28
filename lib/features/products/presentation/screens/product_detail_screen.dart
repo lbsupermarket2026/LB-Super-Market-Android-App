@@ -5,6 +5,7 @@ import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../../cart/presentation/providers/cart_providers.dart';
+import '../../../cart/domain/entities/cart_item_entity.dart';
 import '../../../wishlist/presentation/widgets/wishlist_button.dart';
 import '../providers/product_providers.dart';
 
@@ -148,27 +149,64 @@ class ProductDetailScreen extends ConsumerWidget {
                     ),
                   ],
                   const SizedBox(height: AppSpacing.xxl),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      icon: const Icon(Icons.add_shopping_cart),
-                      label: Text(product.isInStock ? 'Add to Cart' : 'Out of Stock',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                      onPressed: product.isInStock
-                          ? () {
-                              ref.read(cartProvider.notifier).addProduct(product);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${product.name} added to cart')),
-                              );
-                            }
-                          : null,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final quantity = ref.watch(cartProvider.select(
+                        (state) => state.valueOrNull?.firstWhere(
+                              (i) => i.productId == product.id,
+                              orElse: () => const CartItemEntity(productId: '', name: '', unit: '', imageUrl: '', price: 0, quantity: 0),
+                            ).quantity ??
+                            0,
+                      ));
+
+                      if (quantity == 0) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: Text(product.isInStock ? 'Add to Cart' : 'Out of Stock',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                            onPressed: product.isInStock
+                                ? () {
+                                    ref.read(cartProvider.notifier).addProduct(product);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('${product.name} added to cart')),
+                                    );
+                                  }
+                                : null,
+                          ),
+                        );
+                      }
+
+                      // Already in cart — adjust the quantity right
+                      // here instead of forcing a trip to the cart
+                      // screen just to change how many.
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(color: _green, borderRadius: BorderRadius.circular(14)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            IconButton(
+                              onPressed: () => ref.read(cartProvider.notifier).setQuantity(product.id, quantity - 1),
+                              icon: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
+                            ),
+                            Text('$quantity in cart', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                            IconButton(
+                              onPressed: () => ref.read(cartProvider.notifier).setQuantity(product.id, quantity + 1),
+                              icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ]),
               ),

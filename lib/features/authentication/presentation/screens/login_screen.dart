@@ -56,16 +56,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: AppSpacing.xl),
-                  Center(
-                    child: Container(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight - AppSpacing.lg * 2),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: AppSpacing.xl),
+                          Center(
+                            child: Container(
                       width: 88,
                       height: 88,
                       decoration: BoxDecoration(
@@ -128,6 +134,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   isLoading: signInState.isLoading,
                   onPressed: _onSignIn,
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(RouteNames.otp),
+                  icon: const Icon(Icons.phone_outlined, size: 18),
+                  label: const Text('Sign in with Phone instead'),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -141,9 +153,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
             ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
-      ),
       ),
     );
   }

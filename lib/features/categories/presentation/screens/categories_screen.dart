@@ -67,31 +67,31 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: colors.card,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.divider),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      style: TextStyle(color: colors.ink),
-                      onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'Search products',
-                        hintStyle: TextStyle(fontSize: 13, color: colors.muted),
-                        prefixIcon: Icon(Icons.search, size: 18, color: colors.muted),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.close, size: 18, color: colors.muted),
-                                onPressed: () => setState(() {
-                                  _searchController.clear();
-                                  _searchQuery = '';
-                                }),
-                              )
-                            : null,
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    elevation: 1,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(color: Colors.black87),
+                        onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Search products',
+                          hintStyle: const TextStyle(fontSize: 13, color: Colors.black45),
+                          prefixIcon: const Icon(Icons.search, size: 18, color: Colors.black45),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close, size: 18, color: Colors.black45),
+                                  onPressed: () => setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  }),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
                   ),
@@ -180,7 +180,11 @@ class _RailItem extends StatelessWidget {
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(color: colors.chipBackground, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: colors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.divider),
+              ),
               clipBehavior: Clip.antiAlias,
               child: imageUrl?.isNotEmpty == true
                   ? CachedNetworkImage(

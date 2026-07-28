@@ -15,16 +15,61 @@ class OrderRequestDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Keeps the underlying list provider alive/fresh so this screen
-    // reflects live status changes without a separate fetch.
-    ref.watch(myOrderRequestsProvider);
-    final request = ref.watch(orderByIdInRequestsProvider(requestId));
+    final requestsAsync = ref.watch(myOrderRequestsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Track Your Request')),
-      body: request == null
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
+      body: requestsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+                const SizedBox(height: AppSpacing.sm),
+                const Text('Could not load this request.'),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton(onPressed: () => ref.invalidate(myOrderRequestsProvider), child: const Text('Retry')),
+              ],
+            ),
+          ),
+        ),
+        data: (requests) {
+          OrderRequestEntity? request;
+          for (final r in requests) {
+            if (r.id == requestId) {
+              request = r;
+              break;
+            }
+          }
+
+          // The list loaded successfully but genuinely has nothing with
+          // this ID — this used to show the same infinite spinner as
+          // "still loading," with no way to tell the two apart. A
+          // brand-new request can briefly not be in this list yet if
+          // the write hasn't been picked up by the next fetch, so this
+          // offers a refresh rather than just declaring it missing.
+          if (request == null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.search_off, size: 40, color: Colors.grey),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Text("Couldn't find this request yet."),
+                    const SizedBox(height: AppSpacing.sm),
+                    OutlinedButton(onPressed: () => ref.invalidate(myOrderRequestsProvider), child: const Text('Refresh')),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
                 Card(
@@ -100,7 +145,9 @@ class OrderRequestDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
+            );
+        },
+      ),
     );
   }
 }

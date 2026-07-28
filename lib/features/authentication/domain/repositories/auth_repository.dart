@@ -11,6 +11,14 @@ abstract class AuthRepository {
 
   UserEntity? get currentUser;
 
+  Future<Result<void>> resendEmailVerification();
+  Future<Result<bool>> refreshAndCheckEmailVerified();
+
+  /// Returns a verificationId on success — pass it to verifyOtp along
+  /// with whatever code the user receives by SMS.
+  Future<Result<String>> sendOtp(String phoneNumber);
+  Future<Result<UserEntity>> verifyOtp({required String verificationId, required String smsCode});
+
   Future<Result<UserEntity>> signInWithEmail({
     required String email,
     required String password,
@@ -35,11 +43,4 @@ abstract class AuthRepository {
   Future<Result<void>> sendPasswordResetEmail(String email);
 
   Future<Result<void>> signOut();
-
-  /// Phone OTP flow
-  Future<Result<String>> sendOtp(String phoneNumber); // returns verificationId
-  Future<Result<UserEntity>> verifyOtp({
-    required String verificationId,
-    required String smsCode,
-  });
 }

@@ -43,6 +43,43 @@ class AuthRepositoryImpl implements AuthRepository {
   UserEntity? get currentUser => null; // rely on authStateChanges stream via Riverpod provider
 
   @override
+  Future<Result<void>> resendEmailVerification() {
+    return guard(() => _remote.resendEmailVerification());
+  }
+
+  @override
+  Future<Result<bool>> refreshAndCheckEmailVerified() {
+    return guard(() => _remote.refreshAndCheckEmailVerified());
+  }
+
+  @override
+  Future<Result<String>> sendOtp(String phoneNumber) {
+    return guard(() => _remote.sendOtp(phoneNumber));
+  }
+
+  @override
+  Future<Result<UserEntity>> verifyOtp({required String verificationId, required String smsCode}) {
+    return guard(() async {
+      final credential = await _remote.verifyOtp(verificationId: verificationId, smsCode: smsCode);
+      final uid = credential.user!.uid;
+      final phone = credential.user!.phoneNumber ?? '';
+
+      // Brand-new phone sign-in has no Firestore doc yet — customer
+      // signups otherwise always go through createUserProfile right
+      // after Firebase Auth succeeds, so this mirrors that for the
+      // phone path. Name stays empty; they can fill it in from Profile
+      // whenever they want, same as any account missing optional info.
+      try {
+        final model = await _remote.resolveUserProfile(uid);
+        await _remote.touchLastLogin(uid);
+        return model.toEntity();
+      } on NotFoundException {
+        return (await _remote.createUserProfile(uid: uid, name: '', email: '', phone: phone)).toEntity();
+      }
+    });
+  }
+
+  @override
   Future<Result<UserEntity>> signInWithEmail({required String email, required String password}) {
     return guard(() async {
       final credential = await _remote.signInWithEmail(email, password);
@@ -76,32 +113,5 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<void>> signOut() {
     return guard(() => _remote.signOut());
-  }
-
-  @override
-  Future<Result<String>> sendOtp(String phoneNumber) {
-    return guard(() => _remote.sendOtp(phoneNumber));
-  }
-
-  @override
-  Future<Result<UserEntity>> verifyOtp({required String verificationId, required String smsCode}) {
-    return guard(() async {
-      final credential = await _remote.verifyOtp(verificationId: verificationId, smsCode: smsCode);
-      final uid = credential.user!.uid;
-      try {
-        final model = await _remote.resolveUserProfile(uid);
-        await _remote.touchLastLogin(uid);
-        return model.toEntity();
-      } on NotFoundException {
-        // First-time phone sign-in — create a bare profile.
-        final model = await _remote.createUserProfile(
-          uid: uid,
-          name: '',
-          email: credential.user!.email ?? '',
-          phone: credential.user!.phoneNumber ?? '',
-        );
-        return model.toEntity();
-      }
-    });
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -38,6 +39,7 @@ class AuthRemoteDataSource {
         name: data['name'] as String?,
         email: data['email'] as String?,
         phone: data['phone'] as String?,
+        photoUrl: data['photoUrl'] as String?,
         role: (data['role'] as String?) ?? 'employee',
         isBlocked: !(data['isActive'] as bool? ?? true),
       );
@@ -82,7 +84,80 @@ class AuthRemoteDataSource {
 
   Future<fb.UserCredential> signUpWithEmail(String email, String password) async {
     try {
-      return await _firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
+      // Fire-and-forget is deliberate here — a failure to SEND the
+      // verification email (e.g. a transient network blip) shouldn't
+      // block account creation, which already succeeded. The Verify
+      // Email screen has its own "resend" button to recover from this.
+      unawaited(credential.user?.sendEmailVerification());
+      return credential;
+    } on fb.FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseAuthError(e));
+    }
+  }
+
+  /// Re-sends the verification link — used by the "Resend email" button
+  /// on the Verify Email screen when the first one didn't arrive.
+  Future<void> resendEmailVerification() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw const AuthException('Not signed in.');
+    await user.sendEmailVerification();
+  }
+
+  /// Firebase caches emailVerified locally, so it only reflects reality
+  /// right after a fresh reload() — this is what the Verify Email
+  /// screen's "I've verified" button calls before checking the flag.
+  Future<bool> refreshAndCheckEmailVerified() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    return _firebaseAuth.currentUser?.emailVerified ?? false;
+  }
+
+  /// Kicks off Firebase Phone Auth — sends the SMS and returns the
+  /// verificationId the OTP screen needs to actually verify the code
+  /// the user receives. Android may auto-resolve without ever needing
+  /// verifyOtp at all (Play Services reads the SMS itself); when that
+  /// happens this completes the sign-in directly and the returned
+  /// verificationId becomes moot, which the OTP screen handles by
+  /// just treating that as "already signed in, move on."
+  Future<String> sendOtp(String phoneNumber) async {
+    final completer = Completer<String>();
+    try {
+      await _firebaseAuth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (credential) async {
+          // Auto-retrieval succeeded — sign in immediately rather than
+          // waiting on a manual code entry that isn't needed.
+          try {
+            await _firebaseAuth.signInWithCredential(credential);
+          } catch (_) {
+            // Swallowed deliberately: if auto sign-in fails here, the
+            // user still has the manual OTP path as a fallback once
+            // verificationId comes through codeSent below.
+          }
+        },
+        verificationFailed: (e) {
+          if (!completer.isCompleted) completer.completeError(AuthException(_mapFirebaseAuthError(e)));
+        },
+        codeSent: (verificationId, resendToken) {
+          if (!completer.isCompleted) completer.complete(verificationId);
+        },
+        codeAutoRetrievalTimeout: (verificationId) {
+          if (!completer.isCompleted) completer.complete(verificationId);
+        },
+      );
+    } on fb.FirebaseAuthException catch (e) {
+      if (!completer.isCompleted) completer.completeError(AuthException(_mapFirebaseAuthError(e)));
+    }
+    return completer.future;
+  }
+
+  Future<fb.UserCredential> verifyOtp({required String verificationId, required String smsCode}) async {
+    try {
+      final credential = fb.PhoneAuthProvider.credential(verificationId: verificationId, smsCode: smsCode);
+      return await _firebaseAuth.signInWithCredential(credential);
     } on fb.FirebaseAuthException catch (e) {
       throw AuthException(_mapFirebaseAuthError(e));
     }
@@ -119,36 +194,6 @@ class AuthRemoteDataSource {
 
   Future<void> signOut() => _firebaseAuth.signOut();
 
-  Future<String> sendOtp(String phoneNumber) async {
-    final completer = <String, dynamic>{};
-    await _firebaseAuth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (_) {},
-      verificationFailed: (e) {
-        throw AuthException(_mapFirebaseAuthError(e));
-      },
-      codeSent: (verificationId, resendToken) {
-        completer['verificationId'] = verificationId;
-      },
-      codeAutoRetrievalTimeout: (verificationId) {
-        completer['verificationId'] = verificationId;
-      },
-    );
-    // In production, wrap this in a Completer<String> awaiting codeSent;
-    // simplified here for a synchronous-looking API surface.
-    return completer['verificationId'] as String? ?? '';
-  }
-
-  Future<fb.UserCredential> verifyOtp({required String verificationId, required String smsCode}) async {
-    try {
-      final credential = fb.PhoneAuthProvider.credential(verificationId: verificationId, smsCode: smsCode);
-      return await _firebaseAuth.signInWithCredential(credential);
-    } on fb.FirebaseAuthException catch (e) {
-      throw AuthException(_mapFirebaseAuthError(e));
-    }
-  }
-
   Future<String> uploadProfilePhoto(File file) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) throw const AuthException('Not signed in.');
@@ -174,10 +219,23 @@ class AuthRemoteDataSource {
     final updates = <String, dynamic>{'name': name, 'phone': phone};
     if (photoUrl != null) updates['photoUrl'] = photoUrl;
 
-    await _firestore.collection(FirestorePaths.users).doc(user.uid).set(
-      updates,
-      SetOptions(merge: true),
-    );
+    // Staff (admin/employee) accounts live in staff_users, not users —
+    // writing to users unconditionally here was a real bug: it always
+    // "succeeded" (creating/touching an unrelated users doc for staff
+    // accounts) while never touching the staff_users doc the profile
+    // screen actually reads from, so edits for admin/employee looked
+    // like they saved but silently never showed up.
+    final staffRef = _firestore.collection(FirestorePaths.staffUsers).doc(user.uid);
+    final staffDoc = await staffRef.get();
+    if (staffDoc.exists) {
+      await staffRef.set(updates, SetOptions(merge: true));
+    } else {
+      await _firestore.collection(FirestorePaths.users).doc(user.uid).set(
+        updates,
+        SetOptions(merge: true),
+      );
+    }
+
     await user.updateDisplayName(name);
     if (photoUrl != null) await user.updatePhotoURL(photoUrl);
   }

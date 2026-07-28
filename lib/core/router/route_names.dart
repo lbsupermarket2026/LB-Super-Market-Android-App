@@ -8,6 +8,7 @@ class RouteNames {
   static const String signup = '/auth/signup';
   static const String forgotPassword = '/auth/forgot-password';
   static const String otp = '/auth/otp';
+  static const String verifyEmail = '/auth/verify-email';
 
   static const String home = '/home';
   static const String categories = '/categories';

@@ -376,12 +376,12 @@ class _ProductSection extends ConsumerWidget {
         _PlainSectionHead(title: title),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 250,
+          height: 238,
           child: productsAsync.when(
             data: (products) => products.isEmpty
                 ? const Center(child: Text('Nothing here yet'))
                 : AutoScrollRow(
-                    itemWidth: 136,
+                    itemWidth: 158,
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     children: products
                         .map((product) => Padding(

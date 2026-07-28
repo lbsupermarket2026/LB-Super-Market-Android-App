@@ -6,6 +6,8 @@ import '../../features/authentication/presentation/providers/auth_providers.dart
 import '../../features/authentication/presentation/screens/login_screen.dart';
 import '../../features/authentication/presentation/screens/signup_screen.dart';
 import '../../features/authentication/presentation/screens/forgot_password_screen.dart';
+import '../../features/authentication/presentation/screens/verify_email_screen.dart';
+import '../../features/authentication/presentation/screens/phone_sign_in_screen.dart';
 import '../../features/authentication/presentation/screens/splash_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/categories/presentation/screens/categories_screen.dart';
@@ -71,6 +73,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: RouteNames.login, builder: (context, state) => const LoginScreen()),
       GoRoute(path: RouteNames.signup, builder: (context, state) => const SignupScreen()),
       GoRoute(path: RouteNames.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
+      GoRoute(path: RouteNames.verifyEmail, builder: (context, state) => const VerifyEmailScreen()),
+      GoRoute(path: RouteNames.otp, builder: (context, state) => const PhoneSignInScreen()),
 
       // 5 primary tabs — persistent bottom nav, each keeps its own stack.
       StatefulShellRoute.indexedStack(

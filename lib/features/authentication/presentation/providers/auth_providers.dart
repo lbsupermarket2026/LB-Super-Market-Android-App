@@ -8,6 +8,8 @@ import '../../domain/usecases/sign_in_usecase.dart';
 import '../../domain/usecases/sign_up_usecase.dart';
 import '../../domain/usecases/sign_out_usecase.dart';
 import '../../domain/usecases/reset_password_usecase.dart';
+import '../../domain/usecases/send_otp_usecase.dart';
+import '../../domain/usecases/verify_otp_usecase.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
 import '../../domain/usecases/upload_profile_photo_usecase.dart';
 import '../../domain/usecases/change_password_usecase.dart';
@@ -250,3 +252,70 @@ class ChangePasswordNotifier extends Notifier<SignInState> {
 }
 
 final changePasswordNotifierProvider = NotifierProvider<ChangePasswordNotifier, SignInState>(ChangePasswordNotifier.new);
+
+final sendOtpUseCaseProvider = Provider<SendOtpUseCase>((ref) {
+  return SendOtpUseCase(ref.watch(authRepositoryProvider));
+});
+
+final verifyOtpUseCaseProvider = Provider<VerifyOtpUseCase>((ref) {
+  return VerifyOtpUseCase(ref.watch(authRepositoryProvider));
+});
+
+class PhoneAuthState {
+  final bool isSendingCode;
+  final bool isVerifying;
+  final String? verificationId;
+  final String? errorMessage;
+  const PhoneAuthState({this.isSendingCode = false, this.isVerifying = false, this.verificationId, this.errorMessage});
+
+  PhoneAuthState copyWith({bool? isSendingCode, bool? isVerifying, String? verificationId, String? errorMessage}) => PhoneAuthState(
+        isSendingCode: isSendingCode ?? this.isSendingCode,
+        isVerifying: isVerifying ?? this.isVerifying,
+        verificationId: verificationId ?? this.verificationId,
+        errorMessage: errorMessage,
+      );
+}
+
+class PhoneAuthNotifier extends Notifier<PhoneAuthState> {
+  @override
+  PhoneAuthState build() => const PhoneAuthState();
+
+  Future<bool> sendCode(String phoneNumber) async {
+    state = state.copyWith(isSendingCode: true, errorMessage: null);
+    final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber);
+    return result.match(
+      (failure) {
+        state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+        return false;
+      },
+      (verificationId) {
+        state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+        return true;
+      },
+    );
+  }
+
+  Future<bool> verifyCode(String smsCode) async {
+    final verificationId = state.verificationId;
+    if (verificationId == null) {
+      state = state.copyWith(errorMessage: 'Something went wrong — please request a new code.');
+      return false;
+    }
+    state = state.copyWith(isVerifying: true, errorMessage: null);
+    final result = await ref.read(verifyOtpUseCaseProvider).call(verificationId: verificationId, smsCode: smsCode);
+    return result.match(
+      (failure) {
+        state = state.copyWith(isVerifying: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isVerifying: false, errorMessage: null);
+        return true;
+      },
+    );
+  }
+
+  void reset() => state = const PhoneAuthState();
+}
+
+final phoneAuthProvider = NotifierProvider<PhoneAuthNotifier, PhoneAuthState>(PhoneAuthNotifier.new);

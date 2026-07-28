@@ -40,36 +40,14 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
   }
 
   Future<void> _pickPhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a Photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from Gallery'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null) return;
-
-    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 800);
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 800);
     if (picked == null) return;
 
     // Reading full bytes rather than just wrapping the path in a File
     // avoids a race where FileImage/Image.file re-reads the file
     // lazily during render, which can happen before the OS has fully
-    // flushed the photo to disk — especially right after the camera
-    // hands it back. This is what was causing the crash right after
-    // picking a photo.
+    // flushed the photo to disk. This is what was causing the crash
+    // right after picking a photo.
     final bytes = await picked.readAsBytes();
     if (!mounted) return;
     setState(() {
