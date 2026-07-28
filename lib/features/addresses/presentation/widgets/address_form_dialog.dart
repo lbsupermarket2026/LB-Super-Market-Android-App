@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
-import '../../../../core/widgets/location/location_picker_screen.dart';
 import '../../domain/entities/address_entity.dart';
 import '../providers/address_providers.dart';
 
@@ -125,23 +123,26 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
 
-    // Geocode the typed address into coordinates — used for both the
-    // "View on Map" link and for calculating distance-based delivery
-    // charges at checkout. Best-effort: if it fails (unusual/informal
-    // address, no network), the address still saves fine, it just won't
-    // have a map link or count toward delivery-distance calculation
-    // until edited again with a more specific address.
+    // Only geocodes the typed address as a FALLBACK when there's no
+    // manual pinpoint at all — a manual pin is inherently more
+    // accurate than geocoding informal address text (that's the whole
+    // reason "Pinpoint on Map" exists), so it must never be silently
+    // overwritten by a geocoding result once the user has set one.
     double? lat = _latitude;
     double? lng = _longitude;
-    try {
-      final fullAddress = '${_line1.text} ${_line2.text}, ${_city.text}, ${_state.text} ${_pincode.text}';
-      final locations = await locationFromAddress(fullAddress);
-      if (locations.isNotEmpty) {
-        lat = locations.first.latitude;
-        lng = locations.first.longitude;
+    if (lat == null || lng == null) {
+      try {
+        final fullAddress = '${_line1.text} ${_line2.text}, ${_city.text}, ${_state.text} ${_pincode.text}';
+        final locations = await locationFromAddress(fullAddress);
+        if (locations.isNotEmpty) {
+          lat = locations.first.latitude;
+          lng = locations.first.longitude;
+        }
+      } catch (_) {
+        // No coordinates at all yet — address still saves fine, just
+        // won't have a map link or count toward delivery calculation
+        // until pinpointed or edited with a more specific address.
       }
-    } catch (_) {
-      // Keep whatever coordinates (if any) were already on this address.
     }
 
     final address = AddressEntity(
@@ -183,41 +184,17 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
                 onChanged: (v) => setState(() => _label.text = v ?? 'Other'),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoadingLocation ? null : _useCurrentLocation,
-                      icon: _isLoadingLocation
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Icon(_latitude != null ? Icons.check_circle : Icons.my_location, size: 18),
-                      label: Text(_isLoadingLocation
-                          ? 'Locating…'
-                          : (_latitude != null ? 'Located' : 'Use GPS'), overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push<LatLng>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => LocationPickerScreen(initialLatitude: _latitude, initialLongitude: _longitude),
-                          ),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            _latitude = result.latitude;
-                            _longitude = result.longitude;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.map_outlined, size: 18),
-                      label: const Text('Pinpoint on Map', overflow: TextOverflow.ellipsis),
-                    ),
-                  ),
-                ],
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoadingLocation ? null : _useCurrentLocation,
+                  icon: _isLoadingLocation
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(_latitude != null ? Icons.check_circle : Icons.my_location, size: 18),
+                  label: Text(_isLoadingLocation
+                      ? 'Locating…'
+                      : (_latitude != null ? 'Located' : 'Fetch My Location')),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -253,7 +230,8 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
               TextFormField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone (optional)'),
+                decoration: const InputDecoration(labelText: 'Phone'),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required — needed so delivery can reach you' : null,
               ),
               const SizedBox(height: 8),
               CheckboxListTile(

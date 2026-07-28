@@ -43,13 +43,17 @@ class RouteGuard {
       return _homeForRole(user.role);
     }
 
-    // Email/password accounts must verify before using the app — phone
-    // accounts have no email at all, so this only applies when one's
-    // actually on file. Checked directly against Firebase's live flag
-    // rather than anything cached in Firestore, since verification
-    // status is decided client-side by Firebase itself.
+    // Email/password accounts must verify before using the app — but
+    // only customer accounts. Staff (admin/employee) accounts are
+    // created directly through Employee Management, not public
+    // self-signup, so there's no spam/fake-account risk to guard
+    // against here — and an admin locked out of their own dashboard
+    // because their account predates this feature is strictly worse
+    // than the problem verification was meant to solve. Phone accounts
+    // have no email at all, so this only applies when one's on file.
     final firebaseUser = fb.FirebaseAuth.instance.currentUser;
-    final needsEmailVerification = firebaseUser != null && firebaseUser.email != null && !firebaseUser.emailVerified;
+    final needsEmailVerification =
+        user.role == UserRole.customer && firebaseUser != null && firebaseUser.email != null && !firebaseUser.emailVerified;
     if (needsEmailVerification) {
       return currentLocation == RouteNames.verifyEmail ? null : RouteNames.verifyEmail;
     }

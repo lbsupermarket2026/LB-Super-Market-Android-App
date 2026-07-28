@@ -229,3 +229,45 @@ exports.notifyOnLowStock = onDocumentUpdated("products/{productId}", async (even
     createdAt: FieldValue.serverTimestamp(),
   });
 });
+
+// ============================================================
+// 5. Customer notifications — their order status changed, or a
+//    new offer went live.
+// ============================================================
+// Same reasoning as the admin notifications above: written via the
+// Admin SDK so no customer-side write permission is ever needed for
+// something that's inherently the SYSTEM telling them something, not
+// something they're creating themselves.
+exports.notifyCustomerOnOrderStatusChange = onDocumentUpdated("orders/{orderId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (before.status === after.status) return;
+
+  await db.collection("notifications").add({
+    type: "order_status",
+    uid: after.userId,
+    title: "Order update",
+    body: `Order ${after.orderNumber || event.params.orderId} is now ${after.status}`,
+    orderId: event.params.orderId,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+});
+
+// Broadcast (uid: null) rather than one write per customer — cheaper
+// and simpler, and the customer-side query below reads both their own
+// personal notifications and any broadcast ones in the same pass.
+exports.notifyCustomersOnNewOffer = onDocumentCreated("offers/{offerId}", async (event) => {
+  const offer = event.data.data();
+  if (!offer.isEnabled) return;
+
+  await db.collection("notifications").add({
+    type: "new_offer",
+    uid: null,
+    title: "New offer",
+    body: offer.title || "Check out a new offer in the app",
+    offerId: event.params.offerId,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+});

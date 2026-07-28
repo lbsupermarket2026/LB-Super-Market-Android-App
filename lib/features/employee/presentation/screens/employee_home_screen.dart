@@ -7,6 +7,7 @@ import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../providers/employee_order_providers.dart';
+import 'delivery_location_screen.dart';
 
 class EmployeeHomeScreen extends ConsumerWidget {
   const EmployeeHomeScreen({super.key});
@@ -151,11 +152,18 @@ class _DeliveryCard extends ConsumerWidget {
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(foregroundColor: colors.orange, side: BorderSide(color: colors.orange)),
-                      onPressed: () async {
-                        final uri = Uri.parse(
-                          'https://www.google.com/maps/search/?api=1&query=${order.deliveryLatitude},${order.deliveryLongitude}',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DeliveryLocationScreen(
+                              latitude: order.deliveryLatitude!,
+                              longitude: order.deliveryLongitude!,
+                              customerAddress: order.deliveryAddress,
+                              orderLabel: order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8)),
+                            ),
+                          ),
                         );
-                        if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
                       },
                       icon: const Icon(Icons.map_outlined, size: 18),
                       label: const Text('Map'),

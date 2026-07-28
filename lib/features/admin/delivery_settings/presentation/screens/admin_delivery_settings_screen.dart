@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../../../core/theme/app_spacing.dart';
-import '../../../../../core/widgets/location/location_picker_screen.dart';
 import '../../domain/entities/delivery_settings_entity.dart';
 import '../providers/delivery_settings_providers.dart';
 
@@ -148,26 +146,7 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                       icon: _isLoadingLocation
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.my_location),
-                      label: Text(_isLoadingLocation ? 'Getting location…' : 'Use My Current Location'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push<LatLng>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => LocationPickerScreen(initialLatitude: _lat, initialLongitude: _lng),
-                          ),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            _lat = result.latitude;
-                            _lng = result.longitude;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.map_outlined),
-                      label: const Text('Fine-tune on Map'),
+                      label: Text(_isLoadingLocation ? 'Getting location…' : 'Fetch My Location'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
