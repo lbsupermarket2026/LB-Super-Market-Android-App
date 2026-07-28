@@ -10,7 +10,7 @@ import '../../../cart/presentation/widgets/cart_bar.dart';
 import '../../../categories/presentation/providers/category_providers.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/providers/browse_products_notifier.dart';
-import '../../../products/presentation/widgets/browse_product_tile.dart';
+import '../../../products/presentation/widgets/product_card.dart';
 import '../providers/search_providers.dart';
 
 enum _SortOption { popular, priceLowHigh, priceHighLow, nameAz }
@@ -111,12 +111,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         children: [
           IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE5E2D6)),
-              ),
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              elevation: 1,
               child: TextField(
                 controller: _controller,
                 textInputAction: TextInputAction.search,
@@ -285,13 +283,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacing.sm,
             crossAxisSpacing: AppSpacing.sm,
-            childAspectRatio: 0.66,
+            childAspectRatio: 0.62,
           ),
           itemCount: filtered.length + (state.isLoadingMore ? 2 : 0),
           itemBuilder: (context, index) {
             if (index >= filtered.length) return const ProductCardSkeleton();
             final product = filtered[index];
-            return BrowseProductTile(product: product, onTap: () => context.push('/product/${product.id}'));
+            return ProductCard(product: product, width: null, onTap: () => context.push('/product/${product.id}'));
           },
         );
       },
@@ -322,12 +320,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacing.sm,
             crossAxisSpacing: AppSpacing.sm,
-            childAspectRatio: 0.66,
+            childAspectRatio: 0.62,
           ),
           itemCount: filtered.length,
           itemBuilder: (context, index) {
             final product = filtered[index];
-            return BrowseProductTile(product: product, onTap: () => context.push('/product/${product.id}'));
+            return ProductCard(product: product, width: null, onTap: () => context.push('/product/${product.id}'));
           },
         );
       },
@@ -345,7 +343,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: AppSpacing.sm,
           crossAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.66,
+          childAspectRatio: 0.62,
         ),
         itemCount: 6,
         itemBuilder: (_, __) => const ProductCardSkeleton(),

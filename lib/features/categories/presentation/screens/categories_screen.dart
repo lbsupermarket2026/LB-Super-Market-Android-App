@@ -11,7 +11,7 @@ import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../../cart/presentation/widgets/cart_bar.dart';
 import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/providers/browse_products_notifier.dart';
-import '../../../products/presentation/widgets/browse_product_tile.dart';
+import '../../../products/presentation/widgets/product_card.dart';
 import '../providers/category_providers.dart';
 
 /// Zepto/Blinkit-style layout — categories fixed on the left, products
@@ -259,12 +259,12 @@ class _ProductsArea extends ConsumerWidget {
                   crossAxisCount: 2,
                   mainAxisSpacing: AppSpacing.sm,
                   crossAxisSpacing: AppSpacing.sm,
-                  childAspectRatio: 0.66,
+                  childAspectRatio: 0.62,
                 ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final product = items[index];
-                  return BrowseProductTile(product: product, onTap: () => context.push('/product/${product.id}'));
+                  return ProductCard(product: product, width: null, onTap: () => context.push('/product/${product.id}'));
                 },
               )
             : ListView.separated(
@@ -295,7 +295,7 @@ class _ProductsArea extends ConsumerWidget {
         crossAxisCount: 2,
         mainAxisSpacing: AppSpacing.sm,
         crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 0.66,
+        childAspectRatio: 0.62,
       ),
       itemCount: 6,
       itemBuilder: (_, __) => const ProductCardSkeleton(),

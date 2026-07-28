@@ -68,12 +68,12 @@ class OfferProductsScreen extends ConsumerWidget {
                     crossAxisCount: 2,
                     mainAxisSpacing: AppSpacing.sm,
                     crossAxisSpacing: AppSpacing.sm,
-                    childAspectRatio: 0.66,
+                    childAspectRatio: 0.62,
                   ),
                   itemCount: products.length,
                   itemBuilder: (context, index) {
                     final product = products[index];
-                    return ProductCard(product: product, onTap: () => context.push('/product/${product.id}'));
+                    return ProductCard(product: product, width: null, onTap: () => context.push('/product/${product.id}'));
                   },
                 ),
               ],

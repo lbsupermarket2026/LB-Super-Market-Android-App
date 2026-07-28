@@ -52,8 +52,12 @@ class OrderRequestRemoteDataSource {
   }
 
   Future<List<OrderRequestEntity>> getMyOrderRequests(String userId) async {
-    final snapshot =
-        await _collection.where('uid', isEqualTo: userId).orderBy('createdAt', descending: true).get();
-    return snapshot.docs.map(OrderRequestModel.fromFirestore).toList();
+    // No orderBy on the query itself — avoids needing a composite
+    // index for uid + createdAt together. Sorted client-side instead,
+    // same approach used elsewhere in this app for exactly this reason.
+    final snapshot = await _collection.where('uid', isEqualTo: userId).get();
+    final requests = snapshot.docs.map(OrderRequestModel.fromFirestore).toList();
+    requests.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return requests;
   }
 }
