@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../providers/auth_providers.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -60,10 +61,11 @@ class _PhoneSignInScreenState extends ConsumerState<PhoneSignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final state = ref.watch(phoneAuthProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(
         title: const Text('Sign in with Phone'),
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),

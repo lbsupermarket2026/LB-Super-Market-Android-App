@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/delivery_settings_entity.dart';
 import '../providers/delivery_settings_providers.dart';
@@ -104,8 +105,9 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
     final settingsAsync = ref.watch(deliverySettingsProvider);
     final mutation = ref.watch(deliverySettingsMutationProvider);
 
+    final colors = context.appColors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Delivery Settings')),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

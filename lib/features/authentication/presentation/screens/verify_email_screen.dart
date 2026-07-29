@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../providers/auth_providers.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -54,10 +55,11 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8ED),
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
