@@ -40,6 +40,7 @@ class _ProductsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final productsAsync = ref.watch(allProductsAdminProvider);
     final categoriesAsync = ref.watch(allCategoriesAdminProvider);
 
@@ -80,7 +81,7 @@ class _ProductsTab extends ConsumerWidget {
                 return Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.card,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
@@ -146,6 +147,7 @@ class _CategoriesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final categoriesAsync = ref.watch(allCategoriesAdminProvider);
 
     return Scaffold(
@@ -173,7 +175,7 @@ class _CategoriesTab extends ConsumerWidget {
                 return Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.card,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                   ),

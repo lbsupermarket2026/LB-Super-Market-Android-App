@@ -43,4 +43,24 @@ abstract class AuthRepository {
   Future<Result<void>> sendPasswordResetEmail(String email);
 
   Future<Result<void>> signOut();
+
+  /// Signs in with either an email or a phone number as the
+  /// identifier, plus a password — no OTP needed for this, since a
+  /// phone number only ever needs OTP verification once, at signup.
+  Future<Result<UserEntity>> signInWithIdentifierAndPassword({
+    required String identifier,
+    required String password,
+  });
+
+  /// Completes a phone-based signup after OTP verification — links a
+  /// password to the now-verified phone account and creates its
+  /// Firestore profile, so it behaves identically to an email signup
+  /// from that point on.
+  Future<Result<UserEntity>> signUpWithPhoneAndPassword({
+    required String name,
+    required String phone,
+    required String password,
+    required String verificationId,
+    required String smsCode,
+  });
 }

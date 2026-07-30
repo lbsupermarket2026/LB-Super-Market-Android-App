@@ -38,7 +38,7 @@ class LowStockProductsScreen extends ConsumerWidget {
               return Container(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.card,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                 ),

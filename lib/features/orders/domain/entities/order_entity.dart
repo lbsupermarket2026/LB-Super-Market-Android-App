@@ -91,6 +91,7 @@ class OrderEntity extends Equatable {
   final DateTime createdAt;
   final String deliveryAddress;
   final String? customerPhone;
+  final String? customerName; // set for admin-created guest orders (e.g. WhatsApp) that have no linked account
   final double? deliveryLatitude;
   final double? deliveryLongitude;
   final String? orderNumber; // human-readable display ID, e.g. "ORD-0001" — see SequentialIdService
@@ -114,6 +115,7 @@ class OrderEntity extends Equatable {
     required this.createdAt,
     required this.deliveryAddress,
     this.customerPhone,
+    this.customerName,
     this.deliveryLatitude,
     this.deliveryLongitude,
     this.orderNumber,
@@ -144,6 +146,7 @@ class OrderEntity extends Equatable {
         createdAt,
         deliveryAddress,
         customerPhone,
+        customerName,
         deliveryLatitude,
         deliveryLongitude,
         orderNumber,

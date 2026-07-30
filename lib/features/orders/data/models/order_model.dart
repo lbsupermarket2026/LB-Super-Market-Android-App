@@ -10,6 +10,7 @@ class OrderModel {
   final Timestamp createdAt;
   final String deliveryAddress;
   final String? customerPhone;
+  final String? customerName;
   final double? deliveryLatitude;
   final double? deliveryLongitude;
   final String? orderNumber;
@@ -33,6 +34,7 @@ class OrderModel {
     required this.createdAt,
     required this.deliveryAddress,
     this.customerPhone,
+    this.customerName,
     this.deliveryLatitude,
     this.deliveryLongitude,
     this.orderNumber,
@@ -70,6 +72,7 @@ class OrderModel {
       createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
       deliveryAddress: (data['deliveryAddress'] as String?) ?? '',
       customerPhone: data['customerPhone'] as String?,
+      customerName: data['customerName'] as String?,
       deliveryLatitude: (data['deliveryLatitude'] as num?)?.toDouble(),
       deliveryLongitude: (data['deliveryLongitude'] as num?)?.toDouble(),
       orderNumber: data['orderNumber'] as String?,
@@ -105,6 +108,7 @@ class OrderModel {
         createdAt: createdAt.toDate(),
         deliveryAddress: deliveryAddress,
         customerPhone: customerPhone,
+        customerName: customerName,
         deliveryLatitude: deliveryLatitude,
         deliveryLongitude: deliveryLongitude,
         orderNumber: orderNumber,
@@ -126,6 +130,7 @@ class OrderModel {
     required double totalAmount,
     required String deliveryAddress,
     String? customerPhone,
+    String? customerName,
     double? deliveryLatitude,
     double? deliveryLongitude,
     String? orderNumber,
@@ -140,6 +145,7 @@ class OrderModel {
       'createdAt': FieldValue.serverTimestamp(),
       'deliveryAddress': deliveryAddress,
       'customerPhone': customerPhone,
+      'customerName': customerName,
       'deliveryLatitude': deliveryLatitude,
       'deliveryLongitude': deliveryLongitude,
       'orderNumber': orderNumber,

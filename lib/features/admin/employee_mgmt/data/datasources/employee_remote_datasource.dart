@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../domain/entities/staff_member_entity.dart';
+import '../../../../../core/services/sequential_id_service.dart';
 
 class EmployeeRemoteDataSource {
   final FirebaseFirestore _firestore;
@@ -25,6 +26,7 @@ class EmployeeRemoteDataSource {
         phone: (data['phone'] as String?) ?? '',
         role: StaffRoleX.fromString((data['role'] as String?) ?? 'employee'),
         createdAt: ((data['createdAt'] as Timestamp?) ?? Timestamp.now()).toDate(),
+        employeeCode: data['employeeCode'] as String?,
       );
     }).toList();
     staff.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -54,11 +56,14 @@ class EmployeeRemoteDataSource {
       final uid = credential.user!.uid;
       await secondaryAuth.signOut();
 
+      final employeeCode = await SequentialIdService().nextEmployeeCode();
+
       await _collection.doc(uid).set({
         'name': name,
         'email': email,
         'phone': phone,
         'role': role == StaffRole.admin ? 'admin' : 'employee',
+        'employeeCode': employeeCode,
         'createdAt': FieldValue.serverTimestamp(),
       });
     } finally {

@@ -63,7 +63,7 @@ class EmployeeListScreen extends ConsumerWidget {
               return Container(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.card,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
@@ -78,7 +78,9 @@ class EmployeeListScreen extends ConsumerWidget {
                   ),
                   title: Text('${member.name}${isSelf ? ' (You)' : ''}',
                       style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${member.email}\n${member.phone}'),
+                  subtitle: Text(
+                    '${member.employeeCode != null ? '${member.employeeCode} • ' : ''}${member.email}\n${member.phone}',
+                  ),
                   isThreeLine: true,
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

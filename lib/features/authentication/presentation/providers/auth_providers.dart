@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
@@ -13,6 +14,8 @@ import '../../domain/usecases/verify_otp_usecase.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
 import '../../domain/usecases/upload_profile_photo_usecase.dart';
 import '../../domain/usecases/change_password_usecase.dart';
+import '../../domain/usecases/sign_in_with_identifier_usecase.dart';
+import '../../domain/usecases/sign_up_with_phone_usecase.dart';
 
 // ---- DI wiring ----
 
@@ -26,6 +29,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final signInUseCaseProvider = Provider<SignInUseCase>((ref) {
   return SignInUseCase(ref.watch(authRepositoryProvider));
+});
+
+final signInWithIdentifierUseCaseProvider = Provider<SignInWithIdentifierUseCase>((ref) {
+  return SignInWithIdentifierUseCase(ref.watch(authRepositoryProvider));
+});
+
+final signUpWithPhoneUseCaseProvider = Provider<SignUpWithPhoneUseCase>((ref) {
+  return SignUpWithPhoneUseCase(ref.watch(authRepositoryProvider));
 });
 
 final signUpUseCaseProvider = Provider<SignUpUseCase>((ref) {
@@ -79,7 +90,13 @@ final profileRefreshTriggerProvider = StateProvider<int>((ref) => 0);
 /// sends you.
 final currentUserProfileProvider = FutureProvider<UserEntity?>((ref) async {
   ref.watch(profileRefreshTriggerProvider);
-  final uid = ref.read(currentUserProvider)?.uid;
+  // MUST be watch, not read — this is what makes the provider refetch
+  // when the signed-in account itself changes (sign out, sign in as
+  // someone else), not just when an edit bumps the trigger above.
+  // Reading it here meant switching accounts left the PREVIOUS user's
+  // cached profile showing indefinitely until something happened to
+  // trigger a refresh — exactly the "same profile everywhere" bug.
+  final uid = ref.watch(currentUserProvider)?.uid;
   if (uid == null) return null;
   final model = await ref.read(authRemoteDataSourceProvider).resolveUserProfile(uid);
   return model.toEntity();
@@ -102,9 +119,9 @@ class SignInNotifier extends Notifier<SignInState> {
   @override
   SignInState build() => const SignInState();
 
-  Future<bool> signIn({required String email, required String password}) async {
+  Future<bool> signIn({required String identifier, required String password}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
-    final result = await ref.read(signInUseCaseProvider).call(email: email, password: password);
+    final result = await ref.read(signInWithIdentifierUseCaseProvider).call(identifier: identifier, password: password);
     return result.match(
       (failure) {
         state = state.copyWith(isLoading: false, errorMessage: failure.message);
@@ -282,17 +299,22 @@ class PhoneAuthNotifier extends Notifier<PhoneAuthState> {
 
   Future<bool> sendCode(String phoneNumber) async {
     state = state.copyWith(isSendingCode: true, errorMessage: null);
-    final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber);
-    return result.match(
-      (failure) {
-        state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
-        return false;
-      },
-      (verificationId) {
-        state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
-        return true;
-      },
-    );
+    try {
+      final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber).timeout(const Duration(seconds: 30));
+      return result.match(
+        (failure) {
+          state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+          return false;
+        },
+        (verificationId) {
+          state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+          return true;
+        },
+      );
+    } on TimeoutException {
+      state = state.copyWith(isSendingCode: false, errorMessage: 'Taking too long — check your connection and try again.');
+      return false;
+    }
   }
 
   Future<bool> verifyCode(String smsCode) async {
@@ -302,20 +324,114 @@ class PhoneAuthNotifier extends Notifier<PhoneAuthState> {
       return false;
     }
     state = state.copyWith(isVerifying: true, errorMessage: null);
-    final result = await ref.read(verifyOtpUseCaseProvider).call(verificationId: verificationId, smsCode: smsCode);
-    return result.match(
-      (failure) {
-        state = state.copyWith(isVerifying: false, errorMessage: failure.message);
-        return false;
-      },
-      (_) {
-        state = state.copyWith(isVerifying: false, errorMessage: null);
-        return true;
-      },
-    );
+    try {
+      final result = await ref
+          .read(verifyOtpUseCaseProvider)
+          .call(verificationId: verificationId, smsCode: smsCode)
+          .timeout(const Duration(seconds: 25));
+      return result.match(
+        (failure) {
+          state = state.copyWith(isVerifying: false, errorMessage: failure.message);
+          return false;
+        },
+        (_) {
+          state = state.copyWith(isVerifying: false, errorMessage: null);
+          return true;
+        },
+      );
+    } on TimeoutException {
+      // A slow/dropped connection can leave Firebase's own call hanging
+      // rather than erroring out — without this, the button just spins
+      // forever with no way to know anything went wrong.
+      state = state.copyWith(isVerifying: false, errorMessage: 'Taking too long — check your connection and try again.');
+      return false;
+    }
   }
 
   void reset() => state = const PhoneAuthState();
 }
 
 final phoneAuthProvider = NotifierProvider<PhoneAuthNotifier, PhoneAuthState>(PhoneAuthNotifier.new);
+
+// ---- Phone signup: send OTP, then complete with name + password ----
+
+class PhoneSignUpState {
+  final bool isSendingCode;
+  final bool isCompleting;
+  final String? verificationId;
+  final String? errorMessage;
+  const PhoneSignUpState({this.isSendingCode = false, this.isCompleting = false, this.verificationId, this.errorMessage});
+
+  PhoneSignUpState copyWith({bool? isSendingCode, bool? isCompleting, String? verificationId, String? errorMessage}) =>
+      PhoneSignUpState(
+        isSendingCode: isSendingCode ?? this.isSendingCode,
+        isCompleting: isCompleting ?? this.isCompleting,
+        verificationId: verificationId ?? this.verificationId,
+        errorMessage: errorMessage,
+      );
+}
+
+class PhoneSignUpNotifier extends Notifier<PhoneSignUpState> {
+  @override
+  PhoneSignUpState build() => const PhoneSignUpState();
+
+  Future<bool> sendCode(String phoneNumber) async {
+    state = state.copyWith(isSendingCode: true, errorMessage: null);
+    try {
+      final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber).timeout(const Duration(seconds: 30));
+      return result.match(
+        (failure) {
+          state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+          return false;
+        },
+        (verificationId) {
+          state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+          return true;
+        },
+      );
+    } on TimeoutException {
+      state = state.copyWith(isSendingCode: false, errorMessage: 'Taking too long — check your connection and try again.');
+      return false;
+    }
+  }
+
+  /// Verifies the code and, in the same step, sets the password this
+  /// account will use for every future login — no OTP needed again
+  /// after this.
+  Future<bool> completeSignUp({
+    required String name,
+    required String phone,
+    required String password,
+    required String smsCode,
+  }) async {
+    final verificationId = state.verificationId;
+    if (verificationId == null) {
+      state = state.copyWith(errorMessage: 'Something went wrong — please request a new code.');
+      return false;
+    }
+    state = state.copyWith(isCompleting: true, errorMessage: null);
+    try {
+      final result = await ref
+          .read(signUpWithPhoneUseCaseProvider)
+          .call(name: name, phone: phone, password: password, verificationId: verificationId, smsCode: smsCode)
+          .timeout(const Duration(seconds: 25));
+      return result.match(
+        (failure) {
+          state = state.copyWith(isCompleting: false, errorMessage: failure.message);
+          return false;
+        },
+        (_) {
+          state = state.copyWith(isCompleting: false, errorMessage: null);
+          return true;
+        },
+      );
+    } on TimeoutException {
+      state = state.copyWith(isCompleting: false, errorMessage: 'Taking too long — check your connection and try again.');
+      return false;
+    }
+  }
+
+  void reset() => state = const PhoneSignUpState();
+}
+
+final phoneSignUpProvider = NotifierProvider<PhoneSignUpNotifier, PhoneSignUpState>(PhoneSignUpNotifier.new);

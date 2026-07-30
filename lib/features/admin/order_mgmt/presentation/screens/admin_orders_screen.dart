@@ -6,6 +6,7 @@ import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../providers/admin_order_providers.dart';
 import 'admin_order_detail_screen.dart';
+import 'admin_create_order_screen.dart';
 import 'admin_order_request_detail_screen.dart';
 
 const _green = Color(0xFF2E7D32);
@@ -24,6 +25,16 @@ class AdminOrdersScreen extends StatelessWidget {
         backgroundColor: colors.surface,
         appBar: AppBar(
           title: const Text('Orders'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Create Order',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdminCreateOrderScreen()),
+              ),
+            ),
+          ],
           bottom: const TabBar(
             indicatorColor: Colors.white,
             tabs: [Tab(text: 'Orders'), Tab(text: 'Order Requests')],
@@ -49,6 +60,7 @@ class _AdminOrdersTabState extends ConsumerState<_AdminOrdersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final ordersAsync = ref.watch(allOrdersAdminProvider);
 
     return ordersAsync.when(
@@ -86,13 +98,13 @@ class _AdminOrdersTabState extends ConsumerState<_AdminOrdersTab> {
                           final order = filtered[index];
                           final statusColor = order.status == OrderStatus.cancelled
                               ? _red
-                              : order.status == OrderStatus.delivered
+                              : (order.status == OrderStatus.delivered || order.status == OrderStatus.confirmed)
                                   ? _green
                                   : _orange;
                           return Container(
                             margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: colors.card,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                             ),
@@ -132,6 +144,7 @@ class _AdminOrderRequestsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final requestsAsync = ref.watch(allOrderRequestsAdminProvider);
 
     return requestsAsync.when(
@@ -155,7 +168,7 @@ class _AdminOrderRequestsTab extends ConsumerWidget {
               return Container(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.card,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                 ),

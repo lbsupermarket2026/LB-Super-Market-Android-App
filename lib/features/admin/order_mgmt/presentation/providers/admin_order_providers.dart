@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/admin_order_datasource.dart';
+import '../../../../orders/data/datasources/order_remote_datasource.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 
@@ -11,8 +12,8 @@ final allOrdersAdminProvider = FutureProvider.autoDispose<List<OrderEntity>>((re
   return ref.watch(adminOrderDataSourceProvider).getAllOrders();
 });
 
-final customerOrderCountProvider = FutureProvider.autoDispose.family<int, String>((ref, userId) {
-  return ref.watch(adminOrderDataSourceProvider).getCustomerOrderCount(userId);
+final customerOrderStatsProvider = FutureProvider.autoDispose.family<({int count, double totalSpent}), String>((ref, userId) {
+  return ref.watch(adminOrderDataSourceProvider).getCustomerOrderStats(userId);
 });
 
 final customerOrderSearchProvider = FutureProvider.autoDispose.family<List<OrderEntity>, String>((ref, query) {
@@ -37,6 +38,36 @@ class AdminOrderMutationNotifier extends StateNotifier<AdminOrderMutationState> 
     state = const AdminOrderMutationState(isSubmitting: true);
     try {
       await _ref.read(adminOrderDataSourceProvider).updateOrderStatus(orderId, status);
+      state = const AdminOrderMutationState();
+      _ref.invalidate(allOrdersAdminProvider);
+      return true;
+    } catch (e) {
+      state = AdminOrderMutationState(error: e.toString());
+      return false;
+    }
+  }
+
+  /// For orders admin enters manually — e.g. a customer who ordered
+  /// over WhatsApp rather than through the app. No linked customer
+  /// account required; customerName carries the name in that case
+  /// instead of looking one up from a user record.
+  Future<bool> createManualOrder({
+    required List<Map<String, dynamic>> items,
+    required double totalAmount,
+    required String deliveryAddress,
+    required String customerName,
+    String? customerPhone,
+  }) async {
+    state = const AdminOrderMutationState(isSubmitting: true);
+    try {
+      await OrderRemoteDataSource().createOrder(
+        userId: '',
+        items: items,
+        totalAmount: totalAmount,
+        deliveryAddress: deliveryAddress,
+        customerName: customerName,
+        customerPhone: customerPhone,
+      );
       state = const AdminOrderMutationState();
       _ref.invalidate(allOrdersAdminProvider);
       return true;

@@ -37,15 +37,19 @@ Future<Uint8List> _buildBillBytes(WidgetRef ref, OrderEntity order) async {
   );
 }
 
-/// Presents Share / Print / Download as a bottom sheet — replaces the
-/// old single "share" button now that there are three genuinely
-/// different things someone might want to do with a bill.
+/// Presents View / Share / Print / Download as a bottom sheet.
 Future<void> generateAndShareOrderBill(BuildContext context, WidgetRef ref, OrderEntity order) async {
   final choice = await showModalBottomSheet<String>(
     context: context,
     builder: (sheetContext) => SafeArea(
       child: Wrap(
         children: [
+          ListTile(
+            leading: const Icon(Icons.visibility_outlined),
+            title: const Text('View'),
+            subtitle: const Text('Open in the app'),
+            onTap: () => Navigator.pop(sheetContext, 'view'),
+          ),
           ListTile(
             leading: const Icon(Icons.print_outlined),
             title: const Text('Print'),
@@ -77,6 +81,11 @@ Future<void> generateAndShareOrderBill(BuildContext context, WidgetRef ref, Orde
     final filename = '${order.orderNumber ?? order.id}.pdf';
 
     switch (choice) {
+      case 'view':
+        if (context.mounted) {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => _BillPreviewScreen(bytes: bytes, filename: filename)));
+        }
+        break;
       case 'print':
         await Printing.layoutPdf(onLayout: (_) async => bytes, name: filename);
         break;
@@ -97,5 +106,30 @@ Future<void> generateAndShareOrderBill(BuildContext context, WidgetRef ref, Orde
     if (context.mounted) {
       messenger.showSnackBar(SnackBar(content: Text('Could not generate bill: $e')));
     }
+  }
+}
+
+/// Full-screen in-app preview — PdfPreview (from the printing package,
+/// already a dependency) also has its own built-in print/share buttons,
+/// so this doubles as a fallback route to those even without going
+/// through the bottom sheet again.
+class _BillPreviewScreen extends StatelessWidget {
+  final Uint8List bytes;
+  final String filename;
+  const _BillPreviewScreen({required this.bytes, required this.filename});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Bill')),
+      body: PdfPreview(
+        build: (format) async => bytes,
+        allowPrinting: true,
+        allowSharing: true,
+        canChangeOrientation: false,
+        canChangePageFormat: false,
+        pdfFileName: filename,
+      ),
+    );
   }
 }

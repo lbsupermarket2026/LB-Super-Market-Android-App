@@ -18,9 +18,13 @@ class AdminOrderDataSource {
   /// Aggregate count, not a full fetch — cheap regardless of how many
   /// orders that customer has, same reasoning as the category product
   /// count on the customer side.
-  Future<int> getCustomerOrderCount(String userId) async {
-    final snapshot = await _orders.where('userId', isEqualTo: userId).count().get();
-    return snapshot.count ?? 0;
+  /// Replaces the old count-only query — needs the actual totalAmount
+  /// values to sum, not just a count, so this fetches real documents
+  /// rather than using .count().
+  Future<({int count, double totalSpent})> getCustomerOrderStats(String userId) async {
+    final snapshot = await _orders.where('userId', isEqualTo: userId).get();
+    final total = snapshot.docs.fold<double>(0, (sum, doc) => sum + ((doc.data()['totalAmount'] as num?)?.toDouble() ?? 0));
+    return (count: snapshot.docs.length, totalSpent: total);
   }
 
   /// Runs two separate equality queries (userId, customerPhone) and

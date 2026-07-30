@@ -13,6 +13,7 @@ class StaffMemberEntity {
   final String phone;
   final StaffRole role;
   final DateTime createdAt;
+  final String? employeeCode;
 
   const StaffMemberEntity({
     required this.uid,
@@ -21,5 +22,6 @@ class StaffMemberEntity {
     required this.phone,
     required this.role,
     required this.createdAt,
+    this.employeeCode,
   });
 }

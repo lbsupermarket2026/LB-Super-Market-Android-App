@@ -18,6 +18,7 @@ import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/products/presentation/screens/category_detail_screen.dart';
 import '../../features/offers/presentation/screens/offer_products_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
+import '../../features/notifications/presentation/screens/customer_notifications_screen.dart';
 import '../../features/admin/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/employee_mgmt/presentation/screens/employee_list_screen.dart';
 import '../../features/admin/order_mgmt/presentation/screens/admin_orders_screen.dart';
@@ -161,6 +162,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/delivery-settings', builder: (context, state) => const AdminDeliverySettingsScreen()),
       GoRoute(path: '/admin/employee-performance', builder: (context, state) => const EmployeePerformanceScreen()),
       GoRoute(path: '/admin/notifications', builder: (context, state) => const AdminNotificationsScreen()),
+      GoRoute(path: '/notifications', builder: (context, state) => const CustomerNotificationsScreen()),
       GoRoute(path: '/employee/home', builder: (context, state) => const EmployeeHomeScreen()),
       GoRoute(path: '/employee/profile', builder: (context, state) => const StaffProfileScreen()),
 

@@ -40,18 +40,24 @@ class CustomerNotificationsScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final n = notifications[index];
                 final isOffer = n.type == 'new_offer';
+                final isAssignment = n.type == 'order_assigned';
+                final accentColor = isOffer ? _orange : _green;
                 return Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: n.isRead ? Colors.white : (isOffer ? _orange : _green).withOpacity(0.06),
+                    color: n.isRead ? Colors.white : accentColor.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: n.isRead ? Colors.transparent : (isOffer ? _orange : _green).withOpacity(0.3)),
+                    border: Border.all(color: n.isRead ? Colors.transparent : accentColor.withOpacity(0.3)),
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     leading: Icon(
-                      isOffer ? Icons.local_offer_outlined : Icons.local_shipping_outlined,
-                      color: isOffer ? _orange : _green,
+                      isOffer
+                          ? Icons.local_offer_outlined
+                          : isAssignment
+                              ? Icons.assignment_turned_in_outlined
+                              : Icons.local_shipping_outlined,
+                      color: accentColor,
                     ),
                     title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800)),
                     subtitle: Text(n.body, style: const TextStyle(fontSize: 12)),
@@ -61,6 +67,8 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                         context.push('/orders/${n.orderId}');
                       } else if (n.type == 'new_offer') {
                         context.push('/offers');
+                      } else if (n.type == 'order_assigned') {
+                        context.push('/employee/home');
                       }
                     },
                   ),

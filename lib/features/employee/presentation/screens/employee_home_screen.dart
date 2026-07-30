@@ -7,6 +7,7 @@ import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../providers/employee_order_providers.dart';
+import '../../../notifications/presentation/providers/customer_notifications_providers.dart';
 import 'delivery_location_screen.dart';
 
 class EmployeeHomeScreen extends ConsumerWidget {
@@ -23,6 +24,36 @@ class EmployeeHomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My Deliveries'),
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final unreadCount = ref.watch(customerUnreadCountProvider);
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    tooltip: 'Notifications',
+                    onPressed: () => context.push('/notifications'),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : '$unreadCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline),
             tooltip: 'Profile',
@@ -115,6 +146,27 @@ class _DeliveryCard extends ConsumerWidget {
                 child: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
                     style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
               ),
+              if (order.deliveryLatitude != null && order.deliveryLongitude != null)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  icon: Icon(Icons.map_outlined, size: 20, color: colors.orange),
+                  tooltip: 'Map',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DeliveryLocationScreen(
+                          latitude: order.deliveryLatitude!,
+                          longitude: order.deliveryLongitude!,
+                          customerAddress: order.deliveryAddress,
+                          orderLabel: order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -148,28 +200,6 @@ class _DeliveryCard extends ConsumerWidget {
                     ),
                   ),
                 if (order.customerPhone?.isNotEmpty == true) const SizedBox(width: 8),
-                if (order.deliveryLatitude != null && order.deliveryLongitude != null)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: colors.orange, side: BorderSide(color: colors.orange)),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DeliveryLocationScreen(
-                              latitude: order.deliveryLatitude!,
-                              longitude: order.deliveryLongitude!,
-                              customerAddress: order.deliveryAddress,
-                              orderLabel: order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8)),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.map_outlined, size: 18),
-                      label: const Text('Map'),
-                    ),
-                  ),
-                if (order.deliveryLatitude != null && order.deliveryLongitude != null) const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: colors.green, foregroundColor: Colors.white),

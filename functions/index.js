@@ -3,11 +3,48 @@ const { onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/
 const { defineSecret, defineString } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 const logger = require("firebase-functions/logger");
 const crypto = require("crypto");
 
 initializeApp();
 const db = getFirestore();
+const messaging = getMessaging();
+
+// Shared by every notification trigger below — looks up the target's
+// tokens across both possible collections (customer vs staff, same
+// reasoning as the client-side token-save code), sends to all of
+// them, and prunes any token FCM reports as no-longer-valid (app
+// uninstalled, data cleared, etc.) so the array doesn't grow stale
+// forever.
+async function sendPushToUser(uid, { title, body, data }) {
+  if (!uid) return;
+
+  for (const collection of ["users", "staff_users"]) {
+    const doc = await db.collection(collection).doc(uid).get();
+    if (!doc.exists) continue;
+    const tokens = doc.data().fcmTokens;
+    if (!Array.isArray(tokens) || tokens.length === 0) continue;
+
+    const response = await messaging.sendEachForMulticast({
+      tokens,
+      notification: { title, body },
+      data: Object.fromEntries(Object.entries(data || {}).map(([k, v]) => [k, String(v)])),
+      android: { priority: "high", notification: { channelId: "freshcart_default" } },
+    });
+
+    const deadTokens = [];
+    response.responses.forEach((r, i) => {
+      if (!r.success && ["messaging/invalid-registration-token", "messaging/registration-token-not-registered"].includes(r.error?.code)) {
+        deadTokens.push(tokens[i]);
+      }
+    });
+    if (deadTokens.length > 0) {
+      await db.collection(collection).doc(uid).update({ fcmTokens: FieldValue.arrayRemove(...deadTokens) });
+    }
+    return; // found the right collection, no need to check the other
+  }
+}
 
 // Key ID isn't sensitive (it's already inside the Flutter app), so it's
 // a plain param. Key SECRET must never appear in client code — this is
@@ -197,13 +234,23 @@ exports.autoRefundOnCancel = onDocumentUpdated(
 // update (e.g. a stock decrement after an order is confirmed).
 exports.notifyOnNewOrder = onDocumentCreated("orders/{orderId}", async (event) => {
   const order = event.data.data();
+  const title = "New order placed";
+  const body = `Order ${order.orderNumber || event.params.orderId} — Rs. ${order.totalAmount}`;
+
   await db.collection("notifications").add({
     type: "new_order",
-    title: "New order placed",
-    body: `Order ${order.orderNumber || event.params.orderId} — Rs. ${order.totalAmount}`,
+    title,
+    body,
     orderId: event.params.orderId,
     isRead: false,
     createdAt: FieldValue.serverTimestamp(),
+  });
+
+  await messaging.send({
+    topic: "admin_alerts",
+    notification: { title, body },
+    data: { type: "new_order", orderId: event.params.orderId },
+    android: { priority: "high", notification: { channelId: "freshcart_default" } },
   });
 });
 
@@ -220,13 +267,23 @@ exports.notifyOnLowStock = onDocumentUpdated("products/{productId}", async (even
   // the same alert repeatedly.
   if (wasLow || !isLowNow) return;
 
+  const title = "Low stock alert";
+  const body = `${after.name} — only ${after.stockQty} left (threshold: ${threshold})`;
+
   await db.collection("notifications").add({
     type: "low_stock",
-    title: "Low stock alert",
-    body: `${after.name} — only ${after.stockQty} left (threshold: ${threshold})`,
+    title,
+    body,
     productId: event.params.productId,
     isRead: false,
     createdAt: FieldValue.serverTimestamp(),
+  });
+
+  await messaging.send({
+    topic: "admin_alerts",
+    notification: { title, body },
+    data: { type: "low_stock", productId: event.params.productId },
+    android: { priority: "high", notification: { channelId: "freshcart_default" } },
   });
 });
 
@@ -243,31 +300,101 @@ exports.notifyCustomerOnOrderStatusChange = onDocumentUpdated("orders/{orderId}"
   const after = event.data.after.data();
   if (before.status === after.status) return;
 
+  const title = "Order update";
+  const body = `Order ${after.orderNumber || event.params.orderId} is now ${after.status}`;
+
   await db.collection("notifications").add({
     type: "order_status",
     uid: after.userId,
-    title: "Order update",
-    body: `Order ${after.orderNumber || event.params.orderId} is now ${after.status}`,
+    title,
+    body,
     orderId: event.params.orderId,
     isRead: false,
     createdAt: FieldValue.serverTimestamp(),
   });
+
+  await sendPushToUser(after.userId, { title, body, data: { type: "order_status", orderId: event.params.orderId } });
+});
+
+// Same notifications collection/pattern as the customer one above —
+// the uid field is what scopes it to the right person, doesn't matter
+// whether that's a customer or a staff member, so this reuses the
+// exact same reader logic on the client rather than needing a
+// parallel system just for employees.
+exports.notifyEmployeeOnAssignment = onDocumentUpdated("orders/{orderId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  const newlyAssigned = after.assignedEmployeeUid && after.assignedEmployeeUid !== before.assignedEmployeeUid;
+  if (!newlyAssigned) return;
+
+  const title = "New delivery assigned";
+  const body = `Order ${after.orderNumber || event.params.orderId} has been assigned to you`;
+
+  await db.collection("notifications").add({
+    type: "order_assigned",
+    uid: after.assignedEmployeeUid,
+    title,
+    body,
+    orderId: event.params.orderId,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  await sendPushToUser(after.assignedEmployeeUid, { title, body, data: { type: "order_assigned", orderId: event.params.orderId } });
 });
 
 // Broadcast (uid: null) rather than one write per customer — cheaper
 // and simpler, and the customer-side query below reads both their own
 // personal notifications and any broadcast ones in the same pass.
+// The push itself uses FCM's topic messaging rather than looping
+// every customer's tokens individually — every customer device
+// subscribes to the "new_offers" topic on the client side, so this is
+// one send regardless of how many customers there are.
 exports.notifyCustomersOnNewOffer = onDocumentCreated("offers/{offerId}", async (event) => {
   const offer = event.data.data();
   if (!offer.isEnabled) return;
 
+  const title = "New offer";
+  const body = offer.title || "Check out a new offer in the app";
+
   await db.collection("notifications").add({
     type: "new_offer",
     uid: null,
-    title: "New offer",
-    body: offer.title || "Check out a new offer in the app",
+    title,
+    body,
     offerId: event.params.offerId,
     isRead: false,
     createdAt: FieldValue.serverTimestamp(),
   });
+
+  await messaging.send({
+    topic: "new_offers",
+    notification: { title, body },
+    data: { type: "new_offer" },
+    android: { priority: "high", notification: { channelId: "freshcart_default" } },
+  });
+});
+
+// ============================================================
+// 6. Phone-to-email lookup for the unified login screen.
+// ============================================================
+// Deliberately does NOT require request.auth — this runs BEFORE
+// sign-in completes (translating a typed phone number into the real
+// email behind it, so the client can then call normal email/password
+// sign-in). The Firestore rule for staff_users only allows reads from
+// an already-authenticated user, which a query like this can't
+// satisfy pre-auth — this function uses the Admin SDK to bypass that
+// safely, returning only the email (nothing else from the document)
+// and only when a real match exists.
+exports.lookupStaffEmailByPhone = onCall(async (request) => {
+  const phone = request.data?.phone;
+  if (typeof phone !== "string" || phone.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "phone is required.");
+  }
+
+  const snapshot = await db.collection("staff_users").where("phone", "==", phone).limit(1).get();
+  if (snapshot.empty) return { email: null };
+
+  const email = snapshot.docs[0].data().email;
+  return { email: typeof email === "string" ? email : null };
 });

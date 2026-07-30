@@ -29,7 +29,7 @@ class SplashScreen extends StatelessWidget {
         children: [
           Image.asset(
             'assets/images/splash_illustration.png',
-            fit: BoxFit.cover,
+            fit: BoxFit.fitWidth,
             alignment: Alignment.topCenter,
             errorBuilder: (context, error, stackTrace) => const Center(
               child: Icon(Icons.storefront, size: 72, color: _green),

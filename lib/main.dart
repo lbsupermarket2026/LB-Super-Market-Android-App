@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'app.dart';
 import 'core/config/firebase_options.dart';
 import 'core/services/cache_service.dart';
+import 'core/services/push_notification_service.dart';
 
 /// Default entrypoint — points at whatever DefaultFirebaseOptions
 /// resolves to (single-project setup). Once you split dev/staging/prod
@@ -32,6 +34,11 @@ Future<void> bootstrap({FirebaseOptions? firebaseOptions}) async {
   await Firebase.initializeApp(
     options: firebaseOptions ?? DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Must be registered this early (before runApp) — this is what lets
+  // FCM deliver notifications while the app is fully closed, not just
+  // backgrounded.
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Enable offline persistence — free read caching + queued writes.
   FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);

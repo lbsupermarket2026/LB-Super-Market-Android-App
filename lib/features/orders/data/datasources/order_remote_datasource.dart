@@ -20,7 +20,7 @@ class OrderRemoteDataSource {
     final snapshot = await userRef.get();
     if (snapshot.data()?['customerCode'] != null) return;
 
-    final code = await SequentialIdService().next(counterField: 'nextCustomerNumber', prefix: 'CUST');
+    final code = await SequentialIdService().nextCustomerCode();
     await userRef.set({'customerCode': code}, SetOptions(merge: true));
   }
 
@@ -51,13 +51,14 @@ class OrderRemoteDataSource {
     required double totalAmount,
     required String deliveryAddress,
     String? customerPhone,
+    String? customerName,
     double? deliveryLatitude,
     double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
   }) async {
-    final orderNumber = await SequentialIdService().next(counterField: 'nextOrderNumber', prefix: 'ORD');
-    await _ensureCustomerCode(userId);
+    final orderNumber = await SequentialIdService().nextOrderNumber();
+    if (userId.isNotEmpty) await _ensureCustomerCode(userId);
 
     final docRef = await _collection.add(OrderModel.toFirestoreMap(
       userId: userId,
@@ -65,6 +66,7 @@ class OrderRemoteDataSource {
       totalAmount: totalAmount,
       deliveryAddress: deliveryAddress,
       customerPhone: customerPhone,
+      customerName: customerName,
           deliveryLatitude: deliveryLatitude,
           deliveryLongitude: deliveryLongitude,
       orderNumber: orderNumber,

@@ -30,7 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _onSignIn() async {
     if (!_formKey.currentState!.validate()) return;
     final success = await ref.read(signInNotifierProvider.notifier).signIn(
-          email: _emailController.text.trim(),
+          identifier: _emailController.text.trim(),
           password: _passwordController.text,
         );
     // Navigation on success happens automatically via the router's
@@ -72,8 +72,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: AppSpacing.xl),
                           Center(
                             child: Container(
-                      width: 88,
-                      height: 88,
+                      width: 128,
+                      height: 128,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
@@ -98,11 +98,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 AppTextField(
                   controller: _emailController,
-                  label: 'Email',
-                  keyboardType: TextInputType.emailAddress,
+                  label: 'Email or Phone Number',
+                  keyboardType: TextInputType.text,
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return 'Email is required';
-                    if (!value.contains('@')) return 'Enter a valid email';
+                    if (value == null || value.trim().isEmpty) return 'Email or phone number is required';
                     return null;
                   },
                 ),
@@ -133,12 +132,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   label: 'Sign In',
                   isLoading: signInState.isLoading,
                   onPressed: _onSignIn,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                OutlinedButton.icon(
-                  onPressed: () => context.push(RouteNames.otp),
-                  icon: const Icon(Icons.phone_outlined, size: 18),
-                  label: const Text('Sign in with Phone instead'),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(

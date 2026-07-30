@@ -83,17 +83,19 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Consumer(
                   builder: (context, ref, _) {
-                    final countAsync = ref.watch(customerOrderCountProvider(order.userId));
-                    return countAsync.when(
-                      data: (count) => GestureDetector(
+                    final statsAsync = ref.watch(customerOrderStatsProvider(order.userId));
+                    return statsAsync.when(
+                      data: (stats) => GestureDetector(
                         onTap: () => context.push('/admin/customer-orders', extra: order.userId),
                         child: Row(
                           children: [
                             Text(
-                              count <= 1 ? 'First order from this customer' : '$count orders total from this customer',
+                              stats.count <= 1
+                                  ? 'First order from this customer'
+                                  : '${stats.count} orders • ₹${stats.totalSpent.toStringAsFixed(0)} total from this customer',
                               style: const TextStyle(fontWeight: FontWeight.w600, color: _green),
                             ),
-                            if (count > 1) ...[
+                            if (stats.count > 1) ...[
                               const SizedBox(width: 4),
                               const Icon(Icons.chevron_right, size: 16, color: _green),
                             ],
@@ -277,10 +279,11 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),

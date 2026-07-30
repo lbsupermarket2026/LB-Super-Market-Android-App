@@ -86,13 +86,14 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
                           if (orders.isEmpty) {
                             return const Center(child: Text('No orders found for that phone number or ID.'));
                           }
+                          final totalSpent = orders.fold<double>(0, (sum, o) => sum + o.totalAmount);
                           return ListView(
                             padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
                             children: [
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                                 child: Text(
-                                  '${orders.length} order${orders.length == 1 ? '' : 's'} found',
+                                  '${orders.length} order${orders.length == 1 ? '' : 's'} found • ₹${totalSpent.toStringAsFixed(0)} total',
                                   style: const TextStyle(fontWeight: FontWeight.w700, color: _green),
                                 ),
                               ),
@@ -116,6 +117,7 @@ class _OrderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final statusColor = order.status == OrderStatus.cancelled
         ? _red
         : order.status == OrderStatus.delivered
@@ -125,7 +127,7 @@ class _OrderTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
