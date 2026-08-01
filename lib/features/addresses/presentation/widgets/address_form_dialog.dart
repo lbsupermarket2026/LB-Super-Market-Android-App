@@ -4,6 +4,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../domain/entities/address_entity.dart';
 import '../providers/address_providers.dart';
+import '../../../../core/extensions/string_case_extensions.dart';
 
 // Simple unique-enough ID for locally stored addresses — avoids pulling
 // in the uuid package just for this, since it's not already a direct
@@ -147,11 +148,11 @@ class _AddressFormDialogState extends ConsumerState<AddressFormDialog> {
 
     final address = AddressEntity(
       id: widget.existing?.id ?? _generateId(),
-      label: _label.text.trim(),
-      line1: _line1.text.trim(),
-      line2: _line2.text.trim(),
-      city: _city.text.trim(),
-      state: _state.text.trim(),
+      label: _label.text.trim().toTitleCase(),
+      line1: _line1.text.trim().toTitleCase(),
+      line2: _line2.text.trim().toTitleCase(),
+      city: _city.text.trim().toTitleCase(),
+      state: _state.text.trim().toTitleCase(),
       pincode: _pincode.text.trim(),
       phone: _phone.text.trim(),
       isDefault: _isDefault,

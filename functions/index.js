@@ -4,12 +4,14 @@ const { defineSecret, defineString } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getAuth } = require("firebase-admin/auth");
 const logger = require("firebase-functions/logger");
 const crypto = require("crypto");
 
 initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
+const auth = getAuth();
 
 // Shared by every notification trigger below — looks up the target's
 // tokens across both possible collections (customer vs staff, same
@@ -397,4 +399,137 @@ exports.lookupStaffEmailByPhone = onCall(async (request) => {
 
   const email = snapshot.docs[0].data().email;
   return { email: typeof email === "string" ? email : null };
+});
+
+// Used specifically by "Forgot Password" before sending an OTP — Firebase
+// phone auth AUTO-CREATES a new account for any number that doesn't
+// already have one, which means without this check, "forgot password"
+// on a random/unregistered number would silently create a brand new
+// account instead of failing. This confirms a real account already
+// exists for the number first, so that can't happen.
+exports.checkPhoneRegistered = onCall(async (request) => {
+  const phone = request.data?.phone;
+  if (typeof phone !== "string" || phone.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "phone is required.");
+  }
+
+  try {
+    await auth.getUserByPhoneNumber(phone);
+    return { registered: true };
+  } catch (error) {
+    if (error.code === "auth/user-not-found") {
+      return { registered: false };
+    }
+    throw new HttpsError("internal", "Could not check this number right now.");
+  }
+});
+
+// ============================================================
+// 7. Email OTP — signup/reset verification via a real numeric code
+//    rather than a click-through link.
+// ============================================================
+// Codes live in a Firestore collection that's admin-only in the
+// security rules (never directly readable/writable by clients) — the
+// ONLY way to interact with them is through these two callable
+// functions, which is what keeps this from being guessable/bypassable
+// from the client side.
+const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+const SENDGRID_FROM_EMAIL = defineString("SENDGRID_FROM_EMAIL", { default: "noreply@lbsupermarket.com" });
+const OTP_TTL_MINUTES = 10;
+
+function generateSixDigitCode() {
+  // crypto.randomInt is cryptographically strong — Math.random() would
+  // be guessable in principle, which matters for something used as an
+  // account-security code.
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+exports.sendEmailOtp = onCall({ secrets: [sendgridApiKey] }, async (request) => {
+  const email = request.data?.email;
+  if (typeof email !== "string" || !email.includes("@")) {
+    throw new HttpsError("invalid-argument", "A valid email is required.");
+  }
+
+  const code = generateSixDigitCode();
+  const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+
+  await db.collection("email_otps").doc(email).set({
+    code,
+    expiresAt,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+
+  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${sendgridApiKey.value()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email }] }],
+      from: { email: SENDGRID_FROM_EMAIL.value(), name: "LB Super Market" },
+      subject: "Your verification code",
+      content: [
+        {
+          type: "text/plain",
+          value: `Your LB Super Market verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error("SendGrid send failed", { status: response.status, body: errorText });
+    throw new HttpsError("internal", "Could not send the verification email. Please try again.");
+  }
+
+  return { sent: true };
+});
+
+exports.verifyEmailOtp = onCall(async (request) => {
+  const email = request.data?.email;
+  const code = request.data?.code;
+  if (typeof email !== "string" || typeof code !== "string") {
+    throw new HttpsError("invalid-argument", "email and code are required.");
+  }
+
+  const docRef = db.collection("email_otps").doc(email);
+  const doc = await docRef.get();
+  if (!doc.exists) {
+    return { valid: false, reason: "No code was requested for this email." };
+  }
+
+  const data = doc.data();
+  const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt);
+  if (Date.now() > expiresAt.getTime()) {
+    await docRef.delete();
+    return { valid: false, reason: "This code has expired — request a new one." };
+  }
+
+  if (data.code !== code) {
+    return { valid: false, reason: "Incorrect code." };
+  }
+
+  // One-time use — deleted immediately on a successful match so the
+  // same code can't be replayed.
+  await docRef.delete();
+  return { valid: true };
+});
+
+// Only settable via the Admin SDK, and only for the caller's own
+// account — a signed-in user marking someone else's email verified
+// would be a real privilege escalation, so this checks request.auth
+// matches the uid being modified before doing anything.
+exports.markEmailVerified = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+  const uid = request.data?.uid;
+  if (typeof uid !== "string" || uid !== request.auth.uid) {
+    throw new HttpsError("permission-denied", "Can only verify your own account.");
+  }
+
+  await auth.updateUser(uid, { emailVerified: true });
+  return { success: true };
 });

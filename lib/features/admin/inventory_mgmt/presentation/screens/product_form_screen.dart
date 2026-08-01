@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/extensions/string_case_extensions.dart';
 import '../../../../categories/domain/entities/category_entity.dart';
 import '../../../../products/domain/entities/product_entity.dart';
 import '../../../offers_mgmt/presentation/providers/admin_offer_card_providers.dart';
@@ -151,7 +152,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     final success = await ref.read(inventoryMutationProvider.notifier).saveProduct(
           id: widget.existing?.id,
-          name: _nameController.text.trim(),
+          name: _nameController.text.trim().toTitleCase(),
           description: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
           brand: _brandController.text.trim().isEmpty ? null : _brandController.text.trim(),
           categoryId: _categoryId!,

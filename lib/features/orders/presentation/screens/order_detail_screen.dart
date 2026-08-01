@@ -97,6 +97,28 @@ class OrderDetailScreen extends ConsumerWidget {
                     Text('Delivery Address', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 6),
                     Text(order.deliveryAddress),
+                    if (order.assignedEmployeeUid != null) ...[
+                      const Divider(height: 20),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final nameAsync = ref.watch(assignedEmployeeNameProvider(order.assignedEmployeeUid!));
+                          return Row(
+                            children: [
+                              const Icon(Icons.delivery_dining_outlined, size: 18, color: Color(0xFF2E7D32)),
+                              const SizedBox(width: 6),
+                              nameAsync.when(
+                                data: (name) => Text(
+                                  'Assigned to: ${name ?? 'Delivery staff'}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                loading: () => const Text('Assigned to: …', style: TextStyle(fontWeight: FontWeight.w600)),
+                                error: (_, __) => const SizedBox.shrink(),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                     const Divider(height: 20),
                     Row(
                       children: [

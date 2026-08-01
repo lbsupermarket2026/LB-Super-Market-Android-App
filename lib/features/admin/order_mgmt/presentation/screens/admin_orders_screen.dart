@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../providers/admin_order_providers.dart';
+import '../../../../orders/presentation/providers/order_providers.dart';
 import 'admin_order_detail_screen.dart';
 import 'admin_create_order_screen.dart';
 import 'admin_order_request_detail_screen.dart';
@@ -35,9 +36,11 @@ class AdminOrdersScreen extends StatelessWidget {
               ),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             indicatorColor: Colors.white,
-            tabs: [Tab(text: 'Orders'), Tab(text: 'Order Requests')],
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: const [Tab(text: 'Orders'), Tab(text: 'Order Requests')],
           ),
         ),
         body: const TabBarView(
@@ -116,11 +119,34 @@ class _AdminOrdersTabState extends ConsumerState<_AdminOrdersTab> {
                                 '${order.itemCount} items • ₹${order.totalAmount.toStringAsFixed(0)} • ${order.paymentMethod.label}\n${order.deliveryAddress}',
                               ),
                               isThreeLine: true,
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                                child: Text(order.status.label,
-                                    style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
+                              trailing: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                                    child: Text(order.status.label,
+                                        style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
+                                  ),
+                                  if (order.assignedEmployeeUid != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Consumer(
+                                        builder: (context, ref, _) {
+                                          final nameAsync = ref.watch(assignedEmployeeNameProvider(order.assignedEmployeeUid!));
+                                          return nameAsync.when(
+                                            data: (name) => Text(
+                                              name ?? 'Assigned',
+                                              style: TextStyle(fontSize: 10, color: colors.muted),
+                                            ),
+                                            loading: () => const SizedBox.shrink(),
+                                            error: (_, __) => const SizedBox.shrink(),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                ],
                               ),
                               onTap: () => Navigator.push(
                                 context,

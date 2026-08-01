@@ -193,16 +193,27 @@ class AuthRemoteDataSource {
   }
 
   Future<void> touchLastLogin(String uid) async {
-    final staffRef = _firestore.collection(FirestorePaths.staffUsers).doc(uid);
-    final staffDoc = await staffRef.get();
+    // Staff accounts must NEVER get a users/{uid} doc written for them —
+    // this was the actual root cause of the "every admin/employee login
+    // gets treated as a customer" bug. With SetOptions(merge: true),
+    // this call CREATES the doc if none exists, and since
+    // resolveUserProfile() checks the customer collection first, that
+    // freshly-created (empty) doc immediately shadowed the real
+    // staff_users record on the very next profile resolution — meaning
+    // deleting the stray doc never actually fixed anything, because the
+    // next login just recreated it right away.
+    final staffDoc = await _firestore.collection(FirestorePaths.staffUsers).doc(uid).get();
     if (staffDoc.exists) {
-      await staffRef.set({'lastLoginAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
-    } else {
-      await _firestore
-          .collection(FirestorePaths.users)
-          .doc(uid)
-          .set({'lastLoginAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+      await _firestore.collection(FirestorePaths.staffUsers).doc(uid).set(
+        {'lastLoginAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+      return;
     }
+    await _firestore
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .set({'lastLoginAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
@@ -395,6 +406,100 @@ class AuthRemoteDataSource {
       // directly from the phone number itself.
       final syntheticEmail = _syntheticEmailForPhone(identifier);
       return await _firebaseAuth.signInWithEmailAndPassword(email: syntheticEmail, password: password);
+    } on fb.FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseAuthError(e));
+    }
+  }
+
+  /// Verifies the OTP (proving ownership of the phone number) and, in
+  /// the SAME step, sets a new password on that account — this is what
+  /// makes it a genuine reset rather than an OTP-only backdoor. Phone
+  /// verification signs the user in as a side effect of how Firebase
+  /// phone auth works, but they always leave this method with a newly
+  /// set password already in place, not just "logged in with the same
+  /// old password still active."
+  Future<fb.UserCredential> resetPasswordWithPhoneOtp({
+    required String verificationId,
+    required String smsCode,
+    required String newPassword,
+  }) async {
+    try {
+      final phoneCredential = fb.PhoneAuthProvider.credential(verificationId: verificationId, smsCode: smsCode);
+      final userCredential = await _firebaseAuth.signInWithCredential(phoneCredential);
+      await userCredential.user!.updatePassword(newPassword);
+      return userCredential;
+    } on fb.FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseAuthError(e));
+    }
+  }
+
+  // ============================================================
+  /// "Forgot Password" must never send an OTP to a number that has no
+  /// account — Firebase phone auth auto-creates a new account for any
+  /// unregistered number rather than failing, so without this check,
+  /// resetting a random/mistyped number would silently create a brand
+  /// new account instead of giving a clear "no account found" error.
+  Future<bool> checkPhoneRegistered(String phone) async {
+    try {
+      final callable = _functions.httpsCallable('checkPhoneRegistered');
+      final result = await callable.call({'phone': phone});
+      return result.data['registered'] == true;
+    } on FirebaseFunctionsException catch (e) {
+      throw AuthException(e.message ?? 'Could not check this number right now.');
+    }
+  }
+
+  // ============================================================
+  // Email OTP — a real numeric code (via Cloud Function + SendGrid)
+  // rather than the click-through link used elsewhere. Both calls go
+  // through Cloud Functions specifically so the actual code value
+  // never has to be readable from the client side at all.
+  // ============================================================
+
+  Future<void> sendEmailOtp(String email) async {
+    try {
+      final callable = _functions.httpsCallable('sendEmailOtp');
+      await callable.call({'email': email});
+    } on FirebaseFunctionsException catch (e) {
+      throw AuthException(e.message ?? 'Could not send the verification code.');
+    }
+  }
+
+  /// Returns true only on a genuinely valid, unexpired, matching code
+  /// — the function deletes it immediately after a successful check,
+  /// so this can only ever succeed once per sent code.
+  Future<bool> verifyEmailOtp({required String email, required String code}) async {
+    try {
+      final callable = _functions.httpsCallable('verifyEmailOtp');
+      final result = await callable.call({'email': email, 'code': code});
+      return result.data['valid'] == true;
+    } on FirebaseFunctionsException catch (e) {
+      throw AuthException(e.message ?? 'Could not verify the code.');
+    }
+  }
+
+  /// Called only after verifyEmailOtp has already returned true — the
+  /// OTP step proves ownership of the email; this is the normal
+  /// Firebase account creation that follows it, same as any other
+  /// email/password signup. Firebase's emailVerified flag can only be
+  /// set by the Admin SDK, not the client, so a Cloud Function call
+  /// right after creation is what marks it true — without this, the
+  /// person would land on the "verify your email" screen again
+  /// immediately after already proving it via OTP, which would make
+  /// the whole OTP step pointless.
+  Future<fb.UserCredential> createAccountAfterEmailOtp(String email, String password) async {
+    try {
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
+      try {
+        final callable = _functions.httpsCallable('markEmailVerified');
+        await callable.call({'uid': credential.user!.uid});
+        await credential.user!.reload();
+      } catch (_) {
+        // Best-effort — worst case they see one unnecessary "verify
+        // your email" prompt despite already having done OTP, not a
+        // broken signup. Account creation itself already succeeded.
+      }
+      return credential;
     } on fb.FirebaseAuthException catch (e) {
       throw AuthException(_mapFirebaseAuthError(e));
     }

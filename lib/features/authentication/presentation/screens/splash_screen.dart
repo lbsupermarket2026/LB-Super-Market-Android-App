@@ -3,15 +3,15 @@ import 'package:url_launcher/url_launcher.dart';
 
 const _green = Color(0xFF2E7D32);
 
-/// Shown briefly while authStateChangesProvider resolves its first value.
-/// The router redirect logic moves the user on from here automatically —
-/// this screen never navigates itself.
+/// Shown briefly while authStateChangesProvider AND
+/// splashMinimumDurationProvider both resolve — RouteGuard owns the
+/// actual timing/redirect decision, this screen just renders.
 ///
-/// Built around the client's own designed splash illustration (logo,
-/// app name, tagline, trust badges, and product basket all baked into
-/// one image) rather than recreating those elements in code — this is
-/// their own design asset, not third-party material, so using it
-/// directly is the right call here.
+/// FIXED: zoomed/cropped look was BoxFit.fitWidth inside a
+/// StackFit.expand, which fills screen width and lets height
+/// overflow/crop on any device whose aspect ratio doesn't exactly
+/// match the source image. Switched to BoxFit.contain so the full
+/// illustration is always visible, letterboxed if needed, never cropped.
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
@@ -27,16 +27,17 @@ class SplashScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/splash_illustration.png',
-            fit: BoxFit.fitWidth,
-            alignment: Alignment.topCenter,
-            errorBuilder: (context, error, stackTrace) => const Center(
-              child: Icon(Icons.storefront, size: 72, color: _green),
+          Center(
+            child: Image.asset(
+              'assets/images/splash_illustration.png',
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) => const Center(
+                child: Icon(Icons.storefront, size: 72, color: _green),
+              ),
             ),
           ),
-          // Loading indicator + attribution over the bottom of the
-          // illustration, same spot this has lived throughout the app.
           Positioned(
             left: 0,
             right: 0,

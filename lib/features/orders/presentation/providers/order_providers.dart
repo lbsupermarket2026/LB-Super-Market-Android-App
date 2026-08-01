@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/datasources/order_remote_datasource.dart';
 import '../../data/repositories_impl/order_repository_impl.dart';
 import '../../domain/entities/order_entity.dart';
@@ -131,4 +132,11 @@ final orderByIdProvider = FutureProvider.autoDispose.family<OrderEntity, String>
         onTimeout: () => throw Exception('Taking too long to load — check your connection and try again.'),
       );
   return result.match((failure) => throw failure, (order) => order);
+});
+
+/// Looks up just the display name for an assigned employee, shown on
+/// the customer's order detail screen — "who's delivering this."
+final assignedEmployeeNameProvider = FutureProvider.autoDispose.family<String?, String>((ref, employeeUid) async {
+  final doc = await FirebaseFirestore.instance.collection('staff_users').doc(employeeUid).get();
+  return doc.data()?['name'] as String?;
 });

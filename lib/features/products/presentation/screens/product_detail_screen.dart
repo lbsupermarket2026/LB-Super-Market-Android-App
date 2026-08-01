@@ -76,7 +76,7 @@ class ProductDetailScreen extends ConsumerWidget {
                     Text(product.brand!, style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text(product.name,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.black87)),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: colors.ink)),
                   const SizedBox(height: AppSpacing.xs),
                   if (product.unit.isNotEmpty) Text(product.unit, style: TextStyle(color: Colors.grey.shade600)),
                   const SizedBox(height: AppSpacing.md),
@@ -122,13 +122,13 @@ class ProductDetailScreen extends ConsumerWidget {
                         const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
                         const SizedBox(width: 4),
                         Text('${product.ratingAvg.toStringAsFixed(1)} (${product.ratingCount} reviews)',
-                            style: const TextStyle(color: Colors.black87)),
+                            style: TextStyle(color: colors.ink)),
                       ],
                     ),
                   ],
                   if (product.description?.isNotEmpty == true) ...[
                     const SizedBox(height: AppSpacing.lg),
-                    const Text('Description', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87)),
+                    Text('Description', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
                     const SizedBox(height: 4),
                     Container(width: 32, height: 3, color: const Color(0xFFEF6C00)),
                     const SizedBox(height: AppSpacing.sm),
@@ -136,7 +136,7 @@ class ProductDetailScreen extends ConsumerWidget {
                   ],
                   if (product.variants.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.lg),
-                    const Text('Options', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87)),
+                    Text('Options', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
                     const SizedBox(height: AppSpacing.sm),
                     Wrap(
                       spacing: AppSpacing.sm,
@@ -149,65 +149,6 @@ class ProductDetailScreen extends ConsumerWidget {
                     ),
                   ],
                   const SizedBox(height: AppSpacing.xxl),
-                  Builder(
-                    builder: (context) {
-                      final quantity = ref.watch(cartProvider.select(
-                        (state) => state.valueOrNull?.firstWhere(
-                              (i) => i.productId == product.id,
-                              orElse: () => const CartItemEntity(productId: '', name: '', unit: '', imageUrl: '', price: 0, quantity: 0),
-                            ).quantity ??
-                            0,
-                      ));
-
-                      if (quantity == 0) {
-                        return SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            icon: const Icon(Icons.add_shopping_cart),
-                            label: Text(product.isInStock ? 'Add to Cart' : 'Out of Stock',
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                            onPressed: product.isInStock
-                                ? () {
-                                    ref.read(cartProvider.notifier).addProduct(product);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('${product.name} added to cart')),
-                                    );
-                                  }
-                                : null,
-                          ),
-                        );
-                      }
-
-                      // Already in cart — adjust the quantity right
-                      // here instead of forcing a trip to the cart
-                      // screen just to change how many.
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(color: _green, borderRadius: BorderRadius.circular(14)),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            IconButton(
-                              onPressed: () => ref.read(cartProvider.notifier).setQuantity(product.id, quantity - 1),
-                              icon: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
-                            ),
-                            Text('$quantity in cart', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                            IconButton(
-                              onPressed: () => ref.read(cartProvider.notifier).setQuantity(product.id, quantity + 1),
-                              icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
                 ]),
               ),
             ),
@@ -219,6 +160,76 @@ class ProductDetailScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(productByIdProvider(productId)),
         ),
       ),
+      // Pinned to the bottom of the screen at all times, rather than
+      // scrolling inline with the description — the button no longer
+      // ends up high up the page for products with a short description.
+      bottomNavigationBar: productAsync.valueOrNull == null
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
+                child: Builder(
+                  builder: (context) {
+                    final product = productAsync.valueOrNull!;
+                    final quantity = ref.watch(cartProvider.select(
+                      (state) => state.valueOrNull?.firstWhere(
+                            (i) => i.productId == product.id,
+                            orElse: () => const CartItemEntity(productId: '', name: '', unit: '', imageUrl: '', price: 0, quantity: 0),
+                          ).quantity ??
+                          0,
+                    ));
+
+                    if (quantity == 0) {
+                      return SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: Text(product.isInStock ? 'Add to Cart' : 'Out of Stock',
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                          onPressed: product.isInStock
+                              ? () {
+                                  ref.read(cartProvider.notifier).addProduct(product);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('${product.name} added to cart')),
+                                  );
+                                }
+                              : null,
+                        ),
+                      );
+                    }
+
+                    // Already in cart — adjust the quantity right
+                    // here instead of forcing a trip to the cart
+                    // screen just to change how many.
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(color: _green, borderRadius: BorderRadius.circular(14)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            onPressed: () => ref.read(cartProvider.notifier).setQuantity(product.id, quantity - 1),
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.white, size: 28),
+                          ),
+                          Text('$quantity in cart', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                          IconButton(
+                            onPressed: () => ref.read(cartProvider.notifier).setQuantity(product.id, quantity + 1),
+                            icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
     );
   }
 }

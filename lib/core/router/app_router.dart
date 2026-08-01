@@ -7,6 +7,7 @@ import '../../features/authentication/presentation/screens/login_screen.dart';
 import '../../features/authentication/presentation/screens/signup_screen.dart';
 import '../../features/authentication/presentation/screens/forgot_password_screen.dart';
 import '../../features/authentication/presentation/screens/verify_email_screen.dart';
+import '../../features/notifications/presentation/screens/customer_notifications_screen.dart';
 import '../../features/authentication/presentation/screens/phone_sign_in_screen.dart';
 import '../../features/authentication/presentation/screens/splash_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
@@ -18,7 +19,6 @@ import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/products/presentation/screens/category_detail_screen.dart';
 import '../../features/offers/presentation/screens/offer_products_screen.dart';
 import '../../features/products/presentation/screens/product_detail_screen.dart';
-import '../../features/notifications/presentation/screens/customer_notifications_screen.dart';
 import '../../features/admin/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/employee_mgmt/presentation/screens/employee_list_screen.dart';
 import '../../features/admin/order_mgmt/presentation/screens/admin_orders_screen.dart';
@@ -52,12 +52,20 @@ import '../../features/order_requests/presentation/screens/order_request_detail_
 /// underlying stream, which can leave redirect stuck on a stale "loading"
 /// read forever (this was the splash-screen-stuck bug).
 class _RouterRefreshNotifier extends ChangeNotifier {
-  void notify() => notifyListeners();
+  void notify() {
+    // ignore: avoid_print
+    print('[DEBUG refresh] notifyListeners() called - this should trigger GoRouter to re-run redirect');
+    notifyListeners();
+  }
 }
 
 final _routerRefreshNotifierProvider = Provider<_RouterRefreshNotifier>((ref) {
   final notifier = _RouterRefreshNotifier();
-  ref.listen(authStateChangesProvider, (_, __) => notifier.notify());
+  ref.listen(authStateChangesProvider, (previous, next) {
+    // ignore: avoid_print
+    print('[DEBUG refresh] ref.listen fired - previous=$previous next=$next');
+    notifier.notify();
+  });
   return notifier;
 });
 
@@ -75,6 +83,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: RouteNames.signup, builder: (context, state) => const SignupScreen()),
       GoRoute(path: RouteNames.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
       GoRoute(path: RouteNames.verifyEmail, builder: (context, state) => const VerifyEmailScreen()),
+      GoRoute(path: '/notifications', builder: (context, state) => const CustomerNotificationsScreen()),
       GoRoute(path: RouteNames.otp, builder: (context, state) => const PhoneSignInScreen()),
 
       // 5 primary tabs — persistent bottom nav, each keeps its own stack.
@@ -162,7 +171,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/delivery-settings', builder: (context, state) => const AdminDeliverySettingsScreen()),
       GoRoute(path: '/admin/employee-performance', builder: (context, state) => const EmployeePerformanceScreen()),
       GoRoute(path: '/admin/notifications', builder: (context, state) => const AdminNotificationsScreen()),
-      GoRoute(path: '/notifications', builder: (context, state) => const CustomerNotificationsScreen()),
       GoRoute(path: '/employee/home', builder: (context, state) => const EmployeeHomeScreen()),
       GoRoute(path: '/employee/profile', builder: (context, state) => const StaffProfileScreen()),
 

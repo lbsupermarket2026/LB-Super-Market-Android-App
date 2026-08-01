@@ -400,6 +400,7 @@ class PhoneSignUpNotifier extends Notifier<PhoneSignUpState> {
   /// after this.
   Future<bool> completeSignUp({
     required String name,
+    required String email,
     required String phone,
     required String password,
     required String smsCode,
@@ -413,7 +414,7 @@ class PhoneSignUpNotifier extends Notifier<PhoneSignUpState> {
     try {
       final result = await ref
           .read(signUpWithPhoneUseCaseProvider)
-          .call(name: name, phone: phone, password: password, verificationId: verificationId, smsCode: smsCode)
+          .call(name: name, email: email, phone: phone, password: password, verificationId: verificationId, smsCode: smsCode)
           .timeout(const Duration(seconds: 25));
       return result.match(
         (failure) {
@@ -435,3 +436,174 @@ class PhoneSignUpNotifier extends Notifier<PhoneSignUpState> {
 }
 
 final phoneSignUpProvider = NotifierProvider<PhoneSignUpNotifier, PhoneSignUpState>(PhoneSignUpNotifier.new);
+
+// ---- Forgot password via phone: send OTP, then set new password ----
+
+class PhonePasswordResetState {
+  final bool isSendingCode;
+  final bool isResetting;
+  final String? verificationId;
+  final String? errorMessage;
+  const PhonePasswordResetState({this.isSendingCode = false, this.isResetting = false, this.verificationId, this.errorMessage});
+
+  PhonePasswordResetState copyWith({bool? isSendingCode, bool? isResetting, String? verificationId, String? errorMessage}) =>
+      PhonePasswordResetState(
+        isSendingCode: isSendingCode ?? this.isSendingCode,
+        isResetting: isResetting ?? this.isResetting,
+        verificationId: verificationId ?? this.verificationId,
+        errorMessage: errorMessage,
+      );
+}
+
+class PhonePasswordResetNotifier extends Notifier<PhonePasswordResetState> {
+  @override
+  PhonePasswordResetState build() => const PhonePasswordResetState();
+
+  Future<bool> sendCode(String phoneNumber) async {
+    state = state.copyWith(isSendingCode: true, errorMessage: null);
+
+    final checkResult = await ref.read(authRepositoryProvider).checkPhoneRegistered(phoneNumber);
+    final isRegistered = checkResult.match((failure) {
+      state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+      return false;
+    }, (registered) => registered);
+
+    if (!isRegistered) {
+      if (checkResult.match((_) => false, (registered) => !registered)) {
+        state = state.copyWith(isSendingCode: false, errorMessage: 'No account found with this phone number.');
+      }
+      return false;
+    }
+
+    try {
+      final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber).timeout(const Duration(seconds: 30));
+      return result.match(
+        (failure) {
+          state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+          return false;
+        },
+        (verificationId) {
+          state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+          return true;
+        },
+      );
+    } on TimeoutException {
+      state = state.copyWith(isSendingCode: false, errorMessage: 'Taking too long — check your connection and try again.');
+      return false;
+    }
+  }
+
+  /// The OTP here proves phone ownership; the password is set in the
+  /// very same call, which is what makes this a genuine reset — there
+  /// is no code path that signs someone in via OTP alone without also
+  /// requiring a new password right here.
+  Future<bool> resetPassword({required String smsCode, required String newPassword}) async {
+    final verificationId = state.verificationId;
+    if (verificationId == null) {
+      state = state.copyWith(errorMessage: 'Something went wrong — please request a new code.');
+      return false;
+    }
+    state = state.copyWith(isResetting: true, errorMessage: null);
+    final result = await ref.read(authRepositoryProvider).resetPasswordWithPhoneOtp(
+          verificationId: verificationId,
+          smsCode: smsCode,
+          newPassword: newPassword,
+        );
+    return result.match(
+      (failure) {
+        state = state.copyWith(isResetting: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isResetting: false, errorMessage: null);
+        return true;
+      },
+    );
+  }
+
+  void reset() => state = const PhonePasswordResetState();
+}
+
+final phonePasswordResetProvider = NotifierProvider<PhonePasswordResetNotifier, PhonePasswordResetState>(PhonePasswordResetNotifier.new);
+
+// ---- Email OTP signup: send code, then complete with name + phone + password ----
+
+class EmailOtpSignUpState {
+  final bool isSendingCode;
+  final bool isCompleting;
+  final bool codeSent;
+  final String? errorMessage;
+  const EmailOtpSignUpState({this.isSendingCode = false, this.isCompleting = false, this.codeSent = false, this.errorMessage});
+
+  EmailOtpSignUpState copyWith({bool? isSendingCode, bool? isCompleting, bool? codeSent, String? errorMessage}) =>
+      EmailOtpSignUpState(
+        isSendingCode: isSendingCode ?? this.isSendingCode,
+        isCompleting: isCompleting ?? this.isCompleting,
+        codeSent: codeSent ?? this.codeSent,
+        errorMessage: errorMessage,
+      );
+}
+
+class EmailOtpSignUpNotifier extends Notifier<EmailOtpSignUpState> {
+  @override
+  EmailOtpSignUpState build() => const EmailOtpSignUpState();
+
+  Future<bool> sendCode(String email) async {
+    state = state.copyWith(isSendingCode: true, errorMessage: null);
+    final result = await ref.read(authRepositoryProvider).sendEmailOtp(email);
+    return result.match(
+      (failure) {
+        state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isSendingCode: false, codeSent: true, errorMessage: null);
+        return true;
+      },
+    );
+  }
+
+  Future<bool> completeSignUp({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required String code,
+  }) async {
+    state = state.copyWith(isCompleting: true, errorMessage: null);
+
+    final verifyResult = await ref.read(authRepositoryProvider).verifyEmailOtp(email: email, code: code);
+    final isValid = verifyResult.match((failure) {
+      state = state.copyWith(isCompleting: false, errorMessage: failure.message);
+      return false;
+    }, (valid) => valid);
+
+    if (!isValid) {
+      if (verifyResult.match((_) => false, (valid) => !valid)) {
+        state = state.copyWith(isCompleting: false, errorMessage: 'Incorrect or expired code.');
+      }
+      return false;
+    }
+
+    final signUpResult = await ref.read(authRepositoryProvider).signUpWithEmailOtp(
+          name: name,
+          email: email,
+          phone: phone,
+          password: password,
+        );
+    return signUpResult.match(
+      (failure) {
+        state = state.copyWith(isCompleting: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isCompleting: false, errorMessage: null);
+        return true;
+      },
+    );
+  }
+
+  void reset() => state = const EmailOtpSignUpState();
+}
+
+final emailOtpSignUpProvider = NotifierProvider<EmailOtpSignUpNotifier, EmailOtpSignUpState>(EmailOtpSignUpNotifier.new);

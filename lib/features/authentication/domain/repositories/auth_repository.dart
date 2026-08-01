@@ -58,9 +58,34 @@ abstract class AuthRepository {
   /// from that point on.
   Future<Result<UserEntity>> signUpWithPhoneAndPassword({
     required String name,
+    required String email,
     required String phone,
     required String password,
     required String verificationId,
     required String smsCode,
+  });
+
+  /// OTP proves the phone belongs to them; newPassword is set in the
+  /// same step so this is a genuine reset, not just an OTP sign-in.
+  Future<Result<UserEntity>> resetPasswordWithPhoneOtp({
+    required String verificationId,
+    required String smsCode,
+    required String newPassword,
+  });
+
+  /// Must be checked BEFORE sending a password-reset OTP — see the
+  /// datasource-level doc comment for why.
+  Future<Result<bool>> checkPhoneRegistered(String phone);
+
+  Future<Result<void>> sendEmailOtp(String email);
+  Future<Result<bool>> verifyEmailOtp({required String email, required String code});
+
+  /// Only call this after verifyEmailOtp has returned true — creates
+  /// the account itself, same as any other email/password signup.
+  Future<Result<UserEntity>> signUpWithEmailOtp({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
   });
 }

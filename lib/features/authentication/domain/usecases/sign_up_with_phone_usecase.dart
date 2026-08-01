@@ -8,6 +8,7 @@ class SignUpWithPhoneUseCase {
 
   Future<Result<UserEntity>> call({
     required String name,
+    required String email,
     required String phone,
     required String password,
     required String verificationId,
@@ -15,6 +16,7 @@ class SignUpWithPhoneUseCase {
   }) {
     return _repository.signUpWithPhoneAndPassword(
       name: name,
+      email: email,
       phone: phone,
       password: password,
       verificationId: verificationId,

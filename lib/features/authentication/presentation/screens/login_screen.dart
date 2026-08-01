@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
@@ -25,6 +26,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openDeveloperSite() async {
+    final uri = Uri.parse('https://www.matricservices.in/');
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   Future<void> _onSignIn() async {
@@ -143,6 +149,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: const Text('Sign Up'),
                     ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: GestureDetector(
+                    onTap: _openDeveloperSite,
+                    child: Text(
+                      'Developed by Matric Services',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.black.withOpacity(0.55),
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

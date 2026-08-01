@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../../cart/domain/entities/cart_item_entity.dart';
 import '../../../wishlist/presentation/widgets/wishlist_button.dart';
@@ -17,6 +18,7 @@ class ProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
     final quantity = ref.watch(cartProvider.select(
       (state) => state.valueOrNull?.firstWhere(
             (i) => i.productId == product.id,
@@ -126,7 +128,7 @@ class ProductCard extends ConsumerWidget {
                     product.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: colors.ink),
                   ),
                   if (product.unit.isNotEmpty)
                     Text(product.unit, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),

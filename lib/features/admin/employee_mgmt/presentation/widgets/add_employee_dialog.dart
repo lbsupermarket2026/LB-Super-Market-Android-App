@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/staff_member_entity.dart';
 import '../providers/employee_providers.dart';
+import '../../../../../core/extensions/string_case_extensions.dart';
 
 const _green = Color(0xFF2E7D32);
 
@@ -51,12 +52,12 @@ class _AddEmployeeDialogState extends ConsumerState<AddEmployeeDialog> {
     final success = _isEditing
         ? await notifier.updateEmployee(
             uid: widget.existing!.uid,
-            name: _nameController.text.trim(),
+            name: _nameController.text.trim().toTitleCase(),
             phone: _phoneController.text.trim(),
             role: _role,
           )
         : await notifier.createEmployee(
-            name: _nameController.text.trim(),
+            name: _nameController.text.trim().toTitleCase(),
             email: _emailController.text.trim(),
             phone: _phoneController.text.trim(),
             password: _passwordController.text,

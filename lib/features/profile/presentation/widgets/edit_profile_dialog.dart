@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../authentication/domain/entities/user_entity.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
+import '../../../../core/extensions/string_case_extensions.dart';
 
 const _green = Color(0xFF2E7D32);
 
@@ -60,7 +61,7 @@ class _EditProfileDialogState extends ConsumerState<EditProfileDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final ok = await ref.read(editProfileNotifierProvider.notifier).save(
-          name: _nameController.text.trim(),
+          name: _nameController.text.trim().toTitleCase(),
           phone: _phoneController.text.trim(),
           photoFile: _pickedPhoto,
         );

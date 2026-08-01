@@ -25,6 +25,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Stream<UserEntity?> authStateChanges() {
     return _remote.firebaseAuthStateChanges.asyncMap<Object?>((firebaseUser) async {
+      // ignore: avoid_print
+      print('[DEBUG authStateChanges] firebaseUser=${firebaseUser?.uid ?? "null (signed out)"}');
       final myGeneration = ++_authEventGeneration;
 
       if (firebaseUser == null) return null;
@@ -156,6 +158,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<UserEntity>> signUpWithPhoneAndPassword({
     required String name,
+    required String email,
     required String phone,
     required String password,
     required String verificationId,
@@ -169,7 +172,55 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
       );
       final uid = credential.user!.uid;
-      final model = await _remote.createUserProfile(uid: uid, name: name, email: '', phone: phone);
+      final model = await _remote.createUserProfile(uid: uid, name: name, email: email, phone: phone);
+      return model.toEntity();
+    });
+  }
+
+  @override
+  Future<Result<UserEntity>> resetPasswordWithPhoneOtp({
+    required String verificationId,
+    required String smsCode,
+    required String newPassword,
+  }) {
+    return guard(() async {
+      final credential = await _remote.resetPasswordWithPhoneOtp(
+        verificationId: verificationId,
+        smsCode: smsCode,
+        newPassword: newPassword,
+      );
+      final uid = credential.user!.uid;
+      final model = await _remote.resolveUserProfile(uid);
+      return model.toEntity();
+    });
+  }
+
+  @override
+  Future<Result<void>> sendEmailOtp(String email) {
+    return guard(() => _remote.sendEmailOtp(email));
+  }
+
+  @override
+  Future<Result<bool>> checkPhoneRegistered(String phone) {
+    return guard(() => _remote.checkPhoneRegistered(phone));
+  }
+
+  @override
+  Future<Result<bool>> verifyEmailOtp({required String email, required String code}) {
+    return guard(() => _remote.verifyEmailOtp(email: email, code: code));
+  }
+
+  @override
+  Future<Result<UserEntity>> signUpWithEmailOtp({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+  }) {
+    return guard(() async {
+      final credential = await _remote.createAccountAfterEmailOtp(email, password);
+      final uid = credential.user!.uid;
+      final model = await _remote.createUserProfile(uid: uid, name: name, email: email, phone: phone);
       return model.toEntity();
     });
   }

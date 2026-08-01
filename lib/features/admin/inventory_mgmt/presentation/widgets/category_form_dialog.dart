@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../core/extensions/string_case_extensions.dart';
 import '../../../../categories/domain/entities/category_entity.dart';
 import '../../../offers_mgmt/presentation/providers/admin_offer_card_providers.dart';
 import '../providers/admin_inventory_providers.dart';
@@ -61,7 +62,7 @@ class _CategoryFormDialogState extends ConsumerState<CategoryFormDialog> {
 
     final success = await ref.read(inventoryMutationProvider.notifier).saveCategory(
           id: widget.existing?.id,
-          name: _nameController.text.trim(),
+          name: _nameController.text.trim().toTitleCase(),
           imageFile: _pickedImage,
           existingImageUrl: widget.existing?.imageUrl,
           isActive: _isActive,

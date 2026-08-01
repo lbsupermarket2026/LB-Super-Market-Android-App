@@ -19,10 +19,15 @@ class RouteGuard {
 
   String? redirect(String currentLocation) {
     final authState = ref.read(authStateChangesProvider);
+    // ignore: avoid_print
+    print(
+        '[DEBUG redirect] called for currentLocation=$currentLocation isLoading=${authState.isLoading} hasValue=${authState.hasValue} value=${authState.valueOrNull}');
 
     // While the very first auth-state emission is pending, keep the user
     // on splash rather than bouncing them to login and back.
     if (authState.isLoading) {
+      // ignore: avoid_print
+      print('[DEBUG redirect] STILL LOADING - staying on/going to splash');
       return currentLocation == RouteNames.splash ? null : RouteNames.splash;
     }
 
