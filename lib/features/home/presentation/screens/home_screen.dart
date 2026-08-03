@@ -245,7 +245,7 @@ class _ActiveOrderCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Order #${order.id.substring(0, order.id.length.clamp(0, 6))} · ${order.status.label}',
+                    Text('Order #${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 6))} · ${order.status.label}',
                         style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: colors.ink)),
                     Text('${order.itemCount} items · ₹${order.totalAmount.toStringAsFixed(0)}',
                         style: TextStyle(fontSize: 11, color: colors.muted)),
@@ -299,9 +299,12 @@ class _OfferCardsSection extends ConsumerWidget {
     return cardsAsync.when(
       data: (cards) {
         if (cards.isEmpty) return const SizedBox.shrink();
-        return OfferCardCarousel(
-          cards: cards,
-          onCardTap: (card) => context.push('/offer-products/${card.id}', extra: card.title),
+        return SizedBox(
+          height: 150,
+          child: OfferCardCarousel(
+            cards: cards,
+            onCardTap: (card) => context.push('/offer-products/${card.id}', extra: card.title),
+          ),
         );
       },
       loading: () => const SizedBox(
@@ -312,6 +315,7 @@ class _OfferCardsSection extends ConsumerWidget {
     );
   }
 }
+
 
 class _CategorySection extends ConsumerWidget {
   final WidgetRef ref;

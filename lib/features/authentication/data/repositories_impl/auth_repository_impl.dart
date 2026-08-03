@@ -25,19 +25,47 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Stream<UserEntity?> authStateChanges() {
     return _remote.firebaseAuthStateChanges.asyncMap<Object?>((firebaseUser) async {
-      // ignore: avoid_print
-      print('[DEBUG authStateChanges] firebaseUser=${firebaseUser?.uid ?? "null (signed out)"}');
       final myGeneration = ++_authEventGeneration;
 
       if (firebaseUser == null) return null;
       UserEntity? result;
-      try {
-        final model = await _remote.resolveUserProfile(firebaseUser.uid);
-        result = model.toEntity();
-      } catch (_) {
-        // Profile doc not created yet (e.g. mid-signup race) — treat as signed out
-        // until the doc exists; UI will retry via the stream on next emission.
-        result = null;
+
+      // FIXED: this used to catch ANY exception from resolveUserProfile
+      // (network blip, a transient Firestore error, a security-rules
+      // token not yet propagated right after a cold start) and treat
+      // it identically to "no profile exists" — silently signing the
+      // person out and bouncing them to login, despite a perfectly
+      // valid Firebase Auth session. That's very likely the remaining
+      // cause of "logs out on every launch": a fast, flaky, or
+      // just-restored connection at the exact moment this runs.
+      //
+      // Now: only a genuine NotFoundException (profile really doesn't
+      // exist in either collection — e.g. mid-signup race) is treated
+      // as signed out. Any other error gets a few short retries first,
+      // since it's almost certainly transient; only after those retries
+      // are exhausted do we give up for this emission (the stream will
+      // naturally get another chance on the next auth event, e.g. a
+      // token refresh, rather than forcing a re-login).
+      const maxAttempts = 3;
+      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          final model = await _remote.resolveUserProfile(firebaseUser.uid);
+          result = model.toEntity();
+          break;
+        } on NotFoundException {
+          result = null;
+          break;
+        } catch (_) {
+          if (attempt == maxAttempts) {
+            // Genuinely couldn't resolve after retries — leave result
+            // null for THIS emission, but don't treat it as a
+            // deliberate sign-out; the next auth/token event will
+            // trigger another attempt automatically.
+            result = null;
+          } else {
+            await Future.delayed(Duration(milliseconds: 400 * attempt));
+          }
+        }
       }
 
       // A newer auth event arrived while this lookup was in flight —

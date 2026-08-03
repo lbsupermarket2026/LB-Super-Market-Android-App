@@ -128,7 +128,13 @@ class ProductCard extends ConsumerWidget {
                     product.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: colors.ink),
+                    // FIXED: was colors.ink, which switches to a light
+                    // color in dark mode — but this card's background is
+                    // deliberately hardcoded white in every theme (see
+                    // note above), so light text became nearly invisible
+                    // on it. Fixed to a plain dark color, matching the
+                    // card's own fixed-white design intent.
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Colors.black87),
                   ),
                   if (product.unit.isNotEmpty)
                     Text(product.unit, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),

@@ -31,7 +31,8 @@ class OrderDetailScreen extends ConsumerWidget {
           onPressed: () => context.canPop() ? context.pop() : context.go('/orders'),
         ),
         actions: [
-          if (orderAsync.valueOrNull?.status == OrderStatus.placed)
+          if (orderAsync.valueOrNull?.status == OrderStatus.placed &&
+              orderAsync.valueOrNull?.paymentMethod != PaymentMethod.upi)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit Order',

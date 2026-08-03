@@ -34,6 +34,7 @@ class OrderRepositoryImpl implements OrderRepository {
     double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
+    bool paymentPending = false,
   }) {
     return guard(() => _remote.createOrder(
           userId: userId,
@@ -45,7 +46,13 @@ class OrderRepositoryImpl implements OrderRepository {
           deliveryLongitude: deliveryLongitude,
           paymentMethod: paymentMethod,
           razorpayPaymentId: razorpayPaymentId,
+          paymentPending: paymentPending,
         ));
+  }
+
+  @override
+  Future<Result<void>> markPaymentConfirmed(String orderId, String razorpayPaymentId) {
+    return guard(() => _remote.markPaymentConfirmed(orderId, razorpayPaymentId));
   }
 
   @override

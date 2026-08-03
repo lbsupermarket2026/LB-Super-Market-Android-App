@@ -24,8 +24,8 @@ class AppColors {
   static const Color darkPrimary = Color(0xFF81C784);
   static const Color darkOnPrimary = Color(0xFF00390D);
   static const Color darkSurface = Color(0xFF121410);
-  static const Color darkOnSurface = Color(0xFFE2E3DC);
-  static const Color darkSurfaceVariant = Color(0xFF262922);
+  static const Color darkOnSurface = Color(0xFFFFFFFF);
+  static const Color darkSurfaceVariant = Color(0xFF000000);
   static const Color darkSuccess = Color(0xFF81C784);
   static const Color darkWarning = Color(0xFFFFCC80);
   static const Color darkError = Color(0xFFEF9A9A);

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../../../../core/widgets/states/error_state.dart';
@@ -22,8 +23,10 @@ class OrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ordersAsync = ref.watch(myOrdersProvider);
+    final colors = context.appColors;
 
     return Scaffold(
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('My Orders')),
       body: ordersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -61,7 +64,7 @@ class OrdersScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   child: Text(
                     orders.length == 1 ? 'You have 1 order' : 'You have ${orders.length} orders',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: colors.muted),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -188,6 +191,8 @@ class _PendingOrderRequestsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final requestsAsync = ref.watch(myOrderRequestsProvider);
 
+    final colors = context.appColors;
+
     return requestsAsync.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
@@ -199,14 +204,19 @@ class _PendingOrderRequestsSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppSpacing.sm),
-            const Text('Order Requests', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87)),
+            // FIXED: was hardcoded Colors.black87 — nearly invisible on
+            // a dark background. Now colors.ink, which is light in dark
+            // mode and dark in light mode.
+            Text('Order Requests', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
             const SizedBox(height: AppSpacing.sm),
             ...pending.map((r) => Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    // FIXED: was hardcoded Colors.white — stayed a
+                    // bright white card sitting on a dark scaffold.
+                    color: colors.card,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
@@ -225,17 +235,22 @@ class _PendingOrderRequestsSection extends ConsumerWidget {
                       r.type == OrderRequestType.photo
                           ? 'Photo list submitted'
                           : '${r.itemLines.length} item${r.itemLines.length == 1 ? '' : 's'} typed',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink),
                     ),
                     subtitle: Text(
                       '${r.fulfillmentMethod == FulfillmentMethod.delivery ? 'Home Delivery' : 'In-Store Pickup'} • We\'ll call ${r.contactPhone}',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(color: colors.muted, fontSize: 12),
                     ),
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
                       child: Text(
                         'Pending',
+                        // Deliberately kept dark text on a light amber
+                        // chip regardless of theme — a colored status
+                        // chip like this reads as its own fixed-contrast
+                        // badge (same idea as a stop-light), not body
+                        // text that should flip with dark mode.
                         style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.w700, fontSize: 11),
                       ),
                     ),
@@ -254,11 +269,23 @@ class _ActiveOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIXED: card background used a very faint green-tinted gradient
+    // (10%/3% opacity) that read fine on a light scaffold but nearly
+    // disappeared into a dark one — combined with hardcoded
+    // Colors.black87 title text, this card was close to unreadable in
+    // dark mode. Now the gradient opacity is theme-aware (stronger in
+    // dark mode, so it still reads as a distinct card) and the title
+    // uses colors.ink.
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [_green.withOpacity(0.10), _green.withOpacity(0.03)]),
+        gradient: LinearGradient(colors: [
+          _green.withOpacity(isDark ? 0.22 : 0.10),
+          _green.withOpacity(isDark ? 0.08 : 0.03),
+        ]),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _green.withOpacity(0.25)),
+        border: Border.all(color: _green.withOpacity(isDark ? 0.4 : 0.25)),
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
@@ -268,7 +295,7 @@ class _ActiveOrderCard extends StatelessWidget {
             children: [
               const Icon(Icons.local_shipping_outlined, color: _green),
               const SizedBox(width: 8),
-              const Text('Track Your Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87)),
+              Text('Track Your Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -309,6 +336,10 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIXED: card was hardcoded Colors.white with Colors.black87/
+    // grey.shade600 text — a bright white card on a dark scaffold
+    // with dark text nearly disappearing behind it.
+    final colors = context.appColors;
     final statusColor = order.status == OrderStatus.cancelled
         ? _red
         : order.status == OrderStatus.delivered
@@ -317,9 +348,9 @@ class _OrderCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -339,12 +370,12 @@ class _OrderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                    Text('Order #${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8))}',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
                     const SizedBox(height: 2),
                     Text(
                       '${order.itemCount} item${order.itemCount == 1 ? '' : 's'} • ${_formatDate(order.createdAt)}',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(color: colors.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -353,7 +384,7 @@ class _OrderCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₹${order.totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

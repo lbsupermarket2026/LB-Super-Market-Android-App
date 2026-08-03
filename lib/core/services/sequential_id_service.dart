@@ -24,14 +24,14 @@ class SequentialIdService {
   /// re-padded).
   Future<String> nextOrderNumber() async {
     final now = DateTime.now();
-    final yearMonth = '${now.year}${now.month.toString().padLeft(2, '0')}';
-    final counterField = 'order_$yearMonth';
+    final yearMonthDay = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final counterField = 'order_$yearMonthDay';
 
     return _firestore.runTransaction<String>((transaction) async {
       final snapshot = await transaction.get(_counterDoc);
       final current = (snapshot.data()?[counterField] as num?)?.toInt() ?? 1;
       transaction.set(_counterDoc, {counterField: current + 1}, SetOptions(merge: true));
-      return '$yearMonth${current.toString().padLeft(3, '0')}';
+      return '$yearMonthDay${current.toString().padLeft(3, '0')}';
     });
   }
 

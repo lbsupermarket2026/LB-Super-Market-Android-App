@@ -194,10 +194,10 @@ class _AdminDeliverySettingsScreenState extends ConsumerState<AdminDeliverySetti
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _onlinePaymentsEnabled,
-                  title: const Text('Accept online payments (UPI)'),
+                  title: const Text('Accept Online Payments'),
                   subtitle: Text(
                     _onlinePaymentsEnabled
-                        ? 'Customers can pay via UPI at checkout, alongside Cash and Card Swipe.'
+                        ? 'Customers can pay online at checkout, alongside Cash and Card Swipe.'
                         : 'UPI is hidden at checkout — customers can only choose Cash or Card Swipe.',
                     style: const TextStyle(fontSize: 12),
                   ),

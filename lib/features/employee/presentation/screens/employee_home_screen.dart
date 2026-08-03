@@ -143,7 +143,7 @@ class _DeliveryCard extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
+                child: Text('Order #${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8))}',
                     style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
               ),
               if (order.deliveryLatitude != null && order.deliveryLongitude != null)

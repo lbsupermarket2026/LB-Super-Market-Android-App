@@ -44,9 +44,9 @@ class AdminOrderDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
-        title: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}'),
+        title: Text('Order #${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8))}'),
         actions: [
-          if (order.status == OrderStatus.placed)
+          if (order.status == OrderStatus.placed && order.paymentMethod != PaymentMethod.upi)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit Order',

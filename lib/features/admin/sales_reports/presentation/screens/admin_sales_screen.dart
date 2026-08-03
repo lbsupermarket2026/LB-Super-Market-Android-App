@@ -38,7 +38,7 @@ class AdminSalesScreen extends ConsumerWidget {
           // breakdown chart which is scoped to the selected time window.
           _KpiGrid(ordersAsync: ordersAsync, requestsAsync: requestsAsync, productsAsync: productsAsync),
           const SizedBox(height: AppSpacing.lg),
-          const Text('Sales Over Time', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          Text('Sales Over Time', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colors.ink)),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             height: 44,
@@ -52,7 +52,9 @@ class AdminSalesScreen extends ConsumerWidget {
                     label: Text(g.label),
                     selected: selected,
                     selectedColor: _green,
-                    labelStyle: TextStyle(color: selected ? Colors.white : Colors.black87, fontSize: 12),
+                    // FIXED: unselected label was hardcoded black87 —
+                    // low contrast on a dark unselected chip in dark mode.
+                    labelStyle: TextStyle(color: selected ? Colors.white : colors.ink, fontSize: 12),
                     onSelected: (_) => ref.read(selectedGranularityProvider.notifier).state = g,
                   ),
                 );
@@ -157,7 +159,7 @@ class _KpiCard extends StatelessWidget {
             Icon(icon, color: color, size: 18),
             const Spacer(),
             Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-            Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(label, style: TextStyle(color: colors.muted, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
@@ -174,12 +176,16 @@ class _BucketRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ratio = maxRevenue == 0 ? 0.0 : (bucket.revenue / maxRevenue).clamp(0.0, 1.0);
 
+    // FIXED: card was hardcoded Colors.white — stayed a bright white
+    // card on a dark scaffold regardless of theme. Now colors.card,
+    // matching every other themed card in the app.
+    final colors = context.appColors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
@@ -188,7 +194,7 @@ class _BucketRow extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(bucket.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(bucket.label, style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
               Text('₹${bucket.revenue.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w800, color: _green)),
             ],
           ),
@@ -198,14 +204,14 @@ class _BucketRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: ratio,
               minHeight: 6,
-              backgroundColor: const Color(0xFFF0F0F0),
+              backgroundColor: colors.chipBackground,
               valueColor: const AlwaysStoppedAnimation(_green),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             '${bucket.orderCount} order${bucket.orderCount == 1 ? '' : 's'}${bucket.cancelledCount > 0 ? ' • ${bucket.cancelledCount} cancelled' : ''}',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 11, color: colors.muted),
           ),
         ],
       ),

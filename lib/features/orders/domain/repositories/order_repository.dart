@@ -16,7 +16,12 @@ abstract class OrderRepository {
     double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
+    bool paymentPending = false,
   });
+
+  /// Clears paymentPending and attaches the real payment ID once
+  /// Razorpay verification succeeds.
+  Future<Result<void>> markPaymentConfirmed(String orderId, String razorpayPaymentId);
 
   Future<Result<void>> submitRating(String orderId, double rating, String? comment);
 

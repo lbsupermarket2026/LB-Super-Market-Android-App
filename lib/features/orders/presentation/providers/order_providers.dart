@@ -9,6 +9,7 @@ import '../../domain/usecases/get_order_by_id_usecase.dart';
 import '../../domain/usecases/create_order_usecase.dart';
 import '../../domain/usecases/submit_order_rating_usecase.dart';
 import '../../domain/usecases/cancel_order_usecase.dart';
+import '../../domain/usecases/mark_payment_confirmed_usecase.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 
 final orderRemoteDataSourceProvider = Provider<OrderRemoteDataSource>((ref) {
@@ -29,6 +30,10 @@ final getOrderByIdUseCaseProvider = Provider<GetOrderByIdUseCase>((ref) {
 
 final createOrderUseCaseProvider = Provider<CreateOrderUseCase>((ref) {
   return CreateOrderUseCase(ref.watch(orderRepositoryProvider));
+});
+
+final markPaymentConfirmedUseCaseProvider = Provider<MarkPaymentConfirmedUseCase>((ref) {
+  return MarkPaymentConfirmedUseCase(ref.watch(orderRepositoryProvider));
 });
 
 final submitOrderRatingUseCaseProvider = Provider<SubmitOrderRatingUseCase>((ref) {

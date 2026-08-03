@@ -32,9 +32,13 @@ class OrderRemoteDataSource {
   }
 
   Future<List<OrderModel>> getMyOrders(String userId) async {
-    final snapshot =
-        await _collection.where('userId', isEqualTo: userId).orderBy('createdAt', descending: true).get();
-    return snapshot.docs.map(OrderModel.fromFirestore).toList();
+    // No orderBy on the query itself — avoids needing a composite
+    // index for userId + createdAt together, same fix already applied
+    // to order_requests earlier. Sorted client-side instead.
+    final snapshot = await _collection.where('userId', isEqualTo: userId).get();
+    final orders = snapshot.docs.map(OrderModel.fromFirestore).toList();
+    orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return orders;
   }
 
   Future<OrderModel> getOrderById(String orderId) async {
@@ -56,6 +60,7 @@ class OrderRemoteDataSource {
     double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
+    bool paymentPending = false,
   }) async {
     final orderNumber = await SequentialIdService().nextOrderNumber();
     if (userId.isNotEmpty) await _ensureCustomerCode(userId);
@@ -72,8 +77,21 @@ class OrderRemoteDataSource {
       orderNumber: orderNumber,
       paymentMethod: paymentMethod,
       razorpayPaymentId: razorpayPaymentId,
+      paymentPending: paymentPending,
     ));
     return docRef.id;
+  }
+
+  /// Called once Razorpay verification succeeds — clears the pending
+  /// flag and attaches the real payment ID. If the app never makes it
+  /// back here (killed during a UPI-app handoff), the order stays
+  /// visible with paymentPending still true rather than not existing
+  /// at all, so nothing is silently lost.
+  Future<void> markPaymentConfirmed(String orderId, String razorpayPaymentId) async {
+    await _collection.doc(orderId).update({
+      'paymentPending': false,
+      'razorpayPaymentId': razorpayPaymentId,
+    });
   }
 
   Future<void> submitRating(String orderId, double rating, String? comment) async {

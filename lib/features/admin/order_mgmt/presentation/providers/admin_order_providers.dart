@@ -8,8 +8,13 @@ final adminOrderDataSourceProvider = Provider<AdminOrderDataSource>((ref) {
   return AdminOrderDataSource();
 });
 
-final allOrdersAdminProvider = FutureProvider.autoDispose<List<OrderEntity>>((ref) {
-  return ref.watch(adminOrderDataSourceProvider).getAllOrders();
+// FIXED: was FutureProvider (one-shot fetch) — see watchAllOrders()
+// doc comment for why that caused stale "Payment Pending" badges on
+// the admin dashboard. StreamProvider produces the same
+// AsyncValue<List<OrderEntity>> shape, so every .when() call site
+// (admin_orders_screen, admin_sales_screen, etc.) needs no changes.
+final allOrdersAdminProvider = StreamProvider.autoDispose<List<OrderEntity>>((ref) {
+  return ref.watch(adminOrderDataSourceProvider).watchAllOrders();
 });
 
 final customerOrderStatsProvider = FutureProvider.autoDispose.family<({int count, double totalSpent}), String>((ref, userId) {

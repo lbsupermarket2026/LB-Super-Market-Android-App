@@ -15,6 +15,7 @@ class CreateOrderUseCase {
     double? deliveryLongitude,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
+    bool paymentPending = false,
   }) {
     return _repository.createOrder(
       userId: userId,
@@ -26,6 +27,7 @@ class CreateOrderUseCase {
           deliveryLongitude: deliveryLongitude,
       paymentMethod: paymentMethod,
       razorpayPaymentId: razorpayPaymentId,
+      paymentPending: paymentPending,
     );
   }
 }

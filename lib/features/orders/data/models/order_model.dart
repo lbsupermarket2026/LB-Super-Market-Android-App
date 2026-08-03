@@ -16,6 +16,7 @@ class OrderModel {
   final String? orderNumber;
   final String paymentMethod;
   final String? razorpayPaymentId;
+  final bool paymentPending;
   final String? refundStatus;
   final String? refundId;
   final String? refundError;
@@ -40,6 +41,7 @@ class OrderModel {
     this.orderNumber,
     this.paymentMethod = 'cod',
     this.razorpayPaymentId,
+    this.paymentPending = false,
     this.refundStatus,
     this.refundId,
     this.refundError,
@@ -77,6 +79,7 @@ class OrderModel {
       deliveryLongitude: (data['deliveryLongitude'] as num?)?.toDouble(),
       orderNumber: data['orderNumber'] as String?,
       razorpayPaymentId: data['razorpayPaymentId'] as String?,
+      paymentPending: (data['paymentPending'] as bool?) ?? false,
       refundStatus: data['refundStatus'] as String?,
       refundId: data['refundId'] as String?,
       refundError: data['refundError'] as String?,
@@ -114,6 +117,7 @@ class OrderModel {
         orderNumber: orderNumber,
         paymentMethod: PaymentMethodX.fromString(paymentMethod),
         razorpayPaymentId: razorpayPaymentId,
+        paymentPending: paymentPending,
         refundStatus: refundStatus,
         refundId: refundId,
         refundError: refundError,
@@ -136,6 +140,7 @@ class OrderModel {
     String? orderNumber,
     String paymentMethod = 'cod',
     String? razorpayPaymentId,
+    bool paymentPending = false,
   }) {
     return {
       'userId': userId,
@@ -151,6 +156,12 @@ class OrderModel {
       'orderNumber': orderNumber,
       'paymentMethod': paymentMethod,
       'razorpayPaymentId': razorpayPaymentId,
+      // True only for a brief window between "UPI checkout opened" and
+      // "payment verified" — lets admin (and the customer's own order
+      // list) distinguish a real, paid order from one where the person
+      // may have been sent to a UPI app and never made it back to
+      // confirm. Recreated as false the instant verification succeeds.
+      'paymentPending': paymentPending,
       'deliveryPersonName': null,
       'deliveryPersonPhone': null,
       'rating': null,

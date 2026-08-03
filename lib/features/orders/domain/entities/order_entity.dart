@@ -44,7 +44,7 @@ extension PaymentMethodX on PaymentMethod {
   String get label {
     switch (this) {
       case PaymentMethod.upi:
-        return 'UPI';
+        return 'Online Payments';
       case PaymentMethod.cod:
         return 'Cash on Delivery';
       case PaymentMethod.cardSwipe:
@@ -97,6 +97,7 @@ class OrderEntity extends Equatable {
   final String? orderNumber; // human-readable display ID, e.g. "ORD-0001" — see SequentialIdService
   final PaymentMethod paymentMethod;
   final String? razorpayPaymentId;
+  final bool paymentPending;
   final String? refundStatus; // null | 'processing' | 'processed' | 'failed'
   final String? refundId;
   final String? refundError;
@@ -121,6 +122,7 @@ class OrderEntity extends Equatable {
     this.orderNumber,
     this.paymentMethod = PaymentMethod.cod,
     this.razorpayPaymentId,
+    this.paymentPending = false,
     this.refundStatus,
     this.refundId,
     this.refundError,
@@ -152,6 +154,7 @@ class OrderEntity extends Equatable {
         orderNumber,
         paymentMethod,
         razorpayPaymentId,
+        paymentPending,
         refundStatus,
         refundId,
         refundError,

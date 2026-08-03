@@ -81,6 +81,23 @@ class AdminOrderDataSource {
     return snapshot.docs.map((d) => OrderModel.fromFirestore(d).toEntity()).toList();
   }
 
+  /// NEW: live version of getAllOrders(). The one-shot Future above is
+  /// why the admin dashboard kept showing "Payment Pending" after a
+  /// customer's payment actually succeeded — that confirmation write
+  /// happens entirely on the CUSTOMER's device (place_order_dialog.dart
+  /// calling markPaymentConfirmed), which has no way to invalidate the
+  /// ADMIN's separate allOrdersAdminProvider on a different device. The
+  /// admin side only re-fetched on its own mutations (status change,
+  /// manual order, etc.) or a manual pull-to-refresh — never in
+  /// response to something a customer did. A live Firestore snapshot
+  /// stream fixes this at the root: any change to any order, from any
+  /// device, reflects immediately, with no invalidation wiring needed.
+  Stream<List<OrderEntity>> watchAllOrders() {
+    return _orders.orderBy('createdAt', descending: true).snapshots().map(
+          (snapshot) => snapshot.docs.map((d) => OrderModel.fromFirestore(d).toEntity()).toList(),
+        );
+  }
+
   /// Decrements stock for every item on the order the FIRST time it's
   /// marked confirmed — the stockDecremented flag inside the same
   /// transaction stops it from happening twice if status ever gets

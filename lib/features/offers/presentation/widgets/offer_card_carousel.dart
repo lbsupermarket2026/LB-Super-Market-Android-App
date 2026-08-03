@@ -52,7 +52,8 @@ class _OfferCardCarouselState extends State<OfferCardCarousel> {
     if (widget.cards.isEmpty) return const SizedBox.shrink();
 
     return Column(
-      children: [
+      mainAxisSize: MainAxisSize.min,
+      children: [    
         SizedBox(
           height: widget.height,
           child: PageView.builder(

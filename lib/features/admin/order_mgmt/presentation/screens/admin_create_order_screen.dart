@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../order_requests/presentation/screens/type_list_screen.dart' show kListUnits;
 import '../providers/admin_order_providers.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 
 const _green = Color(0xFF2E7D32);
 
@@ -99,25 +100,38 @@ class _AdminCreateOrderScreenState extends ConsumerState<AdminCreateOrderScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(adminOrderMutationProvider);
 
+    // FIXED: these fields had no explicit text color/fill, so they
+    // relied entirely on theme inheritance for contrast. Now explicit
+    // via context.appColors so "Name" (and the others) is guaranteed
+    // readable regardless of any theme edge case — dark fill + light
+    // text in dark mode, light fill + dark text in light mode.
+    final colors = context.appColors;
     return Scaffold(
+      backgroundColor: colors.surface,
       appBar: AppBar(title: const Text('Create Order')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          const Text('Customer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Text('Customer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
           const SizedBox(height: AppSpacing.sm),
-          TextField(controller: _customerName, decoration: const InputDecoration(labelText: 'Name')),
+          TextField(
+            controller: _customerName,
+            style: TextStyle(color: colors.ink),
+            decoration: InputDecoration(labelText: 'Name', fillColor: colors.card, labelStyle: TextStyle(color: colors.muted)),
+          ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _customerPhone,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Phone (optional)'),
+            style: TextStyle(color: colors.ink),
+            decoration: InputDecoration(labelText: 'Phone (optional)', fillColor: colors.card, labelStyle: TextStyle(color: colors.muted)),
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _address,
             maxLines: 2,
-            decoration: const InputDecoration(labelText: 'Delivery / Pickup Address'),
+            style: TextStyle(color: colors.ink),
+            decoration: InputDecoration(labelText: 'Delivery / Pickup Address', fillColor: colors.card, labelStyle: TextStyle(color: colors.muted)),
           ),
           const SizedBox(height: AppSpacing.lg),
           const Text('Items', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),

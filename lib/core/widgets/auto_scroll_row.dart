@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../theme/app_semantic_colors.dart';
 
 /// A horizontal scrollable row that auto-advances on a timer, pauses
 /// while the person is manually dragging it, and also exposes small
@@ -116,16 +117,22 @@ class _ArrowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIXED: was hardcoded Colors.white + Colors.black87 — a bright
+    // white disc regardless of theme. Now themed via context.appColors
+    // so it reads as a proper dark-mode surface (colors.card) with a
+    // legible icon (colors.ink) instead of clashing with a dark screen.
+    final colors = context.appColors;
     return Material(
-      color: Colors.white,
+      color: colors.card,
       shape: const CircleBorder(),
       elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.25),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(4),
-          child: Icon(icon, size: 18, color: Colors.black87),
+          child: Icon(icon, size: 18, color: colors.ink),
         ),
       ),
     );

@@ -104,53 +104,94 @@ class _AdminOrdersTabState extends ConsumerState<_AdminOrdersTab> {
                               : (order.status == OrderStatus.delivered || order.status == OrderStatus.confirmed)
                                   ? _green
                                   : _orange;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                            decoration: BoxDecoration(
-                              color: colors.card,
+                          // FIXED: was a ListTile with up to 3 stacked
+                          // items (Payment Pending badge + status badge +
+                          // assigned employee name) crammed into its
+                          // `trailing` slot — ListTile gives trailing a
+                          // fixed height budget, so with all three present
+                          // it overflowed ("BOTTOM OVERFLOWED BY 14
+                          // PIXELS"). Replaced with a manual Row/Column
+                          // layout that sizes to its content naturally,
+                          // so it can never overflow regardless of how
+                          // many badges are showing. Text colors are now
+                          // explicit via context.appColors instead of
+                          // ListTile's inherited defaults, for guaranteed
+                          // dark-mode contrast.
+                          return Material(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(16),
+                            child: InkWell(
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
-                            ),
-                            child: ListTile(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              title: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
-                                  style: const TextStyle(fontWeight: FontWeight.w700)),
-                              subtitle: Text(
-                                '${order.itemCount} items • ₹${order.totalAmount.toStringAsFixed(0)} • ${order.paymentMethod.label}\n${order.deliveryAddress}',
-                              ),
-                              isThreeLine: true,
-                              trailing: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-                                    child: Text(order.status.label,
-                                        style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
-                                  ),
-                                  if (order.assignedEmployeeUid != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Consumer(
-                                        builder: (context, ref, _) {
-                                          final nameAsync = ref.watch(assignedEmployeeNameProvider(order.assignedEmployeeUid!));
-                                          return nameAsync.when(
-                                            data: (name) => Text(
-                                              name ?? 'Assigned',
-                                              style: TextStyle(fontSize: 10, color: colors.muted),
-                                            ),
-                                            loading: () => const SizedBox.shrink(),
-                                            error: (_, __) => const SizedBox.shrink(),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                ],
-                              ),
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(builder: (_) => AdminOrderDetailScreen(order: order)),
+                              ),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Order #${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8))}',
+                                              style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${order.itemCount} items • ₹${order.totalAmount.toStringAsFixed(0)} • ${order.paymentMethod.label}\n${order.deliveryAddress}',
+                                            style: TextStyle(color: colors.muted, fontSize: 12.5),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (order.paymentPending)
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: 4),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                                              child: const Text('Payment Pending',
+                                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700, fontSize: 10)),
+                                            ),
+                                          ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                                          child: Text(order.status.label,
+                                              style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
+                                        ),
+                                        if (order.assignedEmployeeUid != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Consumer(
+                                              builder: (context, ref, _) {
+                                                final nameAsync = ref.watch(assignedEmployeeNameProvider(order.assignedEmployeeUid!));
+                                                return nameAsync.when(
+                                                  data: (name) => Text(
+                                                    name ?? 'Assigned',
+                                                    style: TextStyle(fontSize: 10, color: colors.muted),
+                                                  ),
+                                                  loading: () => const SizedBox.shrink(),
+                                                  error: (_, __) => const SizedBox.shrink(),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -233,13 +274,17 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIXED: unselected label was hardcoded Colors.black87 — on a
+    // dark unselected chip surface in dark mode this was very low
+    // contrast. Now colors.ink, which flips appropriately.
+    final colors = context.appColors;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
         label: Text(label),
         selected: selected,
         selectedColor: _green,
-        labelStyle: TextStyle(color: selected ? Colors.white : Colors.black87, fontSize: 12),
+        labelStyle: TextStyle(color: selected ? Colors.white : colors.ink, fontSize: 12),
         onSelected: (_) => onTap(),
       ),
     );

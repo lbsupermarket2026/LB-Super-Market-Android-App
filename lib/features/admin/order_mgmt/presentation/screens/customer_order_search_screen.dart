@@ -55,13 +55,19 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
             child: TextField(
               controller: _controller,
               onSubmitted: (_) => _search(),
+              // FIXED: was hardcoded fillColor: Colors.white — in dark
+              // mode the typed text (theme default, light) became
+              // invisible against a permanently-white field. Now
+              // themed via context.appColors.
+              style: TextStyle(color: colors.ink),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: colors.card,
                 hintText: 'Phone number or Customer ID',
+                hintStyle: TextStyle(color: colors.muted),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _search),
+                prefixIcon: Icon(Icons.search, color: colors.muted),
+                suffixIcon: IconButton(icon: Icon(Icons.arrow_forward, color: colors.ink), onPressed: _search),
               ),
             ),
           ),
@@ -133,11 +139,12 @@ class _OrderTile extends StatelessWidget {
       ),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Order #${order.id.substring(0, order.id.length.clamp(0, 8))}',
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text('Order #${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8))}',
+            style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
         subtitle: Text(
           '${order.itemCount} items • ₹${order.totalAmount.toStringAsFixed(0)} • ${order.paymentMethod.label}\n'
           '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
+          style: TextStyle(color: colors.muted),
         ),
         isThreeLine: true,
         trailing: Container(

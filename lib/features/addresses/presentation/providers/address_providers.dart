@@ -1,25 +1,26 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/constants/firestore_paths.dart';
 import '../../domain/entities/address_entity.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 
-/// Local-only storage for now — persisted per-device via SharedPreferences,
-/// since there's no addresses collection in Firestore yet. This is fine
-/// for "My Addresses" as a standalone profile section, but once checkout
-/// needs these (synced across devices, used server-side for delivery),
-/// move this to a Firestore subcollection under users/{uid}/addresses
-/// following the same repository pattern as business_info.
-///
-/// The key is scoped per signed-in user's uid — without that, every
-/// account on the same physical device shared the exact same saved
-/// addresses, so signing in as a different person inherited whatever
-/// the previous account had saved. "_guest" is only a fallback for the
-/// narrow window before auth state resolves; addresses genuinely
-/// belonging to no one shouldn't normally get created.
-String _prefsKeyFor(String? uid) => 'saved_addresses_${uid ?? "_guest"}';
-
+/// FIXED: this used to be local-only storage via SharedPreferences,
+/// which lives in the app's private data directory — wiped on every
+/// uninstall (including the uninstall+reinstall we do after most
+/// rebuilds), so saved addresses kept disappearing even though
+/// nothing else did. Now stored server-side in Firestore under
+/// users/{uid}/addresses, same pattern as business_info, so addresses
+/// survive reinstalls, app-data clears, and even a fresh device —
+/// exactly what's needed now that checkout (place order) depends on
+/// them too, not just the standalone "My Addresses" screen.
 class AddressListNotifier extends AsyncNotifier<List<AddressEntity>> {
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>>? _collectionFor(String? uid) {
+    if (uid == null) return null;
+    return _firestore.collection(FirestorePaths.users).doc(uid).collection(FirestorePaths.addressesSubcollection);
+  }
+
   @override
   Future<List<AddressEntity>> build() async {
     // Watching this means the address list automatically reloads (and
@@ -31,18 +32,17 @@ class AddressListNotifier extends AsyncNotifier<List<AddressEntity>> {
   }
 
   Future<List<AddressEntity>> _load(String? uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_prefsKeyFor(uid)) ?? [];
-    return raw.map((s) => AddressEntity.fromJson(jsonDecode(s) as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> _persist(List<AddressEntity> addresses) async {
-    final uid = ref.read(currentUserProvider)?.uid;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_prefsKeyFor(uid), addresses.map((a) => jsonEncode(a.toJson())).toList());
+    final collection = _collectionFor(uid);
+    if (collection == null) return [];
+    final snapshot = await collection.get();
+    return snapshot.docs.map((doc) => AddressEntity.fromJson({...doc.data(), 'id': doc.id})).toList();
   }
 
   Future<void> addOrUpdate(AddressEntity address) async {
+    final uid = ref.read(currentUserProvider)?.uid;
+    final collection = _collectionFor(uid);
+    if (collection == null) return;
+
     final current = state.valueOrNull ?? [];
     final withoutThis = current.where((a) => a.id != address.id).toList();
 
@@ -54,21 +54,47 @@ class AddressListNotifier extends AsyncNotifier<List<AddressEntity>> {
 
     updated = [...updated, address];
     state = AsyncData(updated);
-    await _persist(updated);
+
+    final json = address.toJson()..remove('id');
+    await collection.doc(address.id).set(json);
+
+    if (address.isDefault) {
+      // Persist the cleared default flag for every other address doc too.
+      final batch = _firestore.batch();
+      for (final other in withoutThis) {
+        if (other.isDefault) {
+          batch.set(collection.doc(other.id), {'isDefault': false}, SetOptions(merge: true));
+        }
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> remove(String id) async {
+    final uid = ref.read(currentUserProvider)?.uid;
+    final collection = _collectionFor(uid);
+    if (collection == null) return;
+
     final current = state.valueOrNull ?? [];
     final updated = current.where((a) => a.id != id).toList();
     state = AsyncData(updated);
-    await _persist(updated);
+    await collection.doc(id).delete();
   }
 
   Future<void> setDefault(String id) async {
+    final uid = ref.read(currentUserProvider)?.uid;
+    final collection = _collectionFor(uid);
+    if (collection == null) return;
+
     final current = state.valueOrNull ?? [];
     final updated = current.map((a) => a.copyWith(isDefault: a.id == id)).toList();
     state = AsyncData(updated);
-    await _persist(updated);
+
+    final batch = _firestore.batch();
+    for (final a in updated) {
+      batch.set(collection.doc(a.id), {'isDefault': a.isDefault}, SetOptions(merge: true));
+    }
+    await batch.commit();
   }
 }
 

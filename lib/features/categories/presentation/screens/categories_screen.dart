@@ -68,23 +68,30 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
                   child: Material(
-                    color: Colors.white,
+                    // FIXED: was hardcoded Colors.white + Colors.black87/45 —
+                    // in dark mode this stayed a bright white pill fighting
+                    // the rest of the screen (or, depending on device theme
+                    // interaction, could render with next-to-no contrast).
+                    // Now themed via context.appColors, same pattern as the
+                    // Home search bar and every other themed surface.
+                    color: colors.card,
                     borderRadius: BorderRadius.circular(24),
                     elevation: 1,
+                    shadowColor: Colors.black.withOpacity(0.15),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(color: Colors.black87),
+                        style: TextStyle(color: colors.ink),
                         onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           hintText: 'Search products',
-                          hintStyle: const TextStyle(fontSize: 13, color: Colors.black45),
-                          prefixIcon: const Icon(Icons.search, size: 18, color: Colors.black45),
+                          hintStyle: TextStyle(fontSize: 13, color: colors.muted),
+                          prefixIcon: Icon(Icons.search, size: 18, color: colors.muted),
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.close, size: 18, color: Colors.black45),
+                                  icon: Icon(Icons.close, size: 18, color: colors.muted),
                                   onPressed: () => setState(() {
                                     _searchController.clear();
                                     _searchQuery = '';

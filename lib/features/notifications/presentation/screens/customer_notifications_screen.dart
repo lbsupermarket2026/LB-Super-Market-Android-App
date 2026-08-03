@@ -42,12 +42,22 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                 final isOffer = n.type == 'new_offer';
                 final isAssignment = n.type == 'order_assigned';
                 final accentColor = isOffer ? _orange : _green;
+                // FIXED: card was hardcoded Colors.white when read —
+                // a bright white card on a dark scaffold with
+                // inherited-color text fighting for contrast against
+                // it. Now themed via context.appColors for the read
+                // state; the unread accent wash is unchanged (already
+                // theme-safe since it's a low-opacity tint, not a
+                // fixed color).
                 return Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: n.isRead ? Colors.white : accentColor.withOpacity(0.06),
+                    color: n.isRead ? colors.card : accentColor.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: n.isRead ? Colors.transparent : accentColor.withOpacity(0.3)),
+                    // Read notifications still get a faint outline
+                    // (colors.divider) rather than none at all, so every
+                    // row reads as a distinct card — not just unread ones.
+                    border: Border.all(color: n.isRead ? colors.divider : accentColor.withOpacity(0.35)),
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -59,8 +69,8 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                               : Icons.local_shipping_outlined,
                       color: accentColor,
                     ),
-                    title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800)),
-                    subtitle: Text(n.body, style: const TextStyle(fontSize: 12)),
+                    title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
+                    subtitle: Text(n.body, style: TextStyle(fontSize: 12, color: colors.muted)),
                     onTap: () {
                       if (!n.isRead) ref.read(customerNotificationsDataSourceProvider).markAsRead(n.id);
                       if (n.type == 'order_status' && n.orderId != null) {
