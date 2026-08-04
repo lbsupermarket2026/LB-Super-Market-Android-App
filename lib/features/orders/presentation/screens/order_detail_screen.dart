@@ -10,6 +10,7 @@ import '../providers/order_providers.dart';
 import '../widgets/edit_order_dialog.dart';
 import '../widgets/order_bill_actions.dart';
 import '../widgets/order_status_stepper.dart';
+import '../widgets/refund_status_banner.dart';
 import '../widgets/rate_order_dialog.dart';
 
 class OrderDetailScreen extends ConsumerWidget {
@@ -72,6 +73,11 @@ class OrderDetailScreen extends ConsumerWidget {
                     Text('Status', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: AppSpacing.md),
                     OrderStatusStepper(status: order.status),
+                    // NEW: surfaces refund status for a cancelled
+                    // online-payment order — previously this was only
+                    // checkable directly in Firestore, not visible in
+                    // the app at all.
+                    RefundStatusBanner(order: order),
                     if (order.canCallDelivery)
                       SizedBox(
                         width: double.infinity,

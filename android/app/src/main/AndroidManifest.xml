@@ -37,6 +37,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- NEW: without this, FCM's native handling of notifications
+             while the app is backgrounded/terminated falls back to its
+             own default icon behavior — which is the same "reuse the
+             full-color launcher icon" problem described in
+             push_notification_service.dart, just for the native/FCM
+             path instead of the flutter_local_notifications path.
+             Points at the same white silhouette used there, so the
+             status bar icon looks correct in EVERY app state
+             (foreground, background, and terminated). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notification" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

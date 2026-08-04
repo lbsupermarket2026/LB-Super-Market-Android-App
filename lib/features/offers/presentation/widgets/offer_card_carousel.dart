@@ -13,7 +13,10 @@ class OfferCardCarousel extends StatefulWidget {
   final double height;
   final void Function(OfferCardEntity)? onCardTap;
 
-  const OfferCardCarousel({super.key, required this.cards, this.height = 150, this.onCardTap});
+  // FIXED: 150 wasn't tall enough for OfferCardTile's content in
+  // the worst case (2-line title + 2-line subtitle) — see the note
+  // in offer_card_tile.dart. Matched to the same 172 default.
+  const OfferCardCarousel({super.key, required this.cards, this.height = 172, this.onCardTap});
 
   @override
   State<OfferCardCarousel> createState() => _OfferCardCarouselState();

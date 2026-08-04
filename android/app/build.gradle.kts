@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "lbsupermarket.com"
+        applicationId = "com.lbsupermarket.com"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
@@ -51,6 +51,11 @@ android {
         }
     }
 }
+
+firebaseCrashlytics {
+    mappingFileUploadEnabled = false
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

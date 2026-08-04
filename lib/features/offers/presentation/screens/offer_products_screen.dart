@@ -45,7 +45,7 @@ class OfferProductsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
               if (categories.isNotEmpty) ...[
-                const Text('Categories in this offer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text('Categories in this offer', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colors.ink)),
                 const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   height: 40,
@@ -59,7 +59,7 @@ class OfferProductsScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.lg),
               ],
               if (products.isNotEmpty) ...[
-                Text('Products (${products.length})', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text('Products (${products.length})', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colors.ink)),
                 const SizedBox(height: AppSpacing.sm),
                 GridView.builder(
                   shrinkWrap: true,
@@ -109,7 +109,7 @@ class _CategoryChip extends StatelessWidget {
                 child: CachedNetworkImage(imageUrl: category.imageUrl!, width: 20, height: 20, fit: BoxFit.cover),
               ),
             if (category.imageUrl?.isNotEmpty == true) const SizedBox(width: 6),
-            Text(category.name, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            Text(category.name, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.black87)),
           ],
         ),
       ),

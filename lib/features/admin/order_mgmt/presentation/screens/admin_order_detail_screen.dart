@@ -166,7 +166,27 @@ class AdminOrderDetailScreen extends ConsumerWidget {
           ),
           _Card(
             title: 'Update Status',
-            child: Wrap(
+            child: order.status == OrderStatus.cancelled
+                // NEW: a cancelled order is a final state — showing
+                // tappable status chips here implied it could still be
+                // moved to e.g. "Delivered", which is exactly what was
+                // just reported as a bug. The Firestore write itself is
+                // now also guarded (admin_order_datasource.dart), but
+                // this keeps the UI honest about it too rather than
+                // letting someone tap a chip and get an error back.
+                ? Row(
+                    children: [
+                      const Icon(Icons.block, size: 18, color: _red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This order was cancelled — its status can no longer be changed.',
+                          style: TextStyle(color: colors.muted, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  )
+                : Wrap(
               spacing: 8,
               runSpacing: 8,
               children: OrderStatus.values.map((s) {
@@ -176,7 +196,9 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                   label: Text(s.label),
                   selected: isCurrent,
                   selectedColor: color,
-                  labelStyle: TextStyle(color: isCurrent ? Colors.white : Colors.black87, fontSize: 12),
+                  // FIXED: unselected label was hardcoded black87 —
+                  // invisible on a dark unselected chip in dark mode.
+                  labelStyle: TextStyle(color: isCurrent ? Colors.white : colors.ink, fontSize: 12),
                   onSelected: mutation.isSubmitting
                       ? null
                       : (_) async {

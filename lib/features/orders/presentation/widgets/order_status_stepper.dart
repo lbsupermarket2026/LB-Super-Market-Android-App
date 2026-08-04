@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../domain/entities/order_entity.dart';
 
 class OrderStatusStepper extends StatelessWidget {
@@ -18,6 +19,12 @@ class OrderStatusStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FIXED: completed-step labels had color: null, which inherits
+    // the ambient default text color — this wasn't reliably reading
+    // as light/white against the dark-tinted "Track Your Order" card
+    // in dark mode. Now explicit via context.appColors, same pattern
+    // used everywhere else in the app.
+    final colors = context.appColors;
 
     if (status == OrderStatus.cancelled) {
       return Row(
@@ -43,12 +50,12 @@ class OrderStatusStepper extends StatelessWidget {
                 children: [
                   Icon(
                     isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: isDone ? _green : Colors.grey.shade500,
+                    color: isDone ? _green : colors.muted,
                     size: 20,
                   ),
                   if (!isLast)
                     Expanded(
-                      child: Container(width: 2, color: isDone ? _green : Colors.grey.shade300),
+                      child: Container(width: 2, color: isDone ? _green : colors.divider),
                     ),
                 ],
               ),
@@ -59,7 +66,7 @@ class OrderStatusStepper extends StatelessWidget {
                   _steps[i].label,
                   style: TextStyle(
                     fontWeight: isDone ? FontWeight.w700 : FontWeight.w400,
-                    color: isDone ? null : Colors.grey.shade500,
+                    color: isDone ? colors.ink : colors.muted,
                   ),
                 ),
               ),

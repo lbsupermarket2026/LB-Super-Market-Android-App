@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../../core/error/exceptions.dart';
 import '../../../../orders/data/models/order_model.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../order_requests/data/models/order_request_model.dart';
@@ -107,7 +108,20 @@ class AdminOrderDataSource {
   /// both read the same starting stockQty and both "successfully"
   /// oversell it.
   Future<void> updateOrderStatus(String orderId, OrderStatus status) async {
+    // NEW: a cancelled order is a final state — once autoRefundOnCancel
+    // (Cloud Function) may have already acted on it, flipping the
+    // status again (e.g. back to "Delivered") would leave the order
+    // record and any refund badly out of sync with reality. Guards
+    // both branches below: the simple direct-update path, and the
+    // transactional "confirmed" path (which also decrements stock —
+    // definitely not something that should ever happen to a
+    // cancelled order).
     if (status != OrderStatus.confirmed) {
+      final currentSnap = await _orders.doc(orderId).get();
+      final currentStatus = currentSnap.data()?['status'] as String?;
+      if (currentStatus == OrderStatus.cancelled.name) {
+        throw const ServerException('This order has been cancelled and its status can no longer be changed.');
+      }
       await _orders.doc(orderId).update({'status': status.name});
       return;
     }
@@ -117,6 +131,10 @@ class AdminOrderDataSource {
       final orderSnap = await transaction.get(orderRef);
       final orderData = orderSnap.data();
       if (orderData == null) return;
+
+      if (orderData['status'] == OrderStatus.cancelled.name) {
+        throw const ServerException('This order has been cancelled and its status can no longer be changed.');
+      }
 
       final alreadyDecremented = orderData['stockDecremented'] == true;
       final items = (orderData['items'] as List?)?.whereType<Map<String, dynamic>>().toList() ?? [];

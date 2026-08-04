@@ -19,7 +19,13 @@ class OfferCardTile extends StatelessWidget {
   final VoidCallback? onTap;
   final double height;
 
-  const OfferCardTile({super.key, required this.card, this.onTap, this.height = 150});
+  // FIXED: default height 150 wasn't tall enough — with a 2-line
+  // title (fontSize 20) + 2-line subtitle (fontSize 13) + the icon
+  // row + 18px padding on all sides, real content could exceed the
+  // available space by ~14px on longer offer text, causing a bottom
+  // overflow. Bumped to 172 to comfortably fit the worst case
+  // (both title and subtitle wrapping to their max 2 lines).
+  const OfferCardTile({super.key, required this.card, this.onTap, this.height = 172});
 
   ({List<Color> gradient, Color fg, IconData icon}) _styleFor(OfferTemplate template) {
     switch (template) {

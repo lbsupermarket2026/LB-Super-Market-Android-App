@@ -117,7 +117,12 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.notifications_outlined,
                   title: 'Notifications',
                   subtitle: 'Order and offer alerts',
-                  onTap: () => openAppSettings(),
+                  // FIXED: was calling openAppSettings() — opened the
+                  // device's system app-settings page instead of the
+                  // in-app notifications screen, which is why tapping
+                  // it never showed any notifications. Now matches the
+                  // same route employee_home_screen.dart already uses.
+                  onTap: () => context.push('/notifications'),
                 ),
                 const _ThemeModeMenuItem(),
                 _MenuItem(

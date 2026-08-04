@@ -77,7 +77,12 @@ class AddressesScreen extends ConsumerWidget {
                             color: _green,
                           ),
                           const SizedBox(width: AppSpacing.sm),
-                          Text(address.label, style: Theme.of(context).textTheme.titleMedium),
+                          // FIXED: was Theme.of(context).textTheme.titleMedium
+                          // — that default style goes light-colored in dark
+                          // mode, invisible against this card, which is
+                          // deliberately fixed white in every theme (same
+                          // pattern as several other screens already fixed).
+                          Text(address.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black87)),
                           if (address.isDefault) ...[
                             const SizedBox(width: AppSpacing.sm),
                             Container(
@@ -122,10 +127,10 @@ class AddressesScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      Text(address.formatted, style: Theme.of(context).textTheme.bodyMedium),
+                      Text(address.formatted, style: const TextStyle(color: Colors.black87)),
                       if (address.phone.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text(address.phone, style: Theme.of(context).textTheme.bodySmall),
+                        Text(address.phone, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
                       ],
                       if (address.hasCoordinates) ...[
                         const SizedBox(height: AppSpacing.sm),

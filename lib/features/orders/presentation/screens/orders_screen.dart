@@ -84,7 +84,21 @@ class OrdersScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.lg),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    child: _ActiveOrderCard(order: activeOrder.first),
+                    // FIXED: only activeOrder.first ever got a tracking
+                    // card, so a customer with more than one order in
+                    // progress at once could only track the single
+                    // most recent one from this screen — the others
+                    // required scrolling into Order History and
+                    // tapping in individually. Now every active order
+                    // gets its own tracking card.
+                    child: Column(
+                      children: activeOrder
+                          .map((order) => Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                child: _ActiveOrderCard(order: order),
+                              ))
+                          .toList(),
+                    ),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.lg),

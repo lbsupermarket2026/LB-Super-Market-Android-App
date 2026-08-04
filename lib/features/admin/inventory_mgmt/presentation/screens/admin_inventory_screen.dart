@@ -24,8 +24,14 @@ class AdminInventoryScreen extends StatelessWidget {
         backgroundColor: colors.surface,
         appBar: AppBar(
           title: const Text('Inventory'),
+          // FIXED: was missing labelColor/unselectedLabelColor — unlike
+          // AdminOrdersScreen's TabBar, which explicitly sets these.
+          // Without them, tab text used the default theme color, which
+          // was hard to read against the green AppBar in dark mode.
           bottom: const TabBar(
             indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
             tabs: [Tab(text: 'Products'), Tab(text: 'Categories')],
           ),
         ),

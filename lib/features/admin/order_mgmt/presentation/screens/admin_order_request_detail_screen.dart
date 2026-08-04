@@ -20,7 +20,11 @@ class AdminOrderRequestDetailScreen extends ConsumerWidget {
     final colors = context.appColors;
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('Order Request')),
+      // FIXED: was Text('Order Request') with no color, so it
+      // inherited dark mode's default AppBar foreground — same fix
+      // as the Orders/Order Requests tabs before, applied to the
+      // title itself here.
+      appBar: AppBar(title: const Text('Order Request', style: TextStyle(color: Colors.white))),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
@@ -30,25 +34,31 @@ class AdminOrderRequestDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // FIXED: every Text below had no explicit color, so
+                // it inherited dark mode's light default — invisible
+                // against this card, which is deliberately always
+                // white regardless of theme (same pattern as
+                // product_card.dart, login_screen.dart, etc.).
                 Text(
                   request.type == OrderRequestType.photo ? 'Photo Submission' : 'Typed List',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black87),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 if (request.type == OrderRequestType.typedList)
-                  ...request.itemLines.map((line) => Text('• $line'))
+                  ...request.itemLines.map((line) => Text('• $line', style: const TextStyle(color: Colors.black87)))
                 else if (request.photoUrl != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Image.network(request.photoUrl!, height: 200, fit: BoxFit.cover),
                   ),
                 const Divider(height: 24),
-                Text('Call: ${request.contactPhone}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('Call: ${request.contactPhone}', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
                 const SizedBox(height: 4),
                 Text(
                   request.fulfillmentMethod == FulfillmentMethod.delivery
                       ? 'Home Delivery — ${request.deliveryAddress ?? ""}'
                       : 'In-Store Pickup',
+                  style: const TextStyle(color: Colors.black87),
                 ),
               ],
             ),

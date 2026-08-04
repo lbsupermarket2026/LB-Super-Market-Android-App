@@ -34,7 +34,7 @@ class OffersRewardsScreen extends ConsumerWidget {
               final card = cards[index];
               return OfferCardTile(
                 card: card,
-                height: 160,
+                height: 172,
                 onTap: () => context.push('/offer-products/${card.id}', extra: card.title),
               );
             },

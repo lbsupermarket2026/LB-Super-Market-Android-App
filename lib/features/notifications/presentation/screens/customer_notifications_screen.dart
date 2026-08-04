@@ -18,20 +18,9 @@ class CustomerNotificationsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              final unread = notifications.where((n) => !n.isRead).map((n) => n.id).toList();
-              if (unread.isNotEmpty) {
-                ref.read(customerNotificationsDataSourceProvider).markAllAsRead(unread);
-              }
-            },
-            child: const Text('Mark all read', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      // FIXED: removed "Mark all read" per request. Title color also
+      // made explicit white, same fix as elsewhere.
+      appBar: AppBar(title: const Text('Notifications', style: TextStyle(color: Colors.white))),
       body: notifications.isEmpty
           ? const Center(child: Text('No notifications yet.'))
           : ListView.builder(
@@ -52,7 +41,7 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                 return Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: n.isRead ? colors.card : accentColor.withOpacity(0.08),
+                    color: n.isRead ? colors.card : accentColor.withOpacity(0.16),
                     borderRadius: BorderRadius.circular(14),
                     // Read notifications still get a faint outline
                     // (colors.divider) rather than none at all, so every
@@ -69,7 +58,21 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                               : Icons.local_shipping_outlined,
                       color: accentColor,
                     ),
-                    title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
+                    // NEW: small filled dot for unread, nothing for
+                    // read — makes the distinction unmistakable at a
+                    // glance rather than relying only on the subtle
+                    // background tint.
+                    title: Row(
+                      children: [
+                        if (!n.isRead) ...[
+                          Container(width: 7, height: 7, decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
+                        ),
+                      ],
+                    ),
                     subtitle: Text(n.body, style: TextStyle(fontSize: 12, color: colors.muted)),
                     onTap: () {
                       if (!n.isRead) ref.read(customerNotificationsDataSourceProvider).markAsRead(n.id);

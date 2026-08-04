@@ -49,6 +49,10 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     super.dispose();
   }
 
+  // Set right before _collectUpiPayment returns null for a failure —
+  // read immediately after awaiting the call, in _placeOrder.
+  bool _lastPaymentWasUserCancelled = false;
+
   /// Bridges Razorpay's callback-based SDK into something this dialog's
   /// normal async flow can just await. Two server round-trips bracket
   /// the actual checkout: an order is created server-side first (so the
@@ -62,6 +66,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     required String customerPhone,
     String? customerEmail,
   }) async {
+    _lastPaymentWasUserCancelled = false;
     final String razorpayOrderId;
     try {
       razorpayOrderId = await _razorpayServerService.createOrder(amount);
@@ -72,11 +77,24 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
 
     final completer = Completer<PaymentSuccessResponse?>();
 
+    // NEW: track whether the checkout sheet was explicitly cancelled
+    // (Razorpay error code 2 — the person closed the sheet or backed
+    // out before submitting) versus some other failure (network drop,
+    // bank decline, etc.). A definite cancellation means nothing was
+    // ever charged, so the order this attempt created can be safely
+    // auto-cancelled instead of sitting around forever as "Payment
+    // Pending" — genuinely ambiguous failures still get the original
+    // safety-net treatment (order kept, for manual follow-up), since
+    // those could be a charge that went through without the app
+    // finding out.
+    var wasUserCancelled = false;
+
     _razorpayService.init(
       onSuccess: (PaymentSuccessResponse response) {
         if (!completer.isCompleted) completer.complete(response);
       },
       onError: (PaymentFailureResponse response) {
+        wasUserCancelled = response.code == 2; // Razorpay's "Payment Cancelled" code
         if (!completer.isCompleted) completer.complete(null);
       },
       onExternalWallet: (ExternalWalletResponse response) {
@@ -95,7 +113,10 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
     );
 
     final response = await completer.future;
-    if (response == null) return null; // failed or cancelled at the checkout sheet
+    if (response == null) {
+      _lastPaymentWasUserCancelled = wasUserCancelled;
+      return null; // failed or cancelled at the checkout sheet
+    }
 
     final paymentId = response.paymentId;
     final signature = response.signature;
@@ -104,11 +125,32 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
       return null;
     }
 
-    final verified = await _razorpayServerService.verifyPayment(
-      razorpayOrderId: razorpayOrderId,
-      razorpayPaymentId: paymentId,
-      razorpaySignature: signature,
-    );
+    final verified = await () async {
+      try {
+        return await _razorpayServerService.verifyPayment(
+          razorpayOrderId: razorpayOrderId,
+          razorpayPaymentId: paymentId,
+          razorpaySignature: signature,
+        );
+      } catch (e) {
+        // FIXED: this call had NO error handling at all. If it threw
+        // for any reason (network blip, a Cloud Functions cold start,
+        // anything) — which is a real possibility right after the
+        // checkout sheet closes and control returns to the app — the
+        // exception propagated straight up uncaught. That meant
+        // _placeOrder's "if (paymentId == null)" handling below (the
+        // whole point of which is to react to a failed/incomplete
+        // payment) never ran at all, since the function had already
+        // crashed out of its normal control flow. The order — already
+        // created before checkout, sitting with paymentPending: true —
+        // was left completely untouched forever, with _isPlacing never
+        // reset either, so the UI could look permanently stuck. Now
+        // this is caught and treated as "couldn't verify" (same as a
+        // verified:false response), which the existing ambiguous-
+        // failure path already handles correctly.
+        return false;
+      }
+    }();
 
     if (!verified) {
       if (mounted) {
@@ -211,14 +253,34 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
       if (!mounted) return;
 
       if (paymentId == null) {
-        // The order still exists (paymentPending: true) — deliberately
-        // NOT deleted here, since keeping a record beats losing it if
-        // this really was a charge that DID go through but the
-        // verification step failed to confirm it in time.
-        setState(() {
-          _isPlacing = false;
-          _error ??= 'Payment was not completed. If you were charged, this order is saved and our team will follow up — otherwise, nothing has been charged.';
-        });
+        // FIXED: previously the order was always left sitting with
+        // paymentPending: true regardless of why payment didn't
+        // complete, which meant a plain "I changed my mind and closed
+        // the checkout sheet" cancellation left a permanently-stuck
+        // "Payment Pending" order cluttering both the customer's and
+        // admin's order lists forever, even though nothing was ever
+        // charged. Now: a CONFIRMED user cancellation (Razorpay error
+        // code 2 — the sheet was closed/backed out of before
+        // submitting) auto-cancels the order immediately, since we
+        // know for certain no charge occurred. Any other failure
+        // (network drop, bank decline, verification failure) keeps
+        // the original safety-net behavior — the order stays as-is
+        // for manual admin follow-up, since those cases genuinely
+        // could be a charge that went through without the app
+        // finding out, and losing that record would be worse.
+        if (_lastPaymentWasUserCancelled) {
+          await ref.read(cancelOrderUseCaseProvider).call(orderId);
+          if (!mounted) return;
+          setState(() {
+            _isPlacing = false;
+            _error = 'Payment was cancelled — no charge was made, and this order was not placed.';
+          });
+        } else {
+          setState(() {
+            _isPlacing = false;
+            _error ??= 'Payment was not completed. If you were charged, this order is saved and our team will follow up — otherwise, nothing has been charged.';
+          });
+        }
         return;
       }
 

@@ -8,6 +8,7 @@ class AppTextField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final Widget? suffixIcon;
+  final Widget? prefixIcon;
   final bool enabled;
 
   const AppTextField({
@@ -19,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.suffixIcon,
+    this.prefixIcon,
     this.enabled = true,
   });
 
@@ -34,6 +36,7 @@ class AppTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         suffixIcon: suffixIcon,
+        prefixIcon: prefixIcon,
       ),
     );
   }

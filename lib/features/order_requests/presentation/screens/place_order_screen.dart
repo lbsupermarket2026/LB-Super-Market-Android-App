@@ -109,7 +109,21 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
             title: 'Browse & Select Products',
             subtitle: 'Search our catalogue, add items to cart & checkout',
             badge: 'RECOMMENDED',
-            onTap: () => context.push('/search'),
+            // FIXED (again): Categories is a persistent bottom-nav tab
+            // living inside a StatefulShellRoute.indexedStack — it
+            // already has one live instance mounted at all times.
+            // context.push('/categories') stacked a SECOND, separate
+            // instance of that screen on top from outside the shell,
+            // and because GoRouter's shell branches keep a stable
+            // Navigator key per branch, having two simultaneously
+            // alive triggered a
+            // "'!keyReservation.contains(key)': is not true" crash —
+            // a hard crash, which is why it looked like "just a blank
+            // screen" and dropped the debug connection. context.go()
+            // navigates THROUGH the shell instead of stacking outside
+            // it, correctly switching to the existing tab rather than
+            // duplicating it.
+            onTap: () => context.go('/categories'),
           ),
           if (_typedLines != null || _photoFile != null) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -199,7 +213,13 @@ class _OptionCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             title,
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                            // FIXED: this was the actual missed spot —
+                            // I fixed the subtitle below earlier but
+                            // overlooked the title, which had no
+                            // explicit color and was still inheriting
+                            // dark mode's light default text color,
+                            // invisible against this always-white card.
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black87),
                           ),
                         ),
                         if (badge != null) ...[
@@ -223,7 +243,11 @@ class _OptionCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    // FIXED: was Colors.grey.shade600 — this card's
+                    // background is deliberately fixed white in every
+                    // theme, so text needs to stay solidly dark too
+                    // for good contrast, not a soft grey.
+                    Text(subtitle, style: const TextStyle(color: Colors.black87, fontSize: 13)),
                   ],
                 ),
               ),

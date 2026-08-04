@@ -34,7 +34,14 @@ class PushNotificationService {
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
     await _messaging.subscribeToTopic('new_offers');
 
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // FIXED: was '@mipmap/ic_launcher' — Android FORCES the status
+    // bar/notification small icon to render using only the source
+    // image's ALPHA channel as a solid white silhouette, regardless
+    // of its actual colors. Reusing the full-color, white-background
+    // app launcher icon for this produced an odd blocky white/blue
+    // shape instead of a recognizable mark. Now points to a proper
+    // white-on-transparent silhouette generated from the logo.
+    const androidInit = AndroidInitializationSettings('@drawable/ic_stat_notification');
     const iosInit = DarwinInitializationSettings();
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),

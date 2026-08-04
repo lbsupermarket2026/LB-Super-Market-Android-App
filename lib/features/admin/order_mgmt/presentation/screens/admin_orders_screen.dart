@@ -25,7 +25,11 @@ class AdminOrdersScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: colors.surface,
         appBar: AppBar(
-          title: const Text('Orders'),
+          // FIXED: title had no explicit color, inheriting dark
+          // mode's default (black) — inconsistent with the white
+          // TabBar labels right below it.
+          title: const Text('Orders', style: TextStyle(color: Colors.white)),
+          iconTheme: const IconThemeData(color: Colors.white),
           actions: [
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
@@ -117,22 +121,35 @@ class _AdminOrdersTabState extends ConsumerState<_AdminOrdersTab> {
                           // explicit via context.appColors instead of
                           // ListTile's inherited defaults, for guaranteed
                           // dark-mode contrast.
-                          return Material(
-                            color: colors.card,
-                            borderRadius: BorderRadius.circular(16),
-                            child: InkWell(
+                          // FIXED: margin was on the INNER Container while
+                          // Material (which paints colors.card) was the
+                          // OUTER widget — Material fills its full bounds
+                          // including the margin's gap area, so adjacent
+                          // cards' "gaps" were actually still card-colored,
+                          // making them visually blend into one continuous
+                          // grey mass instead of showing distinct cards
+                          // separated by the scaffold background — unlike
+                          // the Order Requests tab below, which has its
+                          // margin on the OUTER widget. Swapped to match
+                          // that same structure: margin+shadow outside,
+                          // Material+InkWell (the actual card) inside.
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => AdminOrderDetailScreen(order: order)),
-                              ),
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                padding: const EdgeInsets.all(AppSpacing.md),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))],
+                            ),
+                            child: Material(
+                              color: colors.card,
+                              borderRadius: BorderRadius.circular(16),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => AdminOrderDetailScreen(order: order)),
                                 ),
+                                child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.md),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -191,6 +208,7 @@ class _AdminOrdersTabState extends ConsumerState<_AdminOrdersTab> {
                                       ],
                                     ),
                                   ],
+                                ),
                                 ),
                               ),
                             ),

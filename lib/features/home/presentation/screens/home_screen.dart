@@ -13,6 +13,7 @@ import '../../../addresses/presentation/providers/address_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../../wishlist/presentation/providers/wishlist_providers.dart';
+import '../../../notifications/presentation/providers/customer_notifications_providers.dart';
 import '../../../orders/domain/entities/order_entity.dart';
 import '../../../orders/presentation/providers/order_providers.dart';
 import '../../../categories/presentation/providers/category_providers.dart';
@@ -87,6 +88,8 @@ class HomeScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const _NotificationIconButton(),
+                    const SizedBox(width: 8),
                     const _WishlistIconButton(),
                     const SizedBox(width: 8),
                     const _CartIconButton(),
@@ -109,6 +112,54 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// NEW: notification bell was previously only reachable from Profile
+// (and even that was broken — see profile_screen.dart fix). Added
+// here next to Wishlist/Cart, matching the icon-with-badge pattern
+// already used by both of those.
+class _NotificationIconButton extends ConsumerWidget {
+  const _NotificationIconButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.appColors;
+    final count = ref.watch(customerUnreadCountProvider);
+
+    return GestureDetector(
+      onTap: () => context.push('/notifications'),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: colors.card,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Icon(Icons.notifications_outlined, color: colors.ink, size: 20),
+          ),
+          if (count > 0)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                decoration: BoxDecoration(color: colors.red, shape: BoxShape.circle),
+                child: Text(
+                  '$count',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -299,16 +350,21 @@ class _OfferCardsSection extends ConsumerWidget {
     return cardsAsync.when(
       data: (cards) {
         if (cards.isEmpty) return const SizedBox.shrink();
-        return SizedBox(
-          height: 150,
-          child: OfferCardCarousel(
-            cards: cards,
-            onCardTap: (card) => context.push('/offer-products/${card.id}', extra: card.title),
-          ),
+        // FIXED: was wrapped in an outer SizedBox(height: 150) — a
+        // second, independent height constraint on top of
+        // OfferCardCarousel's own (now 172 + spacing + dot row ≈
+        // 194px total) content, squeezing it and causing a ~36px
+        // bottom overflow. OfferCardCarousel already sizes itself via
+        // Column(mainAxisSize: MainAxisSize.min), so no outer fixed
+        // height is needed at all — removing it lets it size to its
+        // actual content.
+        return OfferCardCarousel(
+          cards: cards,
+          onCardTap: (card) => context.push('/offer-products/${card.id}', extra: card.title),
         );
       },
       loading: () => const SizedBox(
-        height: 150,
+        height: 172,
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, __) => const SizedBox.shrink(),

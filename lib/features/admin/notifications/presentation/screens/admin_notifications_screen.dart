@@ -79,20 +79,9 @@ class AdminNotificationsScreen extends ConsumerWidget {
     final colors = context.appColors;
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              final unread = notificationsAsync.valueOrNull?.where((n) => !n.isRead).map((n) => n.id).toList() ?? [];
-              if (unread.isNotEmpty) {
-                ref.read(adminNotificationsDataSourceProvider).markAllAsRead(unread);
-              }
-            },
-            child: const Text('Mark all read', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      // FIXED: removed "Mark all read" per request. Title color also
+      // made explicit white, same fix as Orders/Order Request above.
+      appBar: AppBar(title: const Text('Notifications', style: TextStyle(color: Colors.white))),
       body: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Could not load notifications: $e')),
@@ -117,7 +106,7 @@ class AdminNotificationsScreen extends ConsumerWidget {
               return Container(
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: n.isRead ? colors.card : accentColor.withOpacity(0.10),
+                  color: n.isRead ? colors.card : accentColor.withOpacity(0.16),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: n.isRead ? Colors.transparent : accentColor.withOpacity(0.35)),
                 ),
@@ -127,9 +116,22 @@ class AdminNotificationsScreen extends ConsumerWidget {
                     isLowStock ? Icons.warning_amber_outlined : Icons.receipt_long_outlined,
                     color: accentColor,
                   ),
-                  title: Text(
-                    n.title,
-                    style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink),
+                  // NEW: small filled dot for unread, matching the
+                  // customer notifications screen — makes the
+                  // distinction unmistakable, not just a subtle tint.
+                  title: Row(
+                    children: [
+                      if (!n.isRead) ...[
+                        Container(width: 7, height: 7, decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle)),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          n.title,
+                          style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink),
+                        ),
+                      ),
+                    ],
                   ),
                   subtitle: Text(n.body, style: TextStyle(fontSize: 12, color: colors.muted)),
                   // NEW: small chevron makes it visually clear the row
