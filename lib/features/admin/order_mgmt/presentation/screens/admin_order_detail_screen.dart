@@ -214,24 +214,29 @@ class AdminOrderDetailScreen extends ConsumerWidget {
               }).toList(),
             ),
           ),
-          _Card(
-            title: 'Assign Delivery',
-            child: order.deliveryPersonName?.isNotEmpty == true
-                ? Row(
-                    children: [
-                      const Icon(Icons.delivery_dining, color: _orange),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text('${order.deliveryPersonName} • ${order.deliveryPersonPhone}')),
-                      TextButton(onPressed: () => _showAssignDialog(context, ref), child: const Text('Change')),
-                    ],
-                  )
-                : ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white),
-                    onPressed: () => _showAssignDialog(context, ref),
-                    icon: const Icon(Icons.delivery_dining),
-                    label: const Text('Assign Employee'),
-                  ),
-          ),
+          // NEW: hide "Assign Delivery" entirely once an order is
+          // cancelled — assigning (or reassigning) an employee to
+          // deliver something that's no longer happening made no
+          // sense, same class of fix as the Update Status guard above.
+          if (order.status != OrderStatus.cancelled)
+            _Card(
+              title: 'Assign Delivery',
+              child: order.deliveryPersonName?.isNotEmpty == true
+                  ? Row(
+                      children: [
+                        const Icon(Icons.delivery_dining, color: _orange),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('${order.deliveryPersonName} • ${order.deliveryPersonPhone}')),
+                        TextButton(onPressed: () => _showAssignDialog(context, ref), child: const Text('Change')),
+                      ],
+                    )
+                  : ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white),
+                      onPressed: () => _showAssignDialog(context, ref),
+                      icon: const Icon(Icons.delivery_dining),
+                      label: const Text('Assign Employee'),
+                    ),
+            ),
         ],
       ),
     );

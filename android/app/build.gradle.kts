@@ -52,9 +52,6 @@ android {
     }
 }
 
-firebaseCrashlytics {
-    mappingFileUploadEnabled = false
-}
 
 kotlin {
     compilerOptions {

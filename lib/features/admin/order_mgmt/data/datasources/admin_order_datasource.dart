@@ -168,6 +168,15 @@ class AdminOrderDataSource {
   }
 
   Future<void> assignDelivery(String orderId, String employeeUid, String name, String phone) async {
+    // NEW: same guard as updateOrderStatus — assignDelivery also
+    // flips status to outForDelivery, which would silently un-cancel
+    // a cancelled order if this ran on one. UI already hides the
+    // option, but this closes the gap for any other caller.
+    final currentSnap = await _orders.doc(orderId).get();
+    final currentStatus = currentSnap.data()?['status'] as String?;
+    if (currentStatus == OrderStatus.cancelled.name) {
+      throw const ServerException('This order has been cancelled and can no longer be assigned to a delivery employee.');
+    }
     await _orders.doc(orderId).update({
       'assignedEmployeeUid': employeeUid,
       'deliveryPersonName': name,
