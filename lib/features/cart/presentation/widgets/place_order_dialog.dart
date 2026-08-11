@@ -302,6 +302,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
     final addressesAsync = ref.watch(addressListProvider);
     final addresses = addressesAsync.valueOrNull ?? [];
     final cartItems = ref.watch(cartProvider).valueOrNull ?? [];
@@ -329,7 +330,14 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
           );
 
     return AlertDialog(
-      title: const Text('Place Order'),
+      // FIXED: no explicit backgroundColor meant this fell back to
+      // Flutter's default AlertDialog surface, which wasn't reliably
+      // following the app's dark theme — combined with the title
+      // text having no explicit color (inheriting the theme default,
+      // white in dark mode), this produced white text on a background
+      // that stayed light, exactly the "mixed in" symptom reported.
+      backgroundColor: colors.card,
+      title: Text('Place Order', style: TextStyle(color: colors.ink)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -339,7 +347,7 @@ class _PlaceOrderDialogState extends ConsumerState<PlaceOrderDialog> {
               onlinePaymentsEnabled
                   ? 'Online Payment charges you now, through Razorpay. Cash and Card Swipe are settled in person on delivery/pickup.'
                   : 'Cash and Card Swipe are settled in person on delivery/pickup.',
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13, color: colors.muted),
             ),
             const SizedBox(height: 12),
             if (onlinePaymentsEnabled)

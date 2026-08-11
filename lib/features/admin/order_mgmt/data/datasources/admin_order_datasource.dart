@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../core/error/exceptions.dart';
+import '../../../../../core/services/sequential_id_service.dart';
 import '../../../../orders/data/models/order_model.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../../order_requests/data/models/order_request_model.dart';
@@ -205,12 +206,38 @@ class AdminOrderDataSource {
     required List<Map<String, dynamic>> items,
     required double totalAmount,
   }) async {
+    // FIXED: this never assigned an orderNumber at all — every order
+    // that started as "Type My List" or a photo submission fell back
+    // to a raw random Firestore doc ID substring wherever displayed
+    // (admin orders list, customer order search, notifications —
+    // anywhere order.orderNumber ?? order.id.substring(...) is used),
+    // which is exactly the "weird order number" being reported. Now
+    // generates a proper sequential number the same way the normal
+    // checkout flow does.
+    final orderNumber = await SequentialIdService().nextOrderNumber();
+
+    // NEW: also look up the customer's actual name from their user
+    // profile — order_requests only ever captured a phone number, not
+    // a name, so nothing downstream (admin lists, customer search)
+    // ever had a real name to show for these orders. Best-effort: if
+    // the lookup fails for any reason, the order still gets created
+    // (customerName just stays null, same as before this fix).
+    String? customerName;
+    try {
+      final userDoc = await _firestore.collection('users').doc(request.userId).get();
+      customerName = userDoc.data()?['name'] as String?;
+    } catch (_) {
+      // Non-fatal — proceed without a name rather than blocking order creation.
+    }
+
     final orderRef = await _orders.add(OrderModel.toFirestoreMap(
       userId: request.userId,
       items: items,
       totalAmount: totalAmount,
       deliveryAddress: request.deliveryAddress ?? '',
       customerPhone: request.contactPhone,
+      customerName: customerName,
+      orderNumber: orderNumber,
       paymentMethod: 'cod',
     ));
     await _requests.doc(request.id).update({'status': OrderRequestStatus.confirmed.name});

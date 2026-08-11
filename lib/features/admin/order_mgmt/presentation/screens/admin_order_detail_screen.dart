@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
 import '../../../employee_mgmt/presentation/providers/employee_providers.dart';
+import '../../../../employee/presentation/screens/delivery_location_screen.dart';
 import '../../../employee_mgmt/domain/entities/staff_member_entity.dart';
 import '../../../../orders/presentation/widgets/order_bill_actions.dart';
 import '../../../../orders/presentation/widgets/edit_order_dialog.dart';
@@ -75,7 +76,35 @@ class AdminOrderDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(order.deliveryAddress),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: Text(order.deliveryAddress)),
+                    // NEW: admin previously had no way to see WHERE a
+                    // delivery should actually go, just the text
+                    // address — employee already had this map view,
+                    // now admin gets the exact same reusable screen.
+                    if (order.deliveryLatitude != null && order.deliveryLongitude != null)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.map_outlined, color: _orange),
+                        tooltip: 'View on map',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => DeliveryLocationScreen(
+                                latitude: order.deliveryLatitude!,
+                                longitude: order.deliveryLongitude!,
+                                customerAddress: order.deliveryAddress,
+                                orderLabel: order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8)),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
                 if (order.customerPhone?.isNotEmpty == true) ...[
                   const SizedBox(height: 4),
                   Text('Phone: ${order.customerPhone}'),

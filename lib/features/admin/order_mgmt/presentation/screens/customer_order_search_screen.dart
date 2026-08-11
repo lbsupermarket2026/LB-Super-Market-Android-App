@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../orders/domain/entities/order_entity.dart';
@@ -39,7 +40,55 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
   }
 
   void _search() {
-    setState(() => _submittedQuery = _controller.text.trim());
+    final trimmed = _controller.text.trim();
+    // FIXED: results could go stale — e.g. a customer cancels an
+    // order after admin already has this screen open with search
+    // results loaded, and nothing here ever refreshed to reflect it.
+    // Riverpod's FutureProvider.family won't automatically re-fetch
+    // for the SAME query string, so re-tapping search with an
+    // unchanged query previously did nothing. Explicitly invalidating
+    // first forces a fresh read every time, not just on a query change.
+    ref.invalidate(customerOrderSearchProvider(trimmed));
+    setState(() => _submittedQuery = trimmed);
+    _resolveDisplayName(trimmed);
+  }
+
+  // NEW: the search box used to keep showing whatever raw value you
+  // typed/searched (a phone number, or a raw Firestore user ID like
+  // "W2NsK2Zmds...") even after a customer was successfully found —
+  // looked like a meaningless random string. Once resolved, swap the
+  // box's own text to their actual name + customer code instead, same
+  // information already shown in the header below, but now reflected
+  // in the search field itself too rather than left looking like a
+  // stray ID.
+  Future<void> _resolveDisplayName(String query) async {
+    if (query.isEmpty) return;
+    try {
+      QueryDocumentSnapshot<Map<String, dynamic>>? userDoc;
+      final byPhone = await FirebaseFirestore.instance.collection('users').where('phone', isEqualTo: query).limit(1).get();
+      if (byPhone.docs.isNotEmpty) {
+        userDoc = byPhone.docs.first;
+      } else {
+        final byId = await FirebaseFirestore.instance.collection('users').doc(query).get();
+        if (byId.exists) {
+          final name = byId.data()?['name'] as String?;
+          final code = byId.data()?['customerCode'] as String?;
+          if (mounted && (name != null || code != null)) {
+            _controller.text = [name, code].where((s) => s != null && s.isNotEmpty).join(' • ');
+          }
+          return;
+        }
+      }
+      if (userDoc != null && mounted) {
+        final name = userDoc.data()['name'] as String?;
+        final code = userDoc.data()['customerCode'] as String?;
+        if (name != null || code != null) {
+          _controller.text = [name, code].where((s) => s != null && s.isNotEmpty).join(' • ');
+        }
+      }
+    } catch (_) {
+      // Non-fatal — just leaves the original search text as-is.
+    }
   }
 
   @override
@@ -92,10 +141,32 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
                           if (orders.isEmpty) {
                             return const Center(child: Text('No orders found for that phone number or ID.'));
                           }
-                          final totalSpent = orders.fold<double>(0, (sum, o) => sum + o.totalAmount);
-                          return ListView(
+                          // FIXED: was summing every order regardless
+                          // of status — a cancelled order (especially
+                          // one that never actually got paid, or got
+                          // refunded) was still counting toward
+                          // "total spent," inflating the figure with
+                          // money the business never actually received.
+                          final totalSpent = orders
+                              .where((o) => o.status != OrderStatus.cancelled)
+                              .fold<double>(0, (sum, o) => sum + o.totalAmount);
+                          // NEW: pull-to-refresh, same reasoning as the
+                          // search-button fix above — lets admin
+                          // manually pull fresh data if a status
+                          // changed since this screen was opened.
+                          return RefreshIndicator(
+                            onRefresh: () async => ref.invalidate(customerOrderSearchProvider(_submittedQuery)),
+                            child: ListView(
                             padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
                             children: [
+                              // NEW: previously this screen never showed
+                              // WHO the customer actually is — just a
+                              // bare list of orders, with no name or
+                              // customer code (e.g. CUST0001) anywhere,
+                              // even though you searched specifically
+                              // by their phone/ID. Looks up their user
+                              // profile once and shows it as a header.
+                              _CustomerInfoHeader(userId: orders.first.userId),
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                                 child: Text(
@@ -105,6 +176,7 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
                               ),
                               ...orders.map((order) => _OrderTile(order: order)),
                             ],
+                            ),
                           );
                         },
                       );
@@ -113,6 +185,58 @@ class _CustomerOrderSearchScreenState extends ConsumerState<CustomerOrderSearchS
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CustomerInfoHeader extends StatelessWidget {
+  final String userId;
+  const _CustomerInfoHeader({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data();
+        final name = data?['name'] as String?;
+        final code = data?['customerCode'] as String?;
+        if (name == null && code == null) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.only(top: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: _green.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _green.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: _green.withOpacity(0.2),
+                child: Text(
+                  (name?.isNotEmpty == true ? name![0] : '?').toUpperCase(),
+                  style: const TextStyle(color: _green, fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name ?? 'Unnamed customer', style: TextStyle(fontWeight: FontWeight.w700, color: colors.ink)),
+                    if (code != null)
+                      Text(code, style: TextStyle(fontSize: 12, color: colors.muted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

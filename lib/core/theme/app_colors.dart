@@ -25,7 +25,15 @@ class AppColors {
   static const Color darkOnPrimary = Color(0xFF00390D);
   static const Color darkSurface = Color(0xFF121410);
   static const Color darkOnSurface = Color(0xFFFFFFFF);
-  static const Color darkSurfaceVariant = Color(0xFF000000);
+  // FIXED: was pure black (#000000) — nearly identical to darkSurface
+  // (#121410) right above it, so ANY card relying on this color for
+  // visual separation in dark mode (notifications, order cards,
+  // addresses, admin lists — this is used app-wide) barely stood out
+  // from the page behind it. That's what made "read" notification
+  // cards look like blank boxes — the card genuinely was almost the
+  // same color as the scaffold. Lightened to a clearly distinct dark
+  // grey, standard "elevated surface" contrast for a dark theme.
+  static const Color darkSurfaceVariant = Color(0xFF1E211B);
   static const Color darkSuccess = Color(0xFF81C784);
   static const Color darkWarning = Color(0xFFFFCC80);
   static const Color darkError = Color(0xFFEF9A9A);

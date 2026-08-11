@@ -26,6 +26,7 @@ class AdminNotificationsDataSource {
           createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
           orderId: data['orderId'] as String?,
           productId: data['productId'] as String?,
+          requestId: data['requestId'] as String?,
         );
       }).toList();
       items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -43,5 +44,19 @@ class AdminNotificationsDataSource {
       batch.update(_collection.doc(id), {'isRead': true});
     }
     await batch.commit();
+  }
+
+  /// NEW: deletes every given notification outright — used by "Clear
+  /// all". Firestore batches cap at 500 writes, so this chunks large
+  /// lists rather than assuming the whole thing fits in one batch.
+  Future<void> deleteAll(List<String> ids) async {
+    for (var i = 0; i < ids.length; i += 450) {
+      final chunk = ids.skip(i).take(450);
+      final batch = _firestore.batch();
+      for (final id in chunk) {
+        batch.delete(_collection.doc(id));
+      }
+      await batch.commit();
+    }
   }
 }

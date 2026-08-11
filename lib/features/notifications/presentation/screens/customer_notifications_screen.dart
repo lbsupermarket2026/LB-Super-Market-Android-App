@@ -11,16 +11,60 @@ const _orange = Color(0xFFEF6C00);
 class CustomerNotificationsScreen extends ConsumerWidget {
   const CustomerNotificationsScreen({super.key});
 
+  Future<void> _confirmClearAll(BuildContext context, WidgetRef ref, List notifications) async {
+    // Only "personal" notifications (order updates/assignments) can be
+    // cleared this way — broadcast ones (new_offer, type: uid == null,
+    // shared across every customer) are deliberately excluded, both
+    // because Firestore rules don't allow a regular user to delete a
+    // doc shared with everyone else, and because doing so would clear
+    // it for every customer, not just this one.
+    final clearableIds = notifications.where((n) => n.type != 'new_offer').map((n) => n.id as String).toList();
+    if (clearableIds.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear all notifications?'),
+        content: const Text('This removes your order and delivery notifications. Offer announcements aren\'t affected.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear all')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(customerNotificationsDataSourceProvider).deleteAll(clearableIds);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.appColors;
     final notifications = ref.watch(customerNotificationsProvider);
+    final hasUnread = notifications.any((n) => !n.isRead);
 
     return Scaffold(
       backgroundColor: colors.surface,
-      // FIXED: removed "Mark all read" per request. Title color also
-      // made explicit white, same fix as elsewhere.
-      appBar: AppBar(title: const Text('Notifications', style: TextStyle(color: Colors.white))),
+      appBar: AppBar(
+        title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+        actions: [
+          if (hasUnread)
+            IconButton(
+              icon: const Icon(Icons.done_all, color: Colors.white),
+              tooltip: 'Mark all read',
+              onPressed: () {
+                final unreadIds = notifications.where((n) => !n.isRead).map((n) => n.id).toList();
+                ref.read(customerNotificationsDataSourceProvider).markAllAsRead(unreadIds);
+              },
+            ),
+          if (notifications.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white),
+              tooltip: 'Clear all',
+              onPressed: () => _confirmClearAll(context, ref, notifications),
+            ),
+        ],
+      ),
       body: notifications.isEmpty
           ? const Center(child: Text('No notifications yet.'))
           : ListView.builder(
@@ -31,22 +75,22 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                 final isOffer = n.type == 'new_offer';
                 final isAssignment = n.type == 'order_assigned';
                 final accentColor = isOffer ? _orange : _green;
-                // FIXED: card was hardcoded Colors.white when read —
-                // a bright white card on a dark scaffold with
-                // inherited-color text fighting for contrast against
-                // it. Now themed via context.appColors for the read
-                // state; the unread accent wash is unchanged (already
-                // theme-safe since it's a low-opacity tint, not a
-                // fixed color).
+
+                // SIMPLIFIED: the previous version layered a dot +
+                // asymmetric colored-stripe border + tint together,
+                // which was rendering incorrectly on-device (showing
+                // as an empty colored box with no visible content at
+                // all). Stripped back to exactly what was asked for —
+                // read is a plain white/normal card, unread is that
+                // same card with a simple, flat green (or orange, for
+                // offers) tinted background. Nothing layered on top.
+                final titleText = n.title.isNotEmpty ? n.title : 'Notification';
+                final bodyText = n.body.isNotEmpty ? n.body : '';
                 return Container(
                   margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: n.isRead ? colors.card : accentColor.withOpacity(0.16),
+                    color: n.isRead ? colors.card : accentColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(14),
-                    // Read notifications still get a faint outline
-                    // (colors.divider) rather than none at all, so every
-                    // row reads as a distinct card — not just unread ones.
-                    border: Border.all(color: n.isRead ? colors.divider : accentColor.withOpacity(0.35)),
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -58,22 +102,8 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                               : Icons.local_shipping_outlined,
                       color: accentColor,
                     ),
-                    // NEW: small filled dot for unread, nothing for
-                    // read — makes the distinction unmistakable at a
-                    // glance rather than relying only on the subtle
-                    // background tint.
-                    title: Row(
-                      children: [
-                        if (!n.isRead) ...[
-                          Container(width: 7, height: 7, decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle)),
-                          const SizedBox(width: 6),
-                        ],
-                        Expanded(
-                          child: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
-                        ),
-                      ],
-                    ),
-                    subtitle: Text(n.body, style: TextStyle(fontSize: 12, color: colors.muted)),
+                    title: Text(titleText, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
+                    subtitle: bodyText.isEmpty ? null : Text(bodyText, style: TextStyle(fontSize: 12, color: colors.muted)),
                     onTap: () {
                       if (!n.isRead) ref.read(customerNotificationsDataSourceProvider).markAsRead(n.id);
                       if (n.type == 'order_status' && n.orderId != null) {

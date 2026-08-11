@@ -144,6 +144,12 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
+          // NEW: no spacing existed here at all between the header and
+          // the stat cards row — when the Verified badge pushed the
+          // header's content taller, the cards row (positioned right
+          // after with zero gap) overlapped it. Header itself
+          // untouched, just adding breathing room below it.
+          const SizedBox(height: AppSpacing.md),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Row(

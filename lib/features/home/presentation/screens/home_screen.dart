@@ -44,73 +44,86 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(enabledOfferCardsProvider);
-            ref.invalidate(topLevelCategoriesProvider);
-            ref.invalidate(featuredProductsProvider);
-            ref.invalidate(trendingProductsProvider);
-            ref.invalidate(bestSellersProvider);
-          },
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (defaultAddress != null)
-                            GestureDetector(
-                              onTap: () => context.push(RouteNames.addresses),
-                              child: Row(
-                                children: [
-                                  Text('Deliver to ', style: TextStyle(fontSize: 12, color: colors.muted)),
-                                  Flexible(
-                                    child: Text(
-                                      '${defaultAddress.label} · ${defaultAddress.city}',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: 12, color: colors.ink, fontWeight: FontWeight.w700),
-                                    ),
+        child: Column(
+          children: [
+            // NEW: this whole header (deliver-to address, greeting,
+            // notification/wishlist/cart icons) used to be the first
+            // item inside the scrollable ListView, so it scrolled
+            // away with everything else. Pulled out into a fixed
+            // Column child above the scroll area instead — stays
+            // pinned in place regardless of scroll position, same as
+            // "static" top bars in most shopping apps.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (defaultAddress != null)
+                          GestureDetector(
+                            onTap: () => context.push(RouteNames.addresses),
+                            child: Row(
+                              children: [
+                                Text('Deliver to ', style: TextStyle(fontSize: 12, color: colors.muted)),
+                                Flexible(
+                                  child: Text(
+                                    '${defaultAddress.label} · ${defaultAddress.city}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 12, color: colors.ink, fontWeight: FontWeight.w700),
                                   ),
-                                  Icon(Icons.keyboard_arrow_down, size: 16, color: colors.muted),
-                                ],
-                              ),
+                                ),
+                                Icon(Icons.keyboard_arrow_down, size: 16, color: colors.muted),
+                              ],
                             ),
-                          Text(
-                            '$greeting, ${user?.name?.split(' ').first ?? 'there'} 👋',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.ink),
                           ),
-                        ],
-                      ),
+                        Text(
+                          '$greeting, ${user?.name?.split(' ').first ?? 'there'} 👋',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.ink),
+                        ),
+                      ],
                     ),
-                    const _NotificationIconButton(),
-                    const SizedBox(width: 8),
-                    const _WishlistIconButton(),
-                    const SizedBox(width: 8),
-                    const _CartIconButton(),
+                  ),
+                  const _NotificationIconButton(),
+                  const SizedBox(width: 8),
+                  const _WishlistIconButton(),
+                  const SizedBox(width: 8),
+                  const _CartIconButton(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(enabledOfferCardsProvider);
+                  ref.invalidate(topLevelCategoriesProvider);
+                  ref.invalidate(featuredProductsProvider);
+                  ref.invalidate(trendingProductsProvider);
+                  ref.invalidate(bestSellersProvider);
+                },
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  children: [
+                    SearchBarLauncher(onTap: () => context.push('/search')),
+                    const _ActiveOrderCard(),
+                    const SizedBox(height: AppSpacing.md),
+                    _OfferCardsSection(ref: ref),
+                    const SizedBox(height: AppSpacing.lg),
+                    _CategorySection(ref: ref),
+                    const SizedBox(height: AppSpacing.lg),
+                    _ProductSection(title: 'Featured products', provider: featuredProductsProvider, ref: ref),
+                    const SizedBox(height: AppSpacing.lg),
+                    _ProductSection(title: 'Trending now', provider: trendingProductsProvider, ref: ref),
+                    const SizedBox(height: AppSpacing.lg),
+                    _ProductSection(title: 'Best sellers', provider: bestSellersProvider, ref: ref),
+                    const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
               ),
-              SearchBarLauncher(onTap: () => context.push('/search')),
-              const _ActiveOrderCard(),
-              const SizedBox(height: AppSpacing.md),
-              _OfferCardsSection(ref: ref),
-              const SizedBox(height: AppSpacing.lg),
-              _CategorySection(ref: ref),
-              const SizedBox(height: AppSpacing.lg),
-              _ProductSection(title: 'Featured products', provider: featuredProductsProvider, ref: ref),
-              const SizedBox(height: AppSpacing.lg),
-              _ProductSection(title: 'Trending now', provider: trendingProductsProvider, ref: ref),
-              const SizedBox(height: AppSpacing.lg),
-              _ProductSection(title: 'Best sellers', provider: bestSellersProvider, ref: ref),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

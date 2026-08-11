@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_semantic_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
+import '../../../../../core/widgets/media/zoomable_photo_view.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../providers/admin_order_providers.dart';
 import '../widgets/convert_to_order_dialog.dart';
@@ -47,9 +48,29 @@ class AdminOrderRequestDetailScreen extends ConsumerWidget {
                 if (request.type == OrderRequestType.typedList)
                   ...request.itemLines.map((line) => Text('• $line', style: const TextStyle(color: Colors.black87)))
                 else if (request.photoUrl != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(request.photoUrl!, height: 200, fit: BoxFit.cover),
+                  // NEW: tappable — opens the photo fullscreen with
+                  // pinch-to-zoom, so admin can actually read a messy
+                  // handwritten list clearly instead of squinting at
+                  // a small 200px preview.
+                  GestureDetector(
+                    onTap: () => ZoomablePhotoView.open(context, request.photoUrl!),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(request.photoUrl!, height: 200, width: double.infinity, fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), shape: BoxShape.circle),
+                            child: const Icon(Icons.zoom_in, color: Colors.white, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 const Divider(height: 24),
                 Text('Call: ${request.contactPhone}', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),

@@ -424,112 +424,184 @@ exports.checkPhoneRegistered = onCall(async (request) => {
   }
 });
 
+// // ============================================================
+// // 7. Email OTP — signup/reset verification via a real numeric code
+// //    rather than a click-through link.
+// // ============================================================
+// // Codes live in a Firestore collection that's admin-only in the
+// // security rules (never directly readable/writable by clients) — the
+// // ONLY way to interact with them is through these two callable
+// // functions, which is what keeps this from being guessable/bypassable
+// // from the client side.
+// const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+// const SENDGRID_FROM_EMAIL = defineString("SENDGRID_FROM_EMAIL", { default: "noreply@lbsupermarket.com" });
+// const OTP_TTL_MINUTES = 10;
+
+// function generateSixDigitCode() {
+//   // crypto.randomInt is cryptographically strong — Math.random() would
+//   // be guessable in principle, which matters for something used as an
+//   // account-security code.
+//   return crypto.randomInt(100000, 1000000).toString();
+// }
+
+// exports.sendEmailOtp = onCall({ secrets: [sendgridApiKey] }, async (request) => {
+//   const email = request.data?.email;
+//   if (typeof email !== "string" || !email.includes("@")) {
+//     throw new HttpsError("invalid-argument", "A valid email is required.");
+//   }
+
+//   const code = generateSixDigitCode();
+//   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+
+//   await db.collection("email_otps").doc(email).set({
+//     code,
+//     expiresAt,
+//     createdAt: FieldValue.serverTimestamp(),
+//   });
+
+//   const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+//     method: "POST",
+//     headers: {
+//       Authorization: `Bearer ${sendgridApiKey.value()}`,
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify({
+//       personalizations: [{ to: [{ email }] }],
+//       from: { email: SENDGRID_FROM_EMAIL.value(), name: "LB Super Market" },
+//       subject: "Your verification code",
+//       content: [
+//         {
+//           type: "text/plain",
+//           value: `Your LB Super Market verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`,
+//         },
+//       ],
+//     }),
+//   });
+
+//   if (!response.ok) {
+//     const errorText = await response.text();
+//     logger.error("SendGrid send failed", { status: response.status, body: errorText });
+//     throw new HttpsError("internal", "Could not send the verification email. Please try again.");
+//   }
+
+//   return { sent: true };
+// });
+
+// exports.verifyEmailOtp = onCall(async (request) => {
+//   const email = request.data?.email;
+//   const code = request.data?.code;
+//   if (typeof email !== "string" || typeof code !== "string") {
+//     throw new HttpsError("invalid-argument", "email and code are required.");
+//   }
+
+//   const docRef = db.collection("email_otps").doc(email);
+//   const doc = await docRef.get();
+//   if (!doc.exists) {
+//     return { valid: false, reason: "No code was requested for this email." };
+//   }
+
+//   const data = doc.data();
+//   const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt);
+//   if (Date.now() > expiresAt.getTime()) {
+//     await docRef.delete();
+//     return { valid: false, reason: "This code has expired — request a new one." };
+//   }
+
+//   if (data.code !== code) {
+//     return { valid: false, reason: "Incorrect code." };
+//   }
+
+//   // One-time use — deleted immediately on a successful match so the
+//   // same code can't be replayed.
+//   await docRef.delete();
+//   return { valid: true };
+// });
+
+// // Only settable via the Admin SDK, and only for the caller's own
+// // account — a signed-in user marking someone else's email verified
+// // would be a real privilege escalation, so this checks request.auth
+// // matches the uid being modified before doing anything.
+// exports.markEmailVerified = onCall(async (request) => {
+//   if (!request.auth) {
+//     throw new HttpsError("unauthenticated", "You must be signed in.");
+//   }
+//   const uid = request.data?.uid;
+//   if (typeof uid !== "string" || uid !== request.auth.uid) {
+//     throw new HttpsError("permission-denied", "Can only verify your own account.");
+//   }
+
+//   await auth.updateUser(uid, { emailVerified: true });
+//   return { success: true };
+// });
+
+
 // ============================================================
-// 7. Email OTP — signup/reset verification via a real numeric code
-//    rather than a click-through link.
+// NEW: Admin notification on a new order REQUEST (Type My List /
+// Photo submission) — previously only exports.notifyOnNewOrder
+// existed, which watches the `orders` collection. But "Type My List"
+// and "Take a photo of your list" create a document in the SEPARATE
+// `order_requests` collection instead (an admin has to manually
+// review and "Convert to Order" before it becomes a real order) —
+// so admin was never notified these came in at all until they
+// happened to check the Order Requests tab themselves.
 // ============================================================
-// Codes live in a Firestore collection that's admin-only in the
-// security rules (never directly readable/writable by clients) — the
-// ONLY way to interact with them is through these two callable
-// functions, which is what keeps this from being guessable/bypassable
-// from the client side.
-const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
-const SENDGRID_FROM_EMAIL = defineString("SENDGRID_FROM_EMAIL", { default: "noreply@lbsupermarket.com" });
-const OTP_TTL_MINUTES = 10;
+exports.notifyOnNewOrderRequest = onDocumentCreated("order_requests/{requestId}", async (event) => {
+  const request = event.data.data();
+  const isPhoto = request.type === "photo";
+  const title = "New order request";
+  const body = isPhoto
+    ? `A customer submitted a photo list — tap to review.`
+    : `A customer typed a list (${(request.itemLines || []).length} items) — tap to review.`;
 
-function generateSixDigitCode() {
-  // crypto.randomInt is cryptographically strong — Math.random() would
-  // be guessable in principle, which matters for something used as an
-  // account-security code.
-  return crypto.randomInt(100000, 1000000).toString();
-}
-
-exports.sendEmailOtp = onCall({ secrets: [sendgridApiKey] }, async (request) => {
-  const email = request.data?.email;
-  if (typeof email !== "string" || !email.includes("@")) {
-    throw new HttpsError("invalid-argument", "A valid email is required.");
-  }
-
-  const code = generateSixDigitCode();
-  const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
-
-  await db.collection("email_otps").doc(email).set({
-    code,
-    expiresAt,
+  await db.collection("notifications").add({
+    type: "new_order_request",
+    title,
+    body,
+    requestId: event.params.requestId,
+    isRead: false,
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${sendgridApiKey.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email }] }],
-      from: { email: SENDGRID_FROM_EMAIL.value(), name: "LB Super Market" },
-      subject: "Your verification code",
-      content: [
-        {
-          type: "text/plain",
-          value: `Your LB Super Market verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`,
-        },
-      ],
-    }),
+  await messaging.send({
+    topic: "admin_alerts",
+    notification: { title, body },
+    data: { type: "new_order_request", requestId: event.params.requestId },
+    android: { priority: "high", notification: { channelId: "freshcart_default" } },
+  });
+});
+
+// ============================================================
+// NEW: Admin notification when a customer cancels their own order.
+// Previously nothing notified admin of a cancellation at all —
+// notifyCustomerOnOrderStatusChange tells the CUSTOMER about status
+// changes on their own order, but there was no equivalent alert
+// telling ADMIN when a customer-initiated cancellation happens.
+// Scoped specifically to cancellations (not every status change) to
+// avoid duplicating/spamming what notifyOnNewOrder already covers.
+// ============================================================
+exports.notifyAdminOnOrderCancelled = onDocumentUpdated("orders/{orderId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+
+  const justCancelled = before.status !== "cancelled" && after.status === "cancelled";
+  if (!justCancelled) return;
+
+  const title = "Order cancelled";
+  const body = `Order ${after.orderNumber || event.params.orderId} was cancelled.`;
+
+  await db.collection("notifications").add({
+    type: "order_cancelled",
+    title,
+    body,
+    orderId: event.params.orderId,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    logger.error("SendGrid send failed", { status: response.status, body: errorText });
-    throw new HttpsError("internal", "Could not send the verification email. Please try again.");
-  }
-
-  return { sent: true };
-});
-
-exports.verifyEmailOtp = onCall(async (request) => {
-  const email = request.data?.email;
-  const code = request.data?.code;
-  if (typeof email !== "string" || typeof code !== "string") {
-    throw new HttpsError("invalid-argument", "email and code are required.");
-  }
-
-  const docRef = db.collection("email_otps").doc(email);
-  const doc = await docRef.get();
-  if (!doc.exists) {
-    return { valid: false, reason: "No code was requested for this email." };
-  }
-
-  const data = doc.data();
-  const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt);
-  if (Date.now() > expiresAt.getTime()) {
-    await docRef.delete();
-    return { valid: false, reason: "This code has expired — request a new one." };
-  }
-
-  if (data.code !== code) {
-    return { valid: false, reason: "Incorrect code." };
-  }
-
-  // One-time use — deleted immediately on a successful match so the
-  // same code can't be replayed.
-  await docRef.delete();
-  return { valid: true };
-});
-
-// Only settable via the Admin SDK, and only for the caller's own
-// account — a signed-in user marking someone else's email verified
-// would be a real privilege escalation, so this checks request.auth
-// matches the uid being modified before doing anything.
-exports.markEmailVerified = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "You must be signed in.");
-  }
-  const uid = request.data?.uid;
-  if (typeof uid !== "string" || uid !== request.auth.uid) {
-    throw new HttpsError("permission-denied", "Can only verify your own account.");
-  }
-
-  await auth.updateUser(uid, { emailVerified: true });
-  return { success: true };
+  await messaging.send({
+    topic: "admin_alerts",
+    notification: { title, body },
+    data: { type: "order_cancelled", orderId: event.params.orderId },
+    android: { priority: "high", notification: { channelId: "freshcart_default" } },
+  });
 });

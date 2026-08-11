@@ -43,4 +43,17 @@ class CustomerNotificationsDataSource {
     }
     await batch.commit();
   }
+
+  /// NEW: deletes every given notification outright — used by "Clear
+  /// all". Chunked to stay under Firestore's 500-writes-per-batch cap.
+  Future<void> deleteAll(List<String> ids) async {
+    for (var i = 0; i < ids.length; i += 450) {
+      final chunk = ids.skip(i).take(450);
+      final batch = _firestore.batch();
+      for (final id in chunk) {
+        batch.delete(_collection.doc(id));
+      }
+      await batch.commit();
+    }
+  }
 }

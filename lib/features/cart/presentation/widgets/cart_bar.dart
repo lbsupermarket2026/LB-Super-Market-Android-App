@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/cart_providers.dart';
 
+const _green = Color(0xFF2E7D32);
+
 /// Sticky "View Cart" pill — only renders once there's at least one item,
 /// so screens that include this don't need their own empty-cart check.
 class CartBar extends ConsumerWidget {
@@ -15,12 +17,12 @@ class CartBar extends ConsumerWidget {
 
     if (count == 0) return const SizedBox.shrink();
 
-    final cs = Theme.of(context).colorScheme;
-
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Material(
-        color: cs.error,
+        // FIXED: was cs.error (red) — changed to the brand green to
+        // match the rest of the app's palette, per request.
+        color: _green,
         borderRadius: BorderRadius.circular(28),
         elevation: 4,
         child: InkWell(
@@ -35,7 +37,7 @@ class CartBar extends ConsumerWidget {
                   backgroundColor: Colors.white,
                   child: Text(
                     '$count',
-                    style: TextStyle(color: cs.error, fontWeight: FontWeight.w700, fontSize: 12),
+                    style: const TextStyle(color: _green, fontWeight: FontWeight.w700, fontSize: 12),
                   ),
                 ),
                 const SizedBox(width: 12),

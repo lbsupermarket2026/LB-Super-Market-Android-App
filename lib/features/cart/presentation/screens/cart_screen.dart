@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/router/route_names.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/widgets/states/empty_state.dart';
 import '../providers/cart_providers.dart';
 import '../widgets/place_order_dialog.dart';
-
-// Kept as simple constants for now — becomes real config (or gets
-// dropped entirely) once actual delivery/tax logic exists.
-const _taxAmount = 0.0;
-const _freeDeliveryThreshold = 0.0; // delivery is free regardless, for now
+import '../../domain/utils/checkout_calculator.dart';
+import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categories/presentation/providers/category_providers.dart';
+import '../../../admin/delivery_settings/presentation/providers/delivery_settings_providers.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -49,7 +49,24 @@ class CartScreen extends ConsumerWidget {
               );
             }
 
-            final grandTotal = total + _taxAmount;
+            // FIXED: delivery fee and taxes were hardcoded to
+            // "Free" / ₹0 here regardless of actual configured
+            // delivery charge or each item's category GST rate —
+            // leftover placeholders from before CheckoutCalculator
+            // existed. Now computed for real, matching exactly what
+            // the Place Order dialog will actually charge.
+            final categoriesAsync = ref.watch(topLevelCategoriesProvider);
+            final categoriesById = <String, CategoryEntity>{
+              for (final cat in categoriesAsync.valueOrNull ?? <CategoryEntity>[]) cat.id: cat,
+            };
+            final deliverySettingsAsync = ref.watch(deliverySettingsProvider);
+            final deliveryCharge = deliverySettingsAsync.valueOrNull?.flatDeliveryCharge ?? 0;
+            final gstAmount = items.fold(0.0, (sum, item) {
+              final category = item.categoryId != null ? categoriesById[item.categoryId] : null;
+              final gstPercent = category?.gstPercent ?? 0;
+              return sum + (item.lineTotal * gstPercent / 100);
+            });
+            final grandTotal = total + gstAmount + deliveryCharge;
 
             return Column(
               children: [
@@ -116,9 +133,15 @@ class CartScreen extends ConsumerWidget {
                     children: [
                       _SummaryRow(label: 'Item total', value: '₹${total.toStringAsFixed(0)}'),
                       const SizedBox(height: 8),
-                      _SummaryRow(label: 'Delivery fee', value: 'Free', valueColor: colors.green),
-                      const SizedBox(height: 8),
-                      _SummaryRow(label: 'Taxes', value: '₹${_taxAmount.toStringAsFixed(0)}'),
+                      _SummaryRow(
+                        label: 'Delivery fee',
+                        value: deliveryCharge > 0 ? '₹${deliveryCharge.toStringAsFixed(0)}' : 'Free',
+                        valueColor: deliveryCharge > 0 ? null : colors.green,
+                      ),
+                      if (gstAmount > 0) ...[
+                        const SizedBox(height: 8),
+                        _SummaryRow(label: 'GST', value: '₹${gstAmount.toStringAsFixed(0)}'),
+                      ],
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Divider(height: 1, color: colors.divider),
@@ -142,7 +165,14 @@ class CartScreen extends ConsumerWidget {
                         final orderId = await showDialog<String>(context: context, builder: (_) => const PlaceOrderDialog());
                         if (orderId != null && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully!')));
-                          context.push('/orders/$orderId');
+                          // FIXED: was context.push('/orders/$orderId'),
+                          // landing on the order detail screen (stacked
+                          // on top of Cart, which was itself stacked on
+                          // Home) — per request, go back to Home
+                          // instead. context.go() (not push) also
+                          // correctly clears that stack, since Home is
+                          // a shell tab.
+                          context.go(RouteNames.home);
                         }
                       },
                       child: const Text('Proceed to checkout', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/router/route_names.dart';
 import '../../../../core/widgets/buttons/primary_button.dart';
 import '../../../../core/widgets/inputs/app_text_field.dart';
 import '../providers/auth_providers.dart';
@@ -101,8 +103,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (!success && mounted) {
       final error = ref.read(phoneSignUpProvider).errorMessage;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Sign up failed.')));
+    } else if (success && mounted) {
+      // FIXED: previously relied entirely on the router's reactive
+      // redirect (RouteGuard watching authStateChangesProvider) to
+      // navigate home after this completed. That worked most of the
+      // time, but lost a real race: Firebase Auth's sign-in event
+      // fires the moment signInWithCredential() succeeds, BEFORE the
+      // Firestore users/{uid} profile document is actually created a
+      // few steps later (linkWithCredential's own round-trip, then
+      // the profile write). If the router's redirect logic evaluated
+      // during that gap, it found no profile yet, treated it as
+      // "signed out," and never got a second chance to check again
+      // once the profile actually appeared — leaving the person
+      // stuck on this screen after a genuinely successful signup.
+      // Explicit navigation here doesn't depend on that timing at all.
+      context.go(RouteNames.home);
     }
-    // On success, router redirect handles navigation.
   }
 
   @override

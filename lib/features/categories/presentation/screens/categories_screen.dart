@@ -27,6 +27,7 @@ class CategoriesScreen extends ConsumerStatefulWidget {
 class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   String _selectedCategoryKey = kAllProductsKey;
   bool _isTileView = true;
+  bool _isSearchExpanded = false;
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -52,57 +53,89 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: colors.ink)),
-                      Material(
-                        color: colors.card,
-                        borderRadius: BorderRadius.circular(10),
-                        child: IconButton(
-                          icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20, color: colors.ink),
-                          tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
-                          onPressed: () => setState(() => _isTileView = !_isTileView),
+                      // NEW: title collapses to make room for the
+                      // search field when expanded, so nothing
+                      // overflows on narrow screens.
+                      if (!_isSearchExpanded)
+                        Text('Categories', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: colors.ink)),
+                      if (_isSearchExpanded)
+                        Expanded(
+                          child: Container(
+                            height: 40,
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            // Deliberately NOT a fully-rounded stadium
+                            // shape — small corner radius rectangle
+                            // instead, a different enough shape/paint
+                            // path from the pill that kept rendering
+                            // incorrectly on this device.
+                            decoration: BoxDecoration(
+                              color: colors.card,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colors.divider),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.search, size: 18, color: colors.muted),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _searchController,
+                                    autofocus: true,
+                                    style: TextStyle(color: colors.ink, fontSize: 14),
+                                    cursorColor: colors.ink,
+                                    onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      hintText: 'Search products',
+                                      hintStyle: TextStyle(fontSize: 13, color: colors.muted),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // NEW: replaces the always-visible search bar
+                          // entirely — a small icon button, same style
+                          // as the view-toggle button right next to it,
+                          // that expands into the search field above
+                          // when tapped, and collapses (clearing any
+                          // query) when tapped again.
+                          Material(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(10),
+                            child: IconButton(
+                              icon: Icon(_isSearchExpanded ? Icons.close : Icons.search, size: 20, color: colors.ink),
+                              tooltip: _isSearchExpanded ? 'Close search' : 'Search products',
+                              onPressed: () => setState(() {
+                                _isSearchExpanded = !_isSearchExpanded;
+                                if (!_isSearchExpanded) {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                }
+                              }),
+                            ),
+                          ),
+                          if (!_isSearchExpanded) ...[
+                            const SizedBox(width: 8),
+                            Material(
+                              color: colors.card,
+                              borderRadius: BorderRadius.circular(10),
+                              child: IconButton(
+                                icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20, color: colors.ink),
+                                tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
+                                onPressed: () => setState(() => _isTileView = !_isTileView),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-                  child: Material(
-                    // FIXED (again): the theme-adaptive colors.card
-                    // fixed dark-mode readability, but it also made
-                    // this field visibly different from Home's search
-                    // bar in light mode — colors.card isn't pure white,
-                    // so a faint grey showed next to Home's hardcoded
-                    // Colors.white. Matched exactly to Home's
-                    // SearchBarLauncher styling instead: same solid
-                    // white, same black45 icon/hint tone, in every
-                    // theme, so the two look identical.
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    elevation: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: TextField(
-                        controller: _searchController,
-                        style: const TextStyle(color: Colors.black87),
-                        onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Search products',
-                          hintStyle: const TextStyle(fontSize: 13, color: Colors.black45),
-                          prefixIcon: const Icon(Icons.search, size: 18, color: Colors.black45),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.close, size: 18, color: Colors.black45),
-                                  onPressed: () => setState(() {
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  }),
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
                   ),
                 ),
                 Expanded(

@@ -23,6 +23,23 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
     super.dispose();
   }
 
+  // NEW: this used to only check length (>= 6) — much weaker than
+  // signup's actual rule, so a password that would've been rejected
+  // when first creating the account could be freely set here via
+  // Change Password, silently bypassing the strength requirement.
+  // Copied verbatim from signup_screen.dart's _passwordStrengthError
+  // so both places enforce exactly the same rule.
+  String? _passwordStrengthError(String password) {
+    if (password.length < 6) return 'Password must be at least 6 characters';
+    final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
+    final hasNumber = RegExp(r'\d').hasMatch(password);
+    final hasSpecialChar = RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\/~`]').hasMatch(password);
+    if (!hasLetter || !hasNumber || !hasSpecialChar) {
+      return 'Password must include a letter, a number, and a special character';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -75,8 +92,7 @@ class _ChangePasswordDialogState extends ConsumerState<ChangePasswordDialog> {
                 decoration: const InputDecoration(labelText: 'New Password'),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Required';
-                  if (v.length < 6) return 'At least 6 characters';
-                  return null;
+                  return _passwordStrengthError(v);
                 },
               ),
               const SizedBox(height: 16),

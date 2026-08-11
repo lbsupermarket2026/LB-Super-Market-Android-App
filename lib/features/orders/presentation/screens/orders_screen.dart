@@ -309,7 +309,16 @@ class _ActiveOrderCard extends StatelessWidget {
             children: [
               const Icon(Icons.local_shipping_outlined, color: _green),
               const SizedBox(width: 8),
-              Text('Track Your Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
+              Expanded(
+                child: Text('Track Your Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: colors.ink)),
+              ),
+              // NEW: order number shown next to the heading, so with
+              // multiple active orders it's clear which one each card
+              // is tracking.
+              Text(
+                '#${order.orderNumber ?? order.id.substring(0, order.id.length.clamp(0, 8))}',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5, color: colors.muted),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
