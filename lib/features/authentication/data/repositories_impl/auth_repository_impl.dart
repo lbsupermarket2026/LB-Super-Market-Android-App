@@ -134,12 +134,27 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<UserEntity>> signInWithEmail({required String email, required String password}) {
+  Future<Result<UserEntity>> signInWithEmail({
+    required String email,
+    required String password,
+  }) {
     return guard(() async {
+      print('LOGIN STEP 1: Firebase signIn');
+
       final credential = await _remote.signInWithEmail(email, password);
+
+      print('LOGIN STEP 2: Firebase success uid=${credential.user?.uid}');
+
       final uid = credential.user!.uid;
+
+      print('LOGIN STEP 3: touchLastLogin');
       await _remote.touchLastLogin(uid);
+
+      print('LOGIN STEP 4: resolveUserProfile');
       final model = await _remote.resolveUserProfile(uid);
+
+      print('LOGIN STEP 5: profile resolved role=${model.role}');
+
       return model.toEntity();
     });
   }
@@ -175,10 +190,26 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) {
     return guard(() async {
-      final credential = await _remote.signInWithIdentifierAndPassword(identifier: identifier, password: password);
+      print('LOGIN STEP 1: identifier login');
+
+      final credential =
+          await _remote.signInWithIdentifierAndPassword(
+        identifier: identifier,
+        password: password,
+      );
+
+      print('LOGIN STEP 2: Firebase success uid=${credential.user?.uid}');
+
       final uid = credential.user!.uid;
+
+      print('LOGIN STEP 3: touchLastLogin');
       await _remote.touchLastLogin(uid);
+
+      print('LOGIN STEP 4: resolveUserProfile');
       final model = await _remote.resolveUserProfile(uid);
+
+      print('LOGIN STEP 5: profile resolved role=${model.role}');
+
       return model.toEntity();
     });
   }
@@ -197,8 +228,10 @@ class AuthRepositoryImpl implements AuthRepository {
         verificationId: verificationId,
         smsCode: smsCode,
         phone: phone,
+        email: email,
         password: password,
       );
+
       final uid = credential.user!.uid;
       final model = await _remote.createUserProfile(uid: uid, name: name, email: email, phone: phone);
       return model.toEntity();

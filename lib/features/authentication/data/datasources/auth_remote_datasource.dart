@@ -25,7 +25,7 @@ class AuthRemoteDataSource {
   })  : _firebaseAuth = firebaseAuth ?? fb.FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
         _storage = storage ?? FirebaseStorage.instance,
-        _functions = functions ?? FirebaseFunctions.instance;
+        _functions = functions ?? FirebaseFunctions.instanceFor(region: 'asia-south1');
 
   Stream<fb.User?> get firebaseAuthStateChanges => _firebaseAuth.authStateChanges();
 
@@ -36,25 +36,6 @@ class AuthRemoteDataSource {
   /// This mirrors the confirmed decision: role-checking via Firestore
   /// lookup, not custom claims.
   Future<UserModel> resolveUserProfile(String uid) async {
-    // Checks the CUSTOMER collection first, staff second — reversed
-    // from the original order. A genuine staff account (created only
-    // through Employee Management) never has a matching users/{uid}
-    // doc, so this is safe for them; they still correctly fall through
-    // to the staff check below. But if anything ever causes the staff
-    // check to match a uid it shouldn't (a stale/leftover document, a
-    // caching quirk, whatever the exact mechanism turns out to be),
-    // checking customer first means a genuine customer account can no
-    // longer be shadowed by it.
-    // FIXED: was Source.server, which skips Firestore's offline cache
-    // entirely and throws if the network isn't ready yet — very
-    // common in the first moments of a cold app start, right when
-    // Firebase Auth is restoring its persisted session. That throw
-    // was being caught in authStateChanges() and treated as "signed
-    // out", forcing a fresh login even with a perfectly valid Auth
-    // session. Default GetOptions (cache-then-server) uses the
-    // offline cache persistenceEnabled already turns on, so a cold
-    // start with a not-yet-ready network still resolves instantly
-    // from cache instead of failing outright.
     const serverOnly = GetOptions();
     final userDoc = await _firestore.collection(FirestorePaths.users).doc(uid).get(serverOnly);
     if (userDoc.exists) {
@@ -356,10 +337,7 @@ class AuthRemoteDataSource {
 
   /// Deterministic, not stored anywhere — recomputed from the phone
   /// number itself every time, so there's nothing to keep in sync.
-  String _syntheticEmailForPhone(String e164Phone) {
-    final digitsOnly = e164Phone.replaceAll(RegExp(r'[^\d]'), '');
-    return '$digitsOnly@phone.freshcart.internal';
-  }
+
 
   bool looksLikeEmail(String identifier) => identifier.contains('@');
 
@@ -369,40 +347,41 @@ class AuthRemoteDataSource {
   /// OTP again. Returns the signed-in credential; profile creation
   /// happens at the repository layer same as any other signup.
   Future<fb.UserCredential> signUpWithPhoneAndPassword({
-    required String verificationId,
-    required String smsCode,
-    required String phone,
-    required String password,
-  }) async {
-    try {
-      final phoneCredential = fb.PhoneAuthProvider.credential(verificationId: verificationId, smsCode: smsCode);
-      final userCredential = await _firebaseAuth.signInWithCredential(phoneCredential);
+  required String verificationId,
+  required String smsCode,
+  required String phone,
+  required String email,
+  required String password,
+}) async {
+  try {
+    final phoneCredential = fb.PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
 
-      final syntheticEmail = _syntheticEmailForPhone(phone);
-      final emailCredential = fb.EmailAuthProvider.credential(email: syntheticEmail, password: password);
-      // Links rather than replaces — the account keeps its phone-auth
-      // provider too, which is harmless and not currently used for
-      // anything, but costs nothing to leave in place.
-      await userCredential.user!.linkWithCredential(emailCredential);
+    final userCredential =
+        await _firebaseAuth.signInWithCredential(phoneCredential);
 
-      return userCredential;
-    } on fb.FirebaseAuthException catch (e) {
-      // NEW: signInWithCredential(phoneCredential) actually SUCCEEDS
-      // even when this phone number already has an account — Firebase
-      // just signs into the existing one, it doesn't fail on OTP
-      // verification alone. The failure shows up one step later, at
-      // linkWithCredential, as provider-already-linked (this account
-      // already has an email/password credential) or
-      // credential-already-in-use — neither of which was previously
-      // mapped to a clear message, so it fell through to Firebase's
-      // raw internal error text instead of telling the person plainly
-      // that this number is already registered.
-      if (e.code == 'provider-already-linked' || e.code == 'credential-already-in-use' || e.code == 'email-already-in-use') {
-        throw const AuthException('This phone number is already registered. Try logging in instead.');
-      }
-      throw AuthException(_mapFirebaseAuthError(e));
+    final emailCredential = fb.EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+
+    await userCredential.user!
+        .linkWithCredential(emailCredential);
+
+    return userCredential;
+  } on fb.FirebaseAuthException catch (e) {
+    if (e.code == 'provider-already-linked' ||
+        e.code == 'credential-already-in-use' ||
+        e.code == 'email-already-in-use') {
+      throw const AuthException(
+          'This phone number or email is already registered.');
     }
+
+    throw AuthException(_mapFirebaseAuthError(e));
   }
+}
 
   /// Accepts either an email or a phone number as the identifier —
   /// email goes straight to normal sign-in; phone gets translated to
@@ -414,38 +393,81 @@ class AuthRemoteDataSource {
     required String password,
   }) async {
     try {
+      // -----------------------
+      // Login using Email
+      // -----------------------
       if (looksLikeEmail(identifier)) {
-        return await _firebaseAuth.signInWithEmailAndPassword(email: identifier, password: password);
+        return await _firebaseAuth.signInWithEmailAndPassword(
+          email: identifier.trim(),
+          password: password,
+        );
       }
 
-      // Not an email — could be a staff phone (real email on file) or
-      // a customer phone (synthetic email). Staff lookup goes through
-      // a Cloud Function rather than a direct Firestore query, since
-      // this runs BEFORE sign-in completes — the staff_users read rule
-      // only allows already-authenticated reads, which a pre-auth
-      // query can't satisfy no matter how it's written client-side.
-      try {
-        final callable = _functions.httpsCallable('lookupStaffEmailByPhone');
-        final result = await callable.call({'phone': identifier});
-        final staffEmail = result.data['email'] as String?;
-        if (staffEmail != null && staffEmail.isNotEmpty) {
-          return await _firebaseAuth.signInWithEmailAndPassword(email: staffEmail, password: password);
+      // -----------------------
+      // Login using Phone Number
+      // -----------------------
+      // final callable = _functions.httpsCallable('getEmailByPhone');
+
+      // final result = await callable.call({
+        // 'phone': identifier.trim(),
+      // });
+
+      final callable = _functions.httpsCallable('getEmailByPhone');
+
+      String phone = identifier.trim().replaceAll(RegExp(r'\s+'), '');
+
+      if (RegExp(r'^\d{10}$').hasMatch(phone)) {
+        phone = '+91$phone';
+      } else if (RegExp(r'^91\d{10}$').hasMatch(phone)) {
+        phone = '+$phone';
+      }
+
+
+      final result = await callable.call({
+        'phone': phone,
+      });
+
+      // final email = result.data['email'] as String?;
+
+      // if (email == null || email.isEmpty) {
+      //   throw const AuthException(
+      //     'No account found with this phone number.',
+      //   );
+      // }
+
+      final email = result.data['email'] as String?;
+
+        print('PHONE LOGIN EMAIL = $email');
+
+        if (email == null || email.isEmpty) {
+          throw const AuthException(
+            'No account found with this phone number.',
+          );
         }
-      } on FirebaseFunctionsException {
-        // Lookup itself failed (network, etc.) — fall through to the
-        // customer path below rather than blocking sign-in entirely.
-      }
 
-      // Not staff — try as a customer via the deterministic synthetic
-      // address. No Firestore lookup needed here since it's derived
-      // directly from the phone number itself.
-      final syntheticEmail = _syntheticEmailForPhone(identifier);
-      return await _firebaseAuth.signInWithEmailAndPassword(email: syntheticEmail, password: password);
+      return await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
     } on fb.FirebaseAuthException catch (e) {
+      print("========== FIREBASE LOGIN ERROR ==========");
+      print("Code    : ${e.code}");
+      print("Message : ${e.message}");
+      print("==========================================");
+
       throw AuthException(_mapFirebaseAuthError(e));
+    } on FirebaseFunctionsException catch (e) {
+      print("========== FUNCTIONS LOGIN ERROR ==========");
+      print("Code    : ${e.code}");
+      print("Message : ${e.message}");
+      print("============================================");
+
+      throw AuthException(
+        e.message ?? 'Could not find an account for this phone number.',
+      );
     }
   }
-
   /// Verifies the OTP (proving ownership of the phone number) and, in
   /// the SAME step, sets a new password on that account — this is what
   /// makes it a genuine reset rather than an OTP-only backdoor. Phone
@@ -540,3 +562,4 @@ class AuthRemoteDataSource {
     }
   }
 }
+

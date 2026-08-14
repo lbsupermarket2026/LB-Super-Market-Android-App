@@ -7,8 +7,9 @@ const { getMessaging } = require("firebase-admin/messaging");
 const { getAuth } = require("firebase-admin/auth");
 const logger = require("firebase-functions/logger");
 const crypto = require("crypto");
+const admin = require("firebase-admin");
 
-initializeApp();
+admin.initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
 const auth = getAuth();
@@ -424,6 +425,37 @@ exports.checkPhoneRegistered = onCall(async (request) => {
   }
 });
 
+
+exports.lookupEmailByPhone = onCall(async (request) => {
+  const phone = request.data.phone;
+
+  const customer = await admin.firestore()
+      .collection("users")
+      .where("phone", "==", phone)
+      .limit(1)
+      .get();
+
+  if (!customer.empty) {
+    return {
+      email: customer.docs[0].data().email
+    };
+  }
+
+  const staff = await admin.firestore()
+      .collection("staff_users")
+      .where("phone", "==", phone)
+      .limit(1)
+      .get();
+
+  if (!staff.empty) {
+    return {
+      email: staff.docs[0].data().email
+    };
+  }
+
+  return { email: null };
+});
+
 // // ============================================================
 // // 7. Email OTP — signup/reset verification via a real numeric code
 // //    rather than a click-through link.
@@ -605,3 +637,63 @@ exports.notifyAdminOnOrderCancelled = onDocumentUpdated("orders/{orderId}", asyn
     android: { priority: "high", notification: { channelId: "freshcart_default" } },
   });
 });
+
+
+exports.getEmailByPhone = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    const phone = request.data?.phone?.trim();
+
+    logger.info("getEmailByPhone", {
+      phone: phone,
+      project: process.env.GCLOUD_PROJECT,
+    });
+
+    if (!phone) {
+      throw new HttpsError("invalid-argument", "Phone number is required.");
+    }
+
+    const userSnap = await db
+      .collection("users")
+      .where("phone", "==", phone)
+      .limit(1)
+      .get();
+
+    logger.info("Customer lookup", {
+      phone: phone,
+      found: !userSnap.empty,
+    });
+
+    if (!userSnap.empty) {
+      const data = userSnap.docs[0].data();
+
+      logger.info("Customer found", {
+        uid: userSnap.docs[0].id,
+        email: data.email,
+      });
+
+      return {
+        email: data.email,
+      };
+    }
+
+    const staffSnap = await db
+      .collection("staff_users")
+      .where("phone", "==", phone)
+      .limit(1)
+      .get();
+
+    if (!staffSnap.empty) {
+      const data = staffSnap.docs[0].data();
+
+      return {
+        email: data.email,
+      };
+    }
+
+    throw new HttpsError(
+      "not-found",
+      "No account found with this phone number."
+    );
+  }
+);

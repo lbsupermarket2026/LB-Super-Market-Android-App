@@ -62,17 +62,31 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                         Expanded(
                           child: Container(
                             height: 40,
-                            margin: const EdgeInsets.only(right: 8),
+                            // FIXED: had an 8px margin here, leaving a
+                            // sliver of the cream page background
+                            // visible between this field and the close
+                            // button right after it — two white
+                            // elements with a differently-colored gap
+                            // squeezed between them read as a stray
+                            // "block" of mismatched color. Removed so
+                            // they sit flush, like one continuous bar.
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             // Deliberately NOT a fully-rounded stadium
                             // shape — small corner radius rectangle
                             // instead, a different enough shape/paint
                             // path from the pill that kept rendering
                             // incorrectly on this device.
+                            // FIXED: had a visible border here
+                            // (colors.divider) while the icon buttons
+                            // right next to it have none at all — that
+                            // mismatch (outlined box flush against
+                            // plain borderless buttons) is what was
+                            // reading as a distinct "different color
+                            // block". Matched to the same flat,
+                            // borderless style as the icon buttons.
                             decoration: BoxDecoration(
                               color: colors.card,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: colors.divider),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               children: [

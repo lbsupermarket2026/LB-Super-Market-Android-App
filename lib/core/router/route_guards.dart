@@ -57,8 +57,17 @@ class RouteGuard {
     // than the problem verification was meant to solve. Phone accounts
     // have no email at all, so this only applies when one's on file.
     final firebaseUser = fb.FirebaseAuth.instance.currentUser;
+    final hasVerifiedPhone = firebaseUser?.providerData.any(
+      (provider) => provider.providerId == 'phone',
+    ) ??
+    false;
+
     final needsEmailVerification =
-        user.role == UserRole.customer && firebaseUser != null && firebaseUser.email != null && !firebaseUser.emailVerified;
+        user.role == UserRole.customer &&
+        firebaseUser != null &&
+        firebaseUser.email != null &&
+        !firebaseUser.emailVerified &&
+        !hasVerifiedPhone;
     if (needsEmailVerification) {
       return currentLocation == RouteNames.verifyEmail ? null : RouteNames.verifyEmail;
     }
