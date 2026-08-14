@@ -61,11 +61,15 @@ class CartScreen extends ConsumerWidget {
             };
             final deliverySettingsAsync = ref.watch(deliverySettingsProvider);
             final deliveryCharge = deliverySettingsAsync.valueOrNull?.flatDeliveryCharge ?? 0;
+            final originalTotal = items.fold(0.0, (sum, item) => sum + item.originalLineTotal);
+            final discountAmount = originalTotal - total;
             final gstAmount = items.fold(0.0, (sum, item) {
               final category = item.categoryId != null ? categoriesById[item.categoryId] : null;
               final gstPercent = category?.gstPercent ?? 0;
               return sum + (item.lineTotal * gstPercent / 100);
             });
+            final sgstAmount = gstAmount / 2;
+            final cgstAmount = gstAmount / 2;
             final grandTotal = total + gstAmount + deliveryCharge;
 
             return Column(
@@ -131,22 +135,32 @@ class CartScreen extends ConsumerWidget {
                   decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.cardBorder)),
                   child: Column(
                     children: [
-                      _SummaryRow(label: 'Item total', value: '₹${total.toStringAsFixed(0)}'),
+                      if (discountAmount > 0) ...[
+                        _SummaryRow(label: 'Original price', value: '₹${originalTotal.toStringAsFixed(0)}'),
+                        const SizedBox(height: 8),
+                        _SummaryRow(label: 'Discount', value: '-₹${discountAmount.toStringAsFixed(0)}', valueColor: colors.green),
+                        const SizedBox(height: 8),
+                      ],
+                      _SummaryRow(label: 'Discounted price', value: '₹${total.toStringAsFixed(0)}'),
                       const SizedBox(height: 8),
                       _SummaryRow(
-                        label: 'Delivery fee',
+                        label: 'Delivery charge',
                         value: deliveryCharge > 0 ? '₹${deliveryCharge.toStringAsFixed(0)}' : 'Free',
                         valueColor: deliveryCharge > 0 ? null : colors.green,
                       ),
-                      if (gstAmount > 0) ...[
+                      if (sgstAmount > 0) ...[
                         const SizedBox(height: 8),
-                        _SummaryRow(label: 'GST', value: '₹${gstAmount.toStringAsFixed(0)}'),
+                        _SummaryRow(label: 'SGST', value: '₹${sgstAmount.toStringAsFixed(2)}'),
+                      ],
+                      if (cgstAmount > 0) ...[
+                        const SizedBox(height: 8),
+                        _SummaryRow(label: 'CGST', value: '₹${cgstAmount.toStringAsFixed(2)}'),
                       ],
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Divider(height: 1, color: colors.divider),
                       ),
-                      _SummaryRow(label: 'To pay', value: '₹${grandTotal.toStringAsFixed(0)}', bold: true),
+                      _SummaryRow(label: 'Total amount', value: '₹${grandTotal.toStringAsFixed(0)}', bold: true),
                     ],
                   ),
                 ),

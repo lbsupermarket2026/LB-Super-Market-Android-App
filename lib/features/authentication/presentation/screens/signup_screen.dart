@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,11 +31,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _passwordController = TextEditingController();
   final _codeController = TextEditingController();
   bool _obscurePassword = true;
-  _VerifyMethod _verifyMethod = _VerifyMethod.email;
+  _VerifyMethod _verifyMethod = _VerifyMethod.phone;
   bool _codeSent = false;
+  // NEW: resend cooldown — prevents spam-tapping resend, which some
+  // carriers/Firebase can penalize as abuse and start silently
+  // dropping SMS for that number.
+  int _resendSecondsLeft = 0;
+  Timer? _resendTimer;
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -83,7 +90,39 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       return;
     }
     final success = await ref.read(phoneSignUpProvider.notifier).sendCode(phone);
-    if (success && mounted) setState(() => _codeSent = true);
+    if (success && mounted) {
+      setState(() => _codeSent = true);
+      _startResendCooldown();
+    }
+  }
+
+  // NEW: a TRUE resend — stays on the OTP-entry screen and reuses the
+  // notifier's existing resendToken (already correctly threaded
+  // through sendCode()). Previously the only option here was "Change
+  // number / resend", which called .reset() first — wiping the
+  // resendToken back to null and undoing the resend fix specifically
+  // for this button, on top of forcing a full restart of the flow
+  // just to resend the same number's code.
+  Future<void> _onResendCode() async {
+    if (_resendSecondsLeft > 0) return;
+    final success = await ref.read(phoneSignUpProvider.notifier).sendCode(_formattedPhone!);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code resent.')));
+      _startResendCooldown();
+    }
+  }
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendSecondsLeft = 30);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _resendSecondsLeft--);
+      if (_resendSecondsLeft <= 0) timer.cancel();
+    });
   }
 
   Future<void> _onCompletePhoneSignUp() async {
@@ -230,15 +269,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       onPressed: _onCompletePhoneSignUp,
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    TextButton(
-                      onPressed: () {
-                        ref.read(phoneSignUpProvider.notifier).reset();
-                        setState(() {
-                          _codeSent = false;
-                          _codeController.clear();
-                        });
-                      },
-                      child: const Text('Change number / resend'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: _resendSecondsLeft > 0 ? null : _onResendCode,
+                          child: Text(_resendSecondsLeft > 0 ? 'Resend in ${_resendSecondsLeft}s' : 'Resend code'),
+                        ),
+                        const Text('•'),
+                        TextButton(
+                          onPressed: () {
+                            _resendTimer?.cancel();
+                            ref.read(phoneSignUpProvider.notifier).reset();
+                            setState(() {
+                              _codeSent = false;
+                              _codeController.clear();
+                              _resendSecondsLeft = 0;
+                            });
+                          },
+                          child: const Text('Change number'),
+                        ),
+                      ],
                     ),
                   ],
                 ],

@@ -107,8 +107,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<String>> sendOtp(String phoneNumber) {
-    return guard(() => _remote.sendOtp(phoneNumber));
+  Future<Result<(String verificationId, int? resendToken)>> sendOtp(String phoneNumber, {int? forceResendingToken}) {
+    return guard(() => _remote.sendOtp(phoneNumber, forceResendingToken: forceResendingToken));
   }
 
   @override

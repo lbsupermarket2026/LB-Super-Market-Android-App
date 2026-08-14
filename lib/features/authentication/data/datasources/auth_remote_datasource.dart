@@ -45,7 +45,17 @@ class AuthRemoteDataSource {
     // caching quirk, whatever the exact mechanism turns out to be),
     // checking customer first means a genuine customer account can no
     // longer be shadowed by it.
-    const serverOnly = GetOptions(source: Source.server);
+    // FIXED: was Source.server, which skips Firestore's offline cache
+    // entirely and throws if the network isn't ready yet — very
+    // common in the first moments of a cold app start, right when
+    // Firebase Auth is restoring its persisted session. That throw
+    // was being caught in authStateChanges() and treated as "signed
+    // out", forcing a fresh login even with a perfectly valid Auth
+    // session. Default GetOptions (cache-then-server) uses the
+    // offline cache persistenceEnabled already turns on, so a cold
+    // start with a not-yet-ready network still resolves instantly
+    // from cache instead of failing outright.
+    const serverOnly = GetOptions();
     final userDoc = await _firestore.collection(FirestorePaths.users).doc(uid).get(serverOnly);
     if (userDoc.exists) {
       final model = UserModel.fromFirestore(userDoc);
@@ -136,12 +146,24 @@ class AuthRemoteDataSource {
   /// happens this completes the sign-in directly and the returned
   /// verificationId becomes moot, which the OTP screen handles by
   /// just treating that as "already signed in, move on."
-  Future<String> sendOtp(String phoneNumber) async {
-    final completer = Completer<String>();
+  // FIXED: codeSent's resendToken parameter was received but never
+  // captured or reused anywhere — every "resend" was just calling
+  // verifyPhoneNumber() fresh with no forceResendingToken at all.
+  // Firebase's phone auth can silently reject a resend for the same
+  // number within its rate-limiting window without that token, which
+  // is exactly why the first OTP arrived but every resend after it
+  // didn't. Now accepts an optional forceResendingToken (pass the one
+  // from the PREVIOUS attempt's result when this is a genuine resend,
+  // omit it for a first-time send) and returns the new token alongside
+  // the verificationId so the caller can chain further resends
+  // correctly.
+  Future<(String verificationId, int? resendToken)> sendOtp(String phoneNumber, {int? forceResendingToken}) async {
+    final completer = Completer<(String, int?)>();
     try {
       await _firebaseAuth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
+        forceResendingToken: forceResendingToken,
         verificationCompleted: (credential) async {
           // Auto-retrieval succeeded — sign in immediately rather than
           // waiting on a manual code entry that isn't needed.
@@ -157,10 +179,10 @@ class AuthRemoteDataSource {
           if (!completer.isCompleted) completer.completeError(AuthException(_mapFirebaseAuthError(e)));
         },
         codeSent: (verificationId, resendToken) {
-          if (!completer.isCompleted) completer.complete(verificationId);
+          if (!completer.isCompleted) completer.complete((verificationId, resendToken));
         },
         codeAutoRetrievalTimeout: (verificationId) {
-          if (!completer.isCompleted) completer.complete(verificationId);
+          if (!completer.isCompleted) completer.complete((verificationId, null));
         },
       );
     } on fb.FirebaseAuthException catch (e) {
@@ -365,6 +387,19 @@ class AuthRemoteDataSource {
 
       return userCredential;
     } on fb.FirebaseAuthException catch (e) {
+      // NEW: signInWithCredential(phoneCredential) actually SUCCEEDS
+      // even when this phone number already has an account — Firebase
+      // just signs into the existing one, it doesn't fail on OTP
+      // verification alone. The failure shows up one step later, at
+      // linkWithCredential, as provider-already-linked (this account
+      // already has an email/password credential) or
+      // credential-already-in-use — neither of which was previously
+      // mapped to a clear message, so it fell through to Firebase's
+      // raw internal error text instead of telling the person plainly
+      // that this number is already registered.
+      if (e.code == 'provider-already-linked' || e.code == 'credential-already-in-use' || e.code == 'email-already-in-use') {
+        throw const AuthException('This phone number is already registered. Try logging in instead.');
+      }
       throw AuthException(_mapFirebaseAuthError(e));
     }
   }

@@ -16,7 +16,7 @@ abstract class AuthRepository {
 
   /// Returns a verificationId on success — pass it to verifyOtp along
   /// with whatever code the user receives by SMS.
-  Future<Result<String>> sendOtp(String phoneNumber);
+  Future<Result<(String verificationId, int? resendToken)>> sendOtp(String phoneNumber, {int? forceResendingToken});
   Future<Result<UserEntity>> verifyOtp({required String verificationId, required String smsCode});
 
   Future<Result<UserEntity>> signInWithEmail({

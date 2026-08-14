@@ -139,6 +139,12 @@ class _PlaceOrderScreenState extends State<PlaceOrderScreen> {
                       _typedLines != null
                           ? '${_typedLines!.length} item${_typedLines!.length == 1 ? '' : 's'} added'
                           : "Image selected — we'll read your list!",
+                      // FIXED: no color at all — inherited dark
+                      // mode's light default, invisible against this
+                      // card, which is deliberately fixed white in
+                      // every theme (same pattern fixed many times
+                      // elsewhere in this app).
+                      style: const TextStyle(color: Colors.black87),
                     ),
                   ),
                   TextButton(

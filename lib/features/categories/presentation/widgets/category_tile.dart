@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../domain/entities/category_entity.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 
-/// Compact circular badge for horizontal scrollers (Home screen). Same
-/// visual language as the full CategoryCard grid on the Categories tab —
-/// white ring, soft shadow, hardcoded colors so it never flips dark in
-/// system dark mode, matching the (light-themed) website.
+/// Compact circular badge for horizontal scrollers (Home screen). The
+/// icon circle itself is deliberately always white in every theme
+/// (matches the light-themed website design), but the name text below
+/// it sits on the PAGE background, not on that white circle — so it
+/// needs to stay theme-adaptive or it goes invisible in dark mode.
 class CategoryTile extends StatelessWidget {
   final CategoryEntity category;
   final VoidCallback onTap;
@@ -15,6 +17,7 @@ class CategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = category.iconUrl ?? category.imageUrl;
+    final colors = context.appColors;
 
     return GestureDetector(
       onTap: onTap,
@@ -48,7 +51,10 @@ class CategoryTile extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+              // FIXED: was hardcoded Colors.black87 — this text sits
+              // on the page background (not the always-white icon
+              // circle above it), so it went invisible in dark mode.
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.ink),
             ),
           ),
         ],

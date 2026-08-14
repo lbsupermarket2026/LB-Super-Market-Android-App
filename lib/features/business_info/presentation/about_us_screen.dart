@@ -103,6 +103,38 @@ class _AboutUsContent extends StatelessWidget {
           ),
 
           const SizedBox(height: AppSpacing.xl),
+
+          // NEW: "Our Values" section, matching the website's 2x2
+          // grid of value cards — these are fixed brand values (not
+          // stored in Firestore, same as the site itself), so
+          // hardcoded here rather than pulled from business info.
+          Text('Our Values', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Container(width: 40, height: 3, color: const Color(0xFFEF6C00)),
+          const SizedBox(height: AppSpacing.lg),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 420;
+              final cards = const [
+                _ValueCard(icon: Icons.eco_outlined, title: 'Fresh & Natural', description: 'We source directly from local farms to ensure peak freshness every day.'),
+                _ValueCard(icon: Icons.groups_outlined, title: 'Community First', description: 'We are part of the community. Your trust drives everything we do.'),
+                _ValueCard(icon: Icons.savings_outlined, title: 'Affordable Prices', description: 'Quality shouldn\'t cost a fortune. We work hard to keep prices low.'),
+                _ValueCard(icon: Icons.support_agent_outlined, title: 'Great Service', description: 'Our friendly staff is always here to help you find what you need.'),
+              ];
+              if (isNarrow) {
+                return Column(children: [for (final c in cards) Padding(padding: const EdgeInsets.only(bottom: AppSpacing.md), child: c)]);
+              }
+              return Column(
+                children: [
+                  Row(children: [Expanded(child: cards[0]), const SizedBox(width: AppSpacing.md), Expanded(child: cards[1])]),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(children: [Expanded(child: cards[2]), const SizedBox(width: AppSpacing.md), Expanded(child: cards[3])]),
+                ],
+              );
+            },
+          ),
+
+          const SizedBox(height: AppSpacing.xl),
           const Divider(),
           const SizedBox(height: AppSpacing.md),
 
@@ -169,6 +201,42 @@ class _AboutUsContent extends StatelessWidget {
                 ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ValueCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  const _ValueCard({required this.icon, required this.title, required this.description});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E211B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: const Color(0xFF2E7D32).withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, size: 18, color: const Color(0xFF2E7D32)),
+          ),
+          const SizedBox(height: 10),
+          Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(description, style: theme.textTheme.bodySmall?.copyWith(height: 1.4)),
         ],
       ),
     );

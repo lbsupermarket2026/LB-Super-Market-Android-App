@@ -35,11 +35,23 @@ class OrderBillGenerator {
       final gstPercent = category?.gstPercent ?? 0;
       totalGst += item.lineTotal * gstPercent / 100;
     }
-    final basicTotal = order.items.fold(0.0, (sum, i) => sum + i.lineTotal) - totalGst;
+    final itemsSubtotal = order.items.fold(0.0, (sum, i) => sum + i.lineTotal);
+    final basicTotal = itemsSubtotal - totalGst;
     // Standard Indian intra-state GST display — CGST and SGST are each
     // half the total rate.
     final cgst = totalGst / 2;
     final sgst = totalGst / 2;
+    final originalTotal = order.items.fold(0.0, (sum, i) => sum + i.originalLineTotal);
+    final discountTotal = originalTotal - itemsSubtotal;
+    // FIXED: this was never on the bill at all. order.totalAmount
+    // (used for the TOTAL line below) already includes delivery
+    // charge — but nothing above it ever accounted for that amount,
+    // so the itemized lines never actually summed to the shown total
+    // (a real, visible bug — a receipt whose own numbers don't add
+    // up). Backed out here as: total minus everything else already
+    // itemized, so it's correct even without re-fetching delivery
+    // settings for this specific historical order.
+    final deliveryCharge = order.totalAmount - itemsSubtotal - totalGst;
 
     doc.addPage(
       pw.Page(
@@ -92,9 +104,14 @@ class OrderBillGenerator {
               }),
               _dashedDivider(),
 
+              if (discountTotal > 0.01) ...[
+                _summaryRow('Original Price', originalTotal.toStringAsFixed(2)),
+                _summaryRow('Discount', '-${discountTotal.toStringAsFixed(2)}'),
+              ],
               _summaryRow('Basic Amount', basicTotal.toStringAsFixed(2)),
               _summaryRow('CGST', cgst.toStringAsFixed(2)),
               _summaryRow('SGST', sgst.toStringAsFixed(2)),
+              if (deliveryCharge > 0.01) _summaryRow('Delivery Charge', deliveryCharge.toStringAsFixed(2)),
               _dashedDivider(),
               _summaryRow('TOTAL', order.totalAmount.toStringAsFixed(2), bold: true),
               pw.SizedBox(height: 8),

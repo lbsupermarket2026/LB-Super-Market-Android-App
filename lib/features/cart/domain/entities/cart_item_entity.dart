@@ -3,9 +3,15 @@ class CartItemEntity {
   final String name;
   final String unit;
   final String imageUrl;
-  final double price; // snapshot of displayPrice at time of adding
+  final double price; // snapshot of displayPrice (post-discount) at time of adding
   final int quantity;
   final String? categoryId; // snapshot, used to look up GST % at checkout
+  // NEW: snapshot of the product's MRP at time of adding — previously
+  // only the final discounted price survived into the cart, so the
+  // original price and discount amount were unrecoverable by the
+  // time a bill needed to show them. Null for products with no MRP
+  // set (i.e. price == mrp, no discount to show).
+  final double? mrp;
 
   const CartItemEntity({
     required this.productId,
@@ -15,9 +21,12 @@ class CartItemEntity {
     required this.price,
     required this.quantity,
     this.categoryId,
+    this.mrp,
   });
 
   double get lineTotal => price * quantity;
+  double get originalLineTotal => (mrp ?? price) * quantity;
+  double get discountLineTotal => originalLineTotal - lineTotal;
 
   CartItemEntity copyWith({int? quantity}) => CartItemEntity(
         productId: productId,
@@ -27,6 +36,7 @@ class CartItemEntity {
         price: price,
         quantity: quantity ?? this.quantity,
         categoryId: categoryId,
+        mrp: mrp,
       );
 
   Map<String, dynamic> toJson() => {
@@ -37,6 +47,7 @@ class CartItemEntity {
         'price': price,
         'quantity': quantity,
         'categoryId': categoryId,
+        'mrp': mrp,
       };
 
   factory CartItemEntity.fromJson(Map<String, dynamic> json) => CartItemEntity(
@@ -47,5 +58,6 @@ class CartItemEntity {
         price: (json['price'] as num).toDouble(),
         quantity: json['quantity'] as int,
         categoryId: json['categoryId'] as String?,
+        mrp: (json['mrp'] as num?)?.toDouble(),
       );
 }

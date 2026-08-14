@@ -283,13 +283,19 @@ class PhoneAuthState {
   final bool isVerifying;
   final String? verificationId;
   final String? errorMessage;
-  const PhoneAuthState({this.isSendingCode = false, this.isVerifying = false, this.verificationId, this.errorMessage});
+  // NEW: Firebase's own token for a genuine resend — without passing
+  // this back in on the next sendCode() call, Firebase can silently
+  // reject a resend for the same number as a duplicate. See sendCode
+  // below for how it's threaded through.
+  final int? resendToken;
+  const PhoneAuthState({this.isSendingCode = false, this.isVerifying = false, this.verificationId, this.errorMessage, this.resendToken});
 
-  PhoneAuthState copyWith({bool? isSendingCode, bool? isVerifying, String? verificationId, String? errorMessage}) => PhoneAuthState(
+  PhoneAuthState copyWith({bool? isSendingCode, bool? isVerifying, String? verificationId, String? errorMessage, int? resendToken}) => PhoneAuthState(
         isSendingCode: isSendingCode ?? this.isSendingCode,
         isVerifying: isVerifying ?? this.isVerifying,
         verificationId: verificationId ?? this.verificationId,
         errorMessage: errorMessage,
+        resendToken: resendToken ?? this.resendToken,
       );
 }
 
@@ -297,17 +303,27 @@ class PhoneAuthNotifier extends Notifier<PhoneAuthState> {
   @override
   PhoneAuthState build() => const PhoneAuthState();
 
+  // FIXED: was calling sendOtp() fresh every time with no
+  // forceResendingToken, which is why the first OTP arrived but
+  // "resend" silently did nothing — Firebase can reject a same-number
+  // resend without it. Now automatically passes the token captured
+  // from the previous attempt (state.resendToken) whenever one is
+  // already on hand, so every call after the first is a genuine,
+  // correctly-chained resend.
   Future<bool> sendCode(String phoneNumber) async {
     state = state.copyWith(isSendingCode: true, errorMessage: null);
     try {
-      final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber).timeout(const Duration(seconds: 30));
+      final result = await ref
+          .read(sendOtpUseCaseProvider)
+          .call(phoneNumber, forceResendingToken: state.resendToken)
+          .timeout(const Duration(seconds: 30));
       return result.match(
         (failure) {
           state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
           return false;
         },
-        (verificationId) {
-          state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+        (data) {
+          state = state.copyWith(isSendingCode: false, verificationId: data.$1, resendToken: data.$2, errorMessage: null);
           return true;
         },
       );
@@ -360,14 +376,17 @@ class PhoneSignUpState {
   final bool isCompleting;
   final String? verificationId;
   final String? errorMessage;
-  const PhoneSignUpState({this.isSendingCode = false, this.isCompleting = false, this.verificationId, this.errorMessage});
+  // NEW: same reasoning as PhoneAuthState.resendToken above.
+  final int? resendToken;
+  const PhoneSignUpState({this.isSendingCode = false, this.isCompleting = false, this.verificationId, this.errorMessage, this.resendToken});
 
-  PhoneSignUpState copyWith({bool? isSendingCode, bool? isCompleting, String? verificationId, String? errorMessage}) =>
+  PhoneSignUpState copyWith({bool? isSendingCode, bool? isCompleting, String? verificationId, String? errorMessage, int? resendToken}) =>
       PhoneSignUpState(
         isSendingCode: isSendingCode ?? this.isSendingCode,
         isCompleting: isCompleting ?? this.isCompleting,
         verificationId: verificationId ?? this.verificationId,
         errorMessage: errorMessage,
+        resendToken: resendToken ?? this.resendToken,
       );
 }
 
@@ -375,17 +394,22 @@ class PhoneSignUpNotifier extends Notifier<PhoneSignUpState> {
   @override
   PhoneSignUpState build() => const PhoneSignUpState();
 
+  // FIXED: same "resend silently does nothing" bug as PhoneAuthNotifier
+  // above — now passes state.resendToken back in automatically.
   Future<bool> sendCode(String phoneNumber) async {
     state = state.copyWith(isSendingCode: true, errorMessage: null);
     try {
-      final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber).timeout(const Duration(seconds: 30));
+      final result = await ref
+          .read(sendOtpUseCaseProvider)
+          .call(phoneNumber, forceResendingToken: state.resendToken)
+          .timeout(const Duration(seconds: 30));
       return result.match(
         (failure) {
           state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
           return false;
         },
-        (verificationId) {
-          state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+        (data) {
+          state = state.copyWith(isSendingCode: false, verificationId: data.$1, resendToken: data.$2, errorMessage: null);
           return true;
         },
       );
@@ -444,14 +468,17 @@ class PhonePasswordResetState {
   final bool isResetting;
   final String? verificationId;
   final String? errorMessage;
-  const PhonePasswordResetState({this.isSendingCode = false, this.isResetting = false, this.verificationId, this.errorMessage});
+  // NEW: same reasoning as PhoneAuthState.resendToken.
+  final int? resendToken;
+  const PhonePasswordResetState({this.isSendingCode = false, this.isResetting = false, this.verificationId, this.errorMessage, this.resendToken});
 
-  PhonePasswordResetState copyWith({bool? isSendingCode, bool? isResetting, String? verificationId, String? errorMessage}) =>
+  PhonePasswordResetState copyWith({bool? isSendingCode, bool? isResetting, String? verificationId, String? errorMessage, int? resendToken}) =>
       PhonePasswordResetState(
         isSendingCode: isSendingCode ?? this.isSendingCode,
         isResetting: isResetting ?? this.isResetting,
         verificationId: verificationId ?? this.verificationId,
         errorMessage: errorMessage,
+        resendToken: resendToken ?? this.resendToken,
       );
 }
 
@@ -459,6 +486,7 @@ class PhonePasswordResetNotifier extends Notifier<PhonePasswordResetState> {
   @override
   PhonePasswordResetState build() => const PhonePasswordResetState();
 
+  // FIXED: same resend bug as the other two phone notifiers.
   Future<bool> sendCode(String phoneNumber) async {
     state = state.copyWith(isSendingCode: true, errorMessage: null);
 
@@ -476,14 +504,17 @@ class PhonePasswordResetNotifier extends Notifier<PhonePasswordResetState> {
     }
 
     try {
-      final result = await ref.read(sendOtpUseCaseProvider).call(phoneNumber).timeout(const Duration(seconds: 30));
+      final result = await ref
+          .read(sendOtpUseCaseProvider)
+          .call(phoneNumber, forceResendingToken: state.resendToken)
+          .timeout(const Duration(seconds: 30));
       return result.match(
         (failure) {
           state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
           return false;
         },
-        (verificationId) {
-          state = state.copyWith(isSendingCode: false, verificationId: verificationId, errorMessage: null);
+        (data) {
+          state = state.copyWith(isSendingCode: false, verificationId: data.$1, resendToken: data.$2, errorMessage: null);
           return true;
         },
       );

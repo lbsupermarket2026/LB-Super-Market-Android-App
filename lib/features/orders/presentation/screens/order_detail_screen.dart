@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/widgets/states/error_state.dart';
 import '../../domain/entities/order_entity.dart';
 import '../providers/order_providers.dart';
@@ -103,7 +104,12 @@ class OrderDetailScreen extends ConsumerWidget {
                   children: [
                     Text('Delivery Address', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 6),
-                    Text(order.deliveryAddress),
+                    // FIXED: had no style at all — fell back to
+                    // Flutter's ambient default text color rather than
+                    // the app's own theme-aware colors.ink, which is
+                    // what every other fixed text-color bug in this
+                    // codebase turned out to need explicitly.
+                    Text(order.deliveryAddress, style: TextStyle(color: context.appColors.ink)),
                     if (order.assignedEmployeeUid != null) ...[
                       const Divider(height: 20),
                       Consumer(

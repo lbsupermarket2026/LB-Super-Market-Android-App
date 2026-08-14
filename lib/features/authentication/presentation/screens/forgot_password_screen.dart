@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -23,10 +24,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   bool _emailSent = false;
   bool _codeSent = false;
   bool _obscurePassword = true;
-  _ResetMethod _method = _ResetMethod.email;
+  _ResetMethod _method = _ResetMethod.phone;
+  // NEW: same resend cooldown as signup — see signup_screen.dart for
+  // the full reasoning.
+  int _resendSecondsLeft = 0;
+  Timer? _resendTimer;
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _emailController.dispose();
     _phoneController.dispose();
     _codeController.dispose();
@@ -69,7 +75,36 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       return;
     }
     final success = await ref.read(phonePasswordResetProvider.notifier).sendCode(phone);
-    if (success && mounted) setState(() => _codeSent = true);
+    if (success && mounted) {
+      setState(() => _codeSent = true);
+      _startResendCooldown();
+    }
+  }
+
+  // FIXED: same bug as signup — the only "resend" option previously
+  // called .reset() first, wiping the resendToken the fix relies on.
+  // This stays on the OTP screen and reuses the notifier's existing
+  // resendToken correctly.
+  Future<void> _onResendPhoneCode() async {
+    if (_resendSecondsLeft > 0) return;
+    final success = await ref.read(phonePasswordResetProvider.notifier).sendCode(_formattedPhone!);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Code resent.')));
+      _startResendCooldown();
+    }
+  }
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    setState(() => _resendSecondsLeft = 30);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _resendSecondsLeft--);
+      if (_resendSecondsLeft <= 0) timer.cancel();
+    });
   }
 
   Future<void> _onResetWithPhoneOtp() async {
@@ -195,15 +230,27 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     const SizedBox(height: AppSpacing.lg),
                     PrimaryButton(label: 'Verify & Set Password', isLoading: phoneState.isResetting, onPressed: _onResetWithPhoneOtp),
                     const SizedBox(height: AppSpacing.sm),
-                    TextButton(
-                      onPressed: () {
-                        ref.read(phonePasswordResetProvider.notifier).reset();
-                        setState(() {
-                          _codeSent = false;
-                          _codeController.clear();
-                        });
-                      },
-                      child: const Text('Change number / resend'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: _resendSecondsLeft > 0 ? null : _onResendPhoneCode,
+                          child: Text(_resendSecondsLeft > 0 ? 'Resend in ${_resendSecondsLeft}s' : 'Resend code'),
+                        ),
+                        const Text('•'),
+                        TextButton(
+                          onPressed: () {
+                            _resendTimer?.cancel();
+                            ref.read(phonePasswordResetProvider.notifier).reset();
+                            setState(() {
+                              _codeSent = false;
+                              _codeController.clear();
+                              _resendSecondsLeft = 0;
+                            });
+                          },
+                          child: const Text('Change number'),
+                        ),
+                      ],
                     ),
                   ],
                 ],

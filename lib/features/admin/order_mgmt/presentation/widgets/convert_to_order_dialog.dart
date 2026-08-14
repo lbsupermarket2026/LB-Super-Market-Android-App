@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../providers/admin_order_providers.dart';
+import '../../../../../core/theme/app_semantic_colors.dart';
 
 const _green = Color(0xFF2E7D32);
 
@@ -71,18 +72,24 @@ class _ConvertToOrderDialogState extends ConsumerState<ConvertToOrderDialog> {
   @override
   Widget build(BuildContext context) {
     final mutation = ref.watch(adminOrderMutationProvider);
+    final colors = context.appColors;
 
+    // FIXED: same bug as the Place Order dialog — no explicit
+    // backgroundColor plus several Text widgets with no color at all,
+    // meaning the pre-filled item text (the customer's original typed
+    // list, before admin edits it) was going invisible in dark mode.
     return AlertDialog(
-      title: const Text('Confirm Final Order'),
+      backgroundColor: colors.card,
+      title: Text('Confirm Final Order', style: TextStyle(color: colors.ink)),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Enter the final priced items after calling the customer.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: colors.muted),
               ),
               if (mutation.error != null)
                 Padding(
@@ -100,7 +107,8 @@ class _ConvertToOrderDialogState extends ConsumerState<ConvertToOrderDialog> {
                         flex: 3,
                         child: TextField(
                           controller: row.name,
-                          decoration: const InputDecoration(labelText: 'Item', isDense: true),
+                          style: TextStyle(color: colors.ink),
+                          decoration: InputDecoration(labelText: 'Item', labelStyle: TextStyle(color: colors.muted), isDense: true),
                           onChanged: (_) => setState(() {}),
                         ),
                       ),
@@ -110,7 +118,8 @@ class _ConvertToOrderDialogState extends ConsumerState<ConvertToOrderDialog> {
                         child: TextField(
                           controller: row.qty,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Qty', isDense: true),
+                          style: TextStyle(color: colors.ink),
+                          decoration: InputDecoration(labelText: 'Qty', labelStyle: TextStyle(color: colors.muted), isDense: true),
                           onChanged: (_) => setState(() {}),
                         ),
                       ),
@@ -120,7 +129,8 @@ class _ConvertToOrderDialogState extends ConsumerState<ConvertToOrderDialog> {
                         child: TextField(
                           controller: row.price,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Price', isDense: true),
+                          style: TextStyle(color: colors.ink),
+                          decoration: InputDecoration(labelText: 'Price', labelStyle: TextStyle(color: colors.muted), isDense: true),
                           onChanged: (_) => setState(() {}),
                         ),
                       ),
@@ -137,8 +147,8 @@ class _ConvertToOrderDialogState extends ConsumerState<ConvertToOrderDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total', style: TextStyle(fontWeight: FontWeight.w800)),
-                  Text('₹${_total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text('Total', style: TextStyle(fontWeight: FontWeight.w800, color: colors.ink)),
+                  Text('₹${_total.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.w800, color: colors.ink)),
                 ],
               ),
             ],

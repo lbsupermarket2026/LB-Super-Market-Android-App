@@ -104,6 +104,7 @@ class OrderModel {
                   price: (i['price'] as num?)?.toDouble() ?? 0,
                   quantity: (i['quantity'] as num?)?.toInt() ?? 0,
                   categoryId: i['categoryId'] as String?,
+                  mrp: (i['mrp'] as num?)?.toDouble(),
                 ))
             .toList(),
         totalAmount: totalAmount,

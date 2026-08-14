@@ -38,6 +38,7 @@ class CartNotifier extends AsyncNotifier<List<CartItemEntity>> {
         price: product.displayPrice,
         quantity: 1,
         categoryId: product.categoryId,
+        mrp: product.mrp,
       ));
     }
 

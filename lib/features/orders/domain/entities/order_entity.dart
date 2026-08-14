@@ -65,6 +65,10 @@ class OrderItemEntity extends Equatable {
   final double price;
   final int quantity;
   final String? categoryId; // snapshot at order time — used for GST on the bill
+  // NEW: snapshot of the product's MRP at order time — needed so the
+  // printed bill can show original price / discount, same reasoning
+  // as CartItemEntity.mrp. Null for items with no discount.
+  final double? mrp;
 
   const OrderItemEntity({
     required this.productId,
@@ -74,12 +78,15 @@ class OrderItemEntity extends Equatable {
     required this.price,
     required this.quantity,
     this.categoryId,
+    this.mrp,
   });
 
   double get lineTotal => price * quantity;
+  double get originalLineTotal => (mrp ?? price) * quantity;
+  double get discountLineTotal => originalLineTotal - lineTotal;
 
   @override
-  List<Object?> get props => [productId, name, unit, imageUrl, price, quantity, categoryId];
+  List<Object?> get props => [productId, name, unit, imageUrl, price, quantity, categoryId, mrp];
 }
 
 class OrderEntity extends Equatable {
