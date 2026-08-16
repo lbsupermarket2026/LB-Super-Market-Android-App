@@ -10,12 +10,6 @@ import '../providers/auth_providers.dart';
 
 enum _VerifyMethod { email, phone }
 
-/// Name, email, and phone are all collected together up front — no
-/// separate "sign up with email" vs "sign up with phone" flows. The
-/// only choice is HOW to verify: email sends a click-through link
-/// (already proven, no extra cost); phone sends a real SMS OTP. Both
-/// paths end with the exact same account, holding both the email and
-/// the phone number either way.
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
@@ -82,27 +76,94 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     // On success, router redirect handles navigation.
   }
 
-  Future<void> _onSendCode() async {
-    if (!_formKey.currentState!.validate()) return;
-    final phone = _formattedPhone;
-    if (phone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid 10-digit phone number.')));
-      return;
-    }
-    final success = await ref.read(phoneSignUpProvider.notifier).sendCode(phone);
-    if (success && mounted) {
-      setState(() => _codeSent = true);
-      _startResendCooldown();
-    }
+Future<void> _onSendCode() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  final phone = _formattedPhone;
+  if (phone == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Enter a valid 10-digit phone number.'),
+      ),
+    );
+    return;
   }
 
-  // NEW: a TRUE resend — stays on the OTP-entry screen and reuses the
-  // notifier's existing resendToken (already correctly threaded
-  // through sendCode()). Previously the only option here was "Change
-  // number / resend", which called .reset() first — wiping the
-  // resendToken back to null and undoing the resend fix specifically
-  // for this button, on top of forcing a full restart of the flow
-  // just to resend the same number's code.
+  final repository = ref.read(authRepositoryProvider);
+
+  // --------------------------------------------------
+  // 1. Check whether EMAIL already exists
+  // --------------------------------------------------
+  final emailResult = await repository.checkEmailRegistered(
+    _emailController.text.trim(),
+  );
+
+  final emailExists = emailResult.match(
+    (failure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failure.message)),
+      );
+      return null;
+    },
+    (registered) => registered,
+  );
+
+  // If the check itself failed, stop.
+  if (emailExists == null) return;
+
+  if (emailExists) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'An account already exists with this email. Please login.',
+        ),
+      ),
+    );
+    return;
+  }
+
+  // --------------------------------------------------
+  // 2. Check whether PHONE already exists
+  // --------------------------------------------------
+  final phoneResult = await repository.checkPhoneRegistered(phone);
+
+  final phoneExists = phoneResult.match(
+    (failure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failure.message)),
+      );
+      return null;
+    },
+    (registered) => registered,
+  );
+
+  // If the check itself failed, stop.
+  if (phoneExists == null) return;
+
+  if (phoneExists) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'An account already exists with this phone number. Please login.',
+        ),
+      ),
+    );
+    return;
+  }
+
+  // --------------------------------------------------
+  // 3. BOTH are new → now send phone OTP
+  // --------------------------------------------------
+  final success = await ref
+      .read(phoneSignUpProvider.notifier)
+      .sendCode(phone);
+
+  if (success && mounted) {
+    setState(() => _codeSent = true);
+    _startResendCooldown();
+  }
+}
+
   Future<void> _onResendCode() async {
     if (_resendSecondsLeft > 0) return;
     final success = await ref.read(phoneSignUpProvider.notifier).sendCode(_formattedPhone!);
@@ -143,19 +204,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       final error = ref.read(phoneSignUpProvider).errorMessage;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Sign up failed.')));
     } else if (success && mounted) {
-      // FIXED: previously relied entirely on the router's reactive
-      // redirect (RouteGuard watching authStateChangesProvider) to
-      // navigate home after this completed. That worked most of the
-      // time, but lost a real race: Firebase Auth's sign-in event
-      // fires the moment signInWithCredential() succeeds, BEFORE the
-      // Firestore users/{uid} profile document is actually created a
-      // few steps later (linkWithCredential's own round-trip, then
-      // the profile write). If the router's redirect logic evaluated
-      // during that gap, it found no profile yet, treated it as
-      // "signed out," and never got a second chance to check again
-      // once the profile actually appeared — leaving the person
-      // stuck on this screen after a genuinely successful signup.
-      // Explicit navigation here doesn't depend on that timing at all.
       context.go(RouteNames.home);
     }
   }

@@ -24,58 +24,63 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<UserEntity?> authStateChanges() {
-    return _remote.firebaseAuthStateChanges.asyncMap<Object?>((firebaseUser) async {
-      final myGeneration = ++_authEventGeneration;
+    UserEntity? lastKnownUser;
 
-      if (firebaseUser == null) return null;
-      UserEntity? result;
+    return _remote.firebaseAuthStateChanges.asyncMap<UserEntity?>(
+      (firebaseUser) async {
+        final myGeneration = ++_authEventGeneration;
 
-      // FIXED: this used to catch ANY exception from resolveUserProfile
-      // (network blip, a transient Firestore error, a security-rules
-      // token not yet propagated right after a cold start) and treat
-      // it identically to "no profile exists" — silently signing the
-      // person out and bouncing them to login, despite a perfectly
-      // valid Firebase Auth session. That's very likely the remaining
-      // cause of "logs out on every launch": a fast, flaky, or
-      // just-restored connection at the exact moment this runs.
-      //
-      // Now: only a genuine NotFoundException (profile really doesn't
-      // exist in either collection — e.g. mid-signup race) is treated
-      // as signed out. Any other error gets a few short retries first,
-      // since it's almost certainly transient; only after those retries
-      // are exhausted do we give up for this emission (the stream will
-      // naturally get another chance on the next auth event, e.g. a
-      // token refresh, rather than forcing a re-login).
-      const maxAttempts = 3;
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          final model = await _remote.resolveUserProfile(firebaseUser.uid);
-          result = model.toEntity();
-          break;
-        } on NotFoundException {
-          result = null;
-          break;
-        } catch (_) {
-          if (attempt == maxAttempts) {
-            // Genuinely couldn't resolve after retries — leave result
-            // null for THIS emission, but don't treat it as a
-            // deliberate sign-out; the next auth/token event will
-            // trigger another attempt automatically.
-            result = null;
-          } else {
-            await Future.delayed(Duration(milliseconds: 400 * attempt));
+        // Firebase explicitly says the user is signed out.
+        // This is the ONLY time we clear the cached user.
+        if (firebaseUser == null) {
+          lastKnownUser = null;
+          return null;
+        }
+
+        const maxAttempts = 5;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            final model =
+                await _remote.resolveUserProfile(firebaseUser.uid);
+
+            final result = model.toEntity();
+
+            // Ignore results belonging to an older auth event.
+            if (myGeneration != _authEventGeneration) {
+              return lastKnownUser;
+            }
+
+            lastKnownUser = result;
+            return result;
+          } on NotFoundException {
+            if (attempt < maxAttempts) {
+              await Future.delayed(
+                Duration(milliseconds: 500 * attempt),
+              );
+              continue;
+            }
+
+            // Firebase is still authenticated.
+            // NEVER turn this into a logout.
+            return lastKnownUser;
+          } catch (_) {
+            if (attempt < maxAttempts) {
+              await Future.delayed(
+                Duration(milliseconds: 500 * attempt),
+              );
+              continue;
+            }
+
+            // Temporary Firestore/network/App Check/etc. problem.
+            // Keep the last authenticated profile.
+            return lastKnownUser;
           }
         }
-      }
 
-      // A newer auth event arrived while this lookup was in flight —
-      // this result is for an account that's no longer the current
-      // one, so it must never reach the stream's listeners.
-      if (myGeneration != _authEventGeneration) {
-        return _staleMarker;
-      }
-      return result;
-    }).where((value) => value != _staleMarker).cast<UserEntity?>();
+        return lastKnownUser;
+      },
+    );
   }
 
   @override
@@ -254,6 +259,11 @@ class AuthRepositoryImpl implements AuthRepository {
       final model = await _remote.resolveUserProfile(uid);
       return model.toEntity();
     });
+  }
+
+  @override
+  Future<Result<bool>> checkEmailRegistered(String email) {
+    return guard(() => _remote.checkEmailRegistered(email));
   }
 
   @override

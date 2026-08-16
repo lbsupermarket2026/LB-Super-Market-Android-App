@@ -63,39 +63,20 @@ final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
   return ResetPasswordUseCase(ref.watch(authRepositoryProvider));
 });
 
-// ---- Auth state stream (drives router redirects + app-wide "who is logged in") ----
 
 final authStateChangesProvider = StreamProvider<UserEntity?>((ref) {
   return ref.watch(authRepositoryProvider).authStateChanges();
 });
 
-/// Convenience sync accessor for the current user, used in widgets that
-/// just need to read the value without handling loading/error states
-/// (the router guard, for instance, treats loading as "not yet decided").
 final currentUserProvider = Provider<UserEntity?>((ref) {
   return ref.watch(authStateChangesProvider).valueOrNull;
 });
 
-/// A counter that profile-editing bumps to signal "re-fetch my
-/// profile" — watched by currentUserProfileProvider below, kept
-/// completely separate from authStateChangesProvider on purpose.
-/// That stream also drives the app's router (see its doc comment),
-/// so refreshing profile display data needs its own path that can
-/// never touch routing, however indirectly.
 final profileRefreshTriggerProvider = StateProvider<int>((ref) => 0);
 
-/// What Profile screens should actually watch to display name/photo/
-/// phone — reflects edits immediately without going anywhere near the
-/// stream that decides whether you're logged in and where the router
-/// sends you.
 final currentUserProfileProvider = FutureProvider<UserEntity?>((ref) async {
   ref.watch(profileRefreshTriggerProvider);
-  // MUST be watch, not read — this is what makes the provider refetch
-  // when the signed-in account itself changes (sign out, sign in as
-  // someone else), not just when an edit bumps the trigger above.
-  // Reading it here meant switching accounts left the PREVIOUS user's
-  // cached profile showing indefinitely until something happened to
-  // trigger a refresh — exactly the "same profile everywhere" bug.
+
   final uid = ref.watch(currentUserProvider)?.uid;
   if (uid == null) return null;
   final model = await ref.read(authRemoteDataSourceProvider).resolveUserProfile(uid);
@@ -177,13 +158,6 @@ class EditProfileNotifier extends Notifier<SignInState> {
       },
       (_) {
         state = state.copyWith(isLoading: false, errorMessage: null);
-        // Bumps a counter that only currentUserProfileProvider watches —
-        // deliberately NOT touching authStateChangesProvider, since that
-        // one also drives the app's router. An earlier version of this
-        // invalidated that stream directly, and the resulting brief
-        // AsyncLoading state was enough to bounce the router back to
-        // Home mid-edit — exactly the "saves, then dumps you on the
-        // home screen" bug this replaces.
         ref.read(profileRefreshTriggerProvider.notifier).state++;
         return true;
       },
@@ -303,13 +277,6 @@ class PhoneAuthNotifier extends Notifier<PhoneAuthState> {
   @override
   PhoneAuthState build() => const PhoneAuthState();
 
-  // FIXED: was calling sendOtp() fresh every time with no
-  // forceResendingToken, which is why the first OTP arrived but
-  // "resend" silently did nothing — Firebase can reject a same-number
-  // resend without it. Now automatically passes the token captured
-  // from the previous attempt (state.resendToken) whenever one is
-  // already on hand, so every call after the first is a genuine,
-  // correctly-chained resend.
   Future<bool> sendCode(String phoneNumber) async {
     state = state.copyWith(isSendingCode: true, errorMessage: null);
     try {
@@ -564,31 +531,109 @@ class EmailOtpSignUpState {
   final bool isCompleting;
   final bool codeSent;
   final String? errorMessage;
-  const EmailOtpSignUpState({this.isSendingCode = false, this.isCompleting = false, this.codeSent = false, this.errorMessage});
 
-  EmailOtpSignUpState copyWith({bool? isSendingCode, bool? isCompleting, bool? codeSent, String? errorMessage}) =>
-      EmailOtpSignUpState(
-        isSendingCode: isSendingCode ?? this.isSendingCode,
-        isCompleting: isCompleting ?? this.isCompleting,
-        codeSent: codeSent ?? this.codeSent,
-        errorMessage: errorMessage,
-      );
+  const EmailOtpSignUpState({
+    this.isSendingCode = false,
+    this.isCompleting = false,
+    this.codeSent = false,
+    this.errorMessage,
+  });
+
+  EmailOtpSignUpState copyWith({
+    bool? isSendingCode,
+    bool? isCompleting,
+    bool? codeSent,
+    String? errorMessage,
+  }) {
+    return EmailOtpSignUpState(
+      isSendingCode: isSendingCode ?? this.isSendingCode,
+      isCompleting: isCompleting ?? this.isCompleting,
+      codeSent: codeSent ?? this.codeSent,
+      errorMessage: errorMessage,
+    );
+  }
 }
+
+
 
 class EmailOtpSignUpNotifier extends Notifier<EmailOtpSignUpState> {
   @override
   EmailOtpSignUpState build() => const EmailOtpSignUpState();
 
-  Future<bool> sendCode(String email) async {
-    state = state.copyWith(isSendingCode: true, errorMessage: null);
-    final result = await ref.read(authRepositoryProvider).sendEmailOtp(email);
+    Future<bool> sendCode({
+    required String email,
+    required String phone,
+  }) async {
+    state = state.copyWith(
+      isSendingCode: true,
+      errorMessage: null,
+    );
+
+    final repository = ref.read(authRepositoryProvider);
+
+    // Check email
+    final emailResult = await repository.checkEmailRegistered(email);
+
+    final emailExists = emailResult.match(
+      (failure) {
+        state = state.copyWith(
+          isSendingCode: false,
+          errorMessage: failure.message,
+        );
+        return true;
+      },
+      (registered) => registered,
+    );
+
+    if (emailExists) {
+      state = state.copyWith(
+        isSendingCode: false,
+        errorMessage:
+            'An account already exists with this email. Please login.',
+      );
+      return false;
+    }
+
+    // Check phone
+    final phoneResult = await repository.checkPhoneRegistered(phone);
+
+    final phoneExists = phoneResult.match(
+      (failure) {
+        state = state.copyWith(
+          isSendingCode: false,
+          errorMessage: failure.message,
+        );
+        return true;
+      },
+      (registered) => registered,
+    );
+
+    if (phoneExists) {
+      state = state.copyWith(
+        isSendingCode: false,
+        errorMessage:
+            'An account already exists with this phone number. Please login.',
+      );
+      return false;
+    }
+
+    // Only send OTP if BOTH email and phone are new
+    final result = await repository.sendEmailOtp(email);
+
     return result.match(
       (failure) {
-        state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+        state = state.copyWith(
+          isSendingCode: false,
+          errorMessage: failure.message,
+        );
         return false;
       },
       (_) {
-        state = state.copyWith(isSendingCode: false, codeSent: true, errorMessage: null);
+        state = state.copyWith(
+          isSendingCode: false,
+          codeSent: true,
+          errorMessage: null,
+        );
         return true;
       },
     );

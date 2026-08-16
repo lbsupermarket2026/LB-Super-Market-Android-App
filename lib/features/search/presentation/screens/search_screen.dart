@@ -105,55 +105,134 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Widget _buildTopBar(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-      child: Row(
-        children: [
-          IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
-          Expanded(
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              elevation: 1,
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.md,
+      AppSpacing.md,
+      AppSpacing.md,
+      AppSpacing.sm,
+    ),
+    child: Row(
+      children: [
+        // Back button
+        Material(
+          color: Colors.transparent,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
+        ),
+
+        const SizedBox(width: AppSpacing.xs),
+
+        // Search bar — styled like the Home screen search bar
+        Expanded(
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            elevation: 1,
+            child: SizedBox(
+              height: 56,
               child: TextField(
                 controller: _controller,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: 'Search in Browse...',
-                  hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                  hintText: 'Search for products',
+                  hintStyle: const TextStyle(
+                    color: Colors.black45,
+                    fontSize: 16,
+                  ),
+
+                  // Same search icon style as Home screen
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Colors.black45,
+                    size: 28,
+                  ),
+
+                  // Keep clear button because this is an editable search field
                   suffixIcon: _controller.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.black54,
+                          ),
                           onPressed: () {
                             _controller.clear();
-                            ref.read(searchNotifierProvider.notifier).onQueryChanged('');
+
+                            ref
+                                .read(searchNotifierProvider.notifier)
+                                .onQueryChanged('');
+
                             setState(() {});
                           },
                         )
                       : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+
+                  filled: true,
+                  fillColor: Colors.white,
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide.none,
+                  ),
+
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: 16,
+                  ),
                 ),
                 onChanged: (value) {
-                  ref.read(searchNotifierProvider.notifier).onQueryChanged(value);
+                  ref
+                      .read(searchNotifierProvider.notifier)
+                      .onQueryChanged(value);
+
                   setState(() {});
                 },
               ),
             ),
           ),
-          Material(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+        ),
+
+        const SizedBox(width: AppSpacing.sm),
+
+        // View toggle
+        Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          elevation: 1,
+          child: SizedBox(
+            height: 56,
+            width: 52,
             child: IconButton(
-              icon: Icon(_isTileView ? Icons.view_list_outlined : Icons.grid_view_outlined, size: 20),
-              tooltip: _isTileView ? 'Switch to list view' : 'Switch to tile view',
-              onPressed: () => setState(() => _isTileView = !_isTileView),
+              icon: Icon(
+                _isTileView
+                    ? Icons.view_list_outlined
+                    : Icons.grid_view_outlined,
+                size: 22,
+              ),
+              tooltip: _isTileView
+                  ? 'Switch to list view'
+                  : 'Switch to tile view',
+              onPressed: () {
+                setState(() {
+                  _isTileView = !_isTileView;
+                });
+              },
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
   }
 
   Widget _buildFilterChips(ThemeData theme) {

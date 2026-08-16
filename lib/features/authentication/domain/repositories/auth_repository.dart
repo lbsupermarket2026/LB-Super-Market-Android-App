@@ -14,6 +14,9 @@ abstract class AuthRepository {
   Future<Result<void>> resendEmailVerification();
   Future<Result<bool>> refreshAndCheckEmailVerified();
 
+  // Future<bool> checkEmailRegistered(String email);
+  Future<Result<bool>> checkEmailRegistered(String email);
+
   /// Returns a verificationId on success — pass it to verifyOtp along
   /// with whatever code the user receives by SMS.
   Future<Result<(String verificationId, int? resendToken)>> sendOtp(String phoneNumber, {int? forceResendingToken});
@@ -32,6 +35,7 @@ abstract class AuthRepository {
   });
 
   Future<Result<void>> updateProfile({required String name, required String phone, String? photoUrl});
+
 
   Future<Result<String>> uploadProfilePhoto(File file);
 

@@ -13,6 +13,7 @@ import '../../../../order_requests/domain/entities/order_request_entity.dart';
 import '../../../../products/domain/entities/product_entity.dart';
 import '../../../inventory_mgmt/presentation/providers/admin_inventory_providers.dart';
 import '../../../inventory_mgmt/presentation/screens/product_form_screen.dart';
+import 'admin_send_notification_screen.dart';
 
 const _green = Color(0xFF2E7D32);
 const _orange = Color(0xFFEF6C00);
@@ -20,11 +21,6 @@ const _orange = Color(0xFFEF6C00);
 class AdminNotificationsScreen extends ConsumerWidget {
   const AdminNotificationsScreen({super.key});
 
-  /// NEW: was previously just context.push('/admin/orders') — the
-  /// order list, not the specific order the notification is about.
-  /// Looks the order up in the already-live allOrdersAdminProvider
-  /// stream and opens its detail screen directly; falls back to the
-  /// list only if that specific order can't be found (e.g. deleted).
   Future<void> _openOrder(BuildContext context, WidgetRef ref, String orderId) async {
     final orders = await ref.read(allOrdersAdminProvider.future);
     OrderEntity? order;
@@ -34,10 +30,6 @@ class AdminNotificationsScreen extends ConsumerWidget {
         break;
       }
     }
-    // FIXED: null-check on `order` doesn't promote through the
-    // builder: closure below (a separate function scope), so the
-    // analyzer still sees OrderEntity? there. Capture it in a
-    // non-nullable local first.
     final resolvedOrder = order;
     if (resolvedOrder != null && context.mounted) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => AdminOrderDetailScreen(order: resolvedOrder)));
@@ -46,11 +38,6 @@ class AdminNotificationsScreen extends ConsumerWidget {
     }
   }
 
-  /// NEW: same pattern as _openOrder — looks the request up in the
-  /// already-loaded allOrderRequestsAdminProvider and opens its
-  /// detail screen directly, so tapping a "new order request"
-  /// notification lands exactly where admin needs to act (approve /
-  /// convert to order), not just the generic Order Requests list.
   Future<void> _openOrderRequest(BuildContext context, WidgetRef ref, String requestId) async {
     final requests = await ref.read(allOrderRequestsAdminProvider.future);
     OrderRequestEntity? request;
@@ -68,10 +55,6 @@ class AdminNotificationsScreen extends ConsumerWidget {
     }
   }
 
-  /// NEW: was previously just context.push('/admin/inventory') — the
-  /// full product list, not the specific low-stock product. Looks the
-  /// product up and opens its edit form directly; falls back to the
-  /// list only if it can't be found (e.g. deleted since the alert fired).
   Future<void> _openProduct(BuildContext context, WidgetRef ref, String productId) async {
     final products = await ref.read(allProductsAdminProvider.future);
     ProductEntity? product;
@@ -81,7 +64,6 @@ class AdminNotificationsScreen extends ConsumerWidget {
         break;
       }
     }
-    // Same fix as _openOrder above — non-nullable local for the closure.
     final resolvedProduct = product;
     if (resolvedProduct != null && context.mounted) {
       final categories = await ref.read(allCategoriesAdminProvider.future);
@@ -106,11 +88,6 @@ class AdminNotificationsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Notifications', style: TextStyle(color: Colors.white)),
         actions: [
-          // NEW: "Mark all read" and "Clear all" both re-added — admin
-          // already had full write access to this collection, so
-          // these were always safe here; the fix elsewhere was giving
-          // customers/employees the SAME ability on their own
-          // notifications, which the Firestore rules previously blocked.
           Consumer(
             builder: (context, ref, _) {
               final notifications = ref.watch(adminNotificationsProvider).valueOrNull ?? [];
@@ -154,6 +131,15 @@ class AdminNotificationsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminSendNotificationScreen()),
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
+        icon: const Icon(Icons.campaign_outlined, color: Colors.white),
+        label: const Text('Send Announcement', style: TextStyle(color: Colors.white)),
+      ),
       body: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Could not load notifications: $e')),
@@ -167,24 +153,11 @@ class AdminNotificationsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final n = notifications[index];
               final isLowStock = n.type == 'low_stock';
-              // NEW: order_cancelled gets a distinct red accent so it
-              // reads as something that needs attention, separate
-              // from the routine green "new order"/"new request" tone.
               final accentColor = isLowStock
                   ? _orange
                   : n.type == 'order_cancelled'
                       ? const Color(0xFFE53935)
                       : _green;
-              // FIXED: card used to be hardcoded Colors.white when
-              // read — a bright white card on a dark scaffold, with
-              // title/body text relying on inherited theme color for
-              // contrast against it. Now themed via context.appColors
-              // for the read state; the unread tint stays as a
-              // subtle accent wash (already fine in both themes since
-              // it's a low-opacity color, not a fixed white/black).
-              // SIMPLIFIED: same reasoning as the customer screen —
-              // stripped back to plain white when read, flat tinted
-              // background when unread, nothing layered on top.
               final titleText = n.title.isNotEmpty ? n.title : 'Notification';
               final bodyText = n.body.isNotEmpty ? n.body : '';
               return Container(
@@ -207,10 +180,6 @@ class AdminNotificationsScreen extends ConsumerWidget {
                   ),
                   title: Text(titleText, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
                   subtitle: bodyText.isEmpty ? null : Text(bodyText, style: TextStyle(fontSize: 12, color: colors.muted)),
-                  // NEW: small chevron makes it visually clear the row
-                  // is tappable and leads somewhere specific — asked
-                  // for on the low-stock alert, applied consistently
-                  // to both types for the same affordance.
                   trailing: Icon(Icons.chevron_right, color: colors.muted, size: 20),
                   onTap: () {
                     if (!n.isRead) ref.read(adminNotificationsDataSourceProvider).markAsRead(n.id);

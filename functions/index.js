@@ -408,23 +408,50 @@ exports.lookupStaffEmailByPhone = onCall(async (request) => {
 // on a random/unregistered number would silently create a brand new
 // account instead of failing. This confirms a real account already
 // exists for the number first, so that can't happen.
-exports.checkPhoneRegistered = onCall(async (request) => {
-  const phone = request.data?.phone;
-  if (typeof phone !== "string" || phone.trim().length === 0) {
-    throw new HttpsError("invalid-argument", "phone is required.");
-  }
+exports.checkPhoneRegistered = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    let phone = request.data?.phone;
 
-  try {
-    await auth.getUserByPhoneNumber(phone);
-    return { registered: true };
-  } catch (error) {
-    if (error.code === "auth/user-not-found") {
-      return { registered: false };
+    if (typeof phone !== "string" || phone.trim().length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Phone number is required."
+      );
     }
-    throw new HttpsError("internal", "Could not check this number right now.");
-  }
-});
 
+    phone = phone.trim().replace(/\s+/g, "");
+
+    // Normalize Indian 10-digit numbers
+    if (/^\d{10}$/.test(phone)) {
+      phone = `+91${phone}`;
+    } else if (/^91\d{10}$/.test(phone)) {
+      phone = `+${phone}`;
+    }
+
+    const userSnap = await db
+      .collection("users")
+      .where("phone", "==", phone)
+      .limit(1)
+      .get();
+
+    if (!userSnap.empty) {
+      return { registered: true };
+    }
+
+    const staffSnap = await db
+      .collection("staff_users")
+      .where("phone", "==", phone)
+      .limit(1)
+      .get();
+
+    if (!staffSnap.empty) {
+      return { registered: true };
+    }
+
+    return { registered: false };
+  }
+);
 
 exports.lookupEmailByPhone = onCall(async (request) => {
   const phone = request.data.phone;
@@ -456,127 +483,6 @@ exports.lookupEmailByPhone = onCall(async (request) => {
   return { email: null };
 });
 
-// // ============================================================
-// // 7. Email OTP — signup/reset verification via a real numeric code
-// //    rather than a click-through link.
-// // ============================================================
-// // Codes live in a Firestore collection that's admin-only in the
-// // security rules (never directly readable/writable by clients) — the
-// // ONLY way to interact with them is through these two callable
-// // functions, which is what keeps this from being guessable/bypassable
-// // from the client side.
-// const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
-// const SENDGRID_FROM_EMAIL = defineString("SENDGRID_FROM_EMAIL", { default: "noreply@lbsupermarket.com" });
-// const OTP_TTL_MINUTES = 10;
-
-// function generateSixDigitCode() {
-//   // crypto.randomInt is cryptographically strong — Math.random() would
-//   // be guessable in principle, which matters for something used as an
-//   // account-security code.
-//   return crypto.randomInt(100000, 1000000).toString();
-// }
-
-// exports.sendEmailOtp = onCall({ secrets: [sendgridApiKey] }, async (request) => {
-//   const email = request.data?.email;
-//   if (typeof email !== "string" || !email.includes("@")) {
-//     throw new HttpsError("invalid-argument", "A valid email is required.");
-//   }
-
-//   const code = generateSixDigitCode();
-//   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
-
-//   await db.collection("email_otps").doc(email).set({
-//     code,
-//     expiresAt,
-//     createdAt: FieldValue.serverTimestamp(),
-//   });
-
-//   const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-//     method: "POST",
-//     headers: {
-//       Authorization: `Bearer ${sendgridApiKey.value()}`,
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify({
-//       personalizations: [{ to: [{ email }] }],
-//       from: { email: SENDGRID_FROM_EMAIL.value(), name: "LB Super Market" },
-//       subject: "Your verification code",
-//       content: [
-//         {
-//           type: "text/plain",
-//           value: `Your LB Super Market verification code is ${code}. It expires in ${OTP_TTL_MINUTES} minutes.`,
-//         },
-//       ],
-//     }),
-//   });
-
-//   if (!response.ok) {
-//     const errorText = await response.text();
-//     logger.error("SendGrid send failed", { status: response.status, body: errorText });
-//     throw new HttpsError("internal", "Could not send the verification email. Please try again.");
-//   }
-
-//   return { sent: true };
-// });
-
-// exports.verifyEmailOtp = onCall(async (request) => {
-//   const email = request.data?.email;
-//   const code = request.data?.code;
-//   if (typeof email !== "string" || typeof code !== "string") {
-//     throw new HttpsError("invalid-argument", "email and code are required.");
-//   }
-
-//   const docRef = db.collection("email_otps").doc(email);
-//   const doc = await docRef.get();
-//   if (!doc.exists) {
-//     return { valid: false, reason: "No code was requested for this email." };
-//   }
-
-//   const data = doc.data();
-//   const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt);
-//   if (Date.now() > expiresAt.getTime()) {
-//     await docRef.delete();
-//     return { valid: false, reason: "This code has expired — request a new one." };
-//   }
-
-//   if (data.code !== code) {
-//     return { valid: false, reason: "Incorrect code." };
-//   }
-
-//   // One-time use — deleted immediately on a successful match so the
-//   // same code can't be replayed.
-//   await docRef.delete();
-//   return { valid: true };
-// });
-
-// // Only settable via the Admin SDK, and only for the caller's own
-// // account — a signed-in user marking someone else's email verified
-// // would be a real privilege escalation, so this checks request.auth
-// // matches the uid being modified before doing anything.
-// exports.markEmailVerified = onCall(async (request) => {
-//   if (!request.auth) {
-//     throw new HttpsError("unauthenticated", "You must be signed in.");
-//   }
-//   const uid = request.data?.uid;
-//   if (typeof uid !== "string" || uid !== request.auth.uid) {
-//     throw new HttpsError("permission-denied", "Can only verify your own account.");
-//   }
-
-//   await auth.updateUser(uid, { emailVerified: true });
-//   return { success: true };
-// });
-
-
-// ============================================================
-// NEW: Admin notification on a new order REQUEST (Type My List /
-// Photo submission) — previously only exports.notifyOnNewOrder
-// existed, which watches the `orders` collection. But "Type My List"
-// and "Take a photo of your list" create a document in the SEPARATE
-// `order_requests` collection instead (an admin has to manually
-// review and "Convert to Order" before it becomes a real order) —
-// so admin was never notified these came in at all until they
-// happened to check the Order Requests tab themselves.
-// ============================================================
 exports.notifyOnNewOrderRequest = onDocumentCreated("order_requests/{requestId}", async (event) => {
   const request = event.data.data();
   const isPhoto = request.type === "photo";
@@ -642,27 +548,47 @@ exports.notifyAdminOnOrderCancelled = onDocumentUpdated("orders/{orderId}", asyn
 exports.getEmailByPhone = onCall(
   { region: "asia-south1" },
   async (request) => {
-    const phone = request.data?.phone?.trim();
-
-    logger.info("getEmailByPhone", {
-      phone: phone,
-      project: process.env.GCLOUD_PROJECT,
-    });
+    let phone = request.data?.phone?.trim();
 
     if (!phone) {
-      throw new HttpsError("invalid-argument", "Phone number is required.");
+      throw new HttpsError(
+        "invalid-argument",
+        "Phone number is required."
+      );
     }
 
-    const userSnap = await db
+    // Normalize incoming phone
+    phone = phone.replace(/\s+/g, "");
+
+    let phone10 = phone.replace(/^\+91/, "");
+
+    if (phone10.startsWith("91") && phone10.length === 12) {
+      phone10 = phone10.substring(2);
+    }
+
+    const phoneInternational = `+91${phone10}`;
+
+    logger.info("getEmailByPhone", {
+      original: request.data?.phone,
+      normalized: phoneInternational,
+      phone10: phone10,
+    });
+
+    // Try international format first
+    let userSnap = await db
       .collection("users")
-      .where("phone", "==", phone)
+      .where("phone", "==", phoneInternational)
       .limit(1)
       .get();
 
-    logger.info("Customer lookup", {
-      phone: phone,
-      found: !userSnap.empty,
-    });
+    // Try 10-digit format
+    if (userSnap.empty) {
+      userSnap = await db
+        .collection("users")
+        .where("phone", "==", phone10)
+        .limit(1)
+        .get();
+    }
 
     if (!userSnap.empty) {
       const data = userSnap.docs[0].data();
@@ -670,6 +596,7 @@ exports.getEmailByPhone = onCall(
       logger.info("Customer found", {
         uid: userSnap.docs[0].id,
         email: data.email,
+        phone: data.phone,
       });
 
       return {
@@ -677,11 +604,20 @@ exports.getEmailByPhone = onCall(
       };
     }
 
-    const staffSnap = await db
+    // Staff
+    let staffSnap = await db
       .collection("staff_users")
-      .where("phone", "==", phone)
+      .where("phone", "==", phoneInternational)
       .limit(1)
       .get();
+
+    if (staffSnap.empty) {
+      staffSnap = await db
+        .collection("staff_users")
+        .where("phone", "==", phone10)
+        .limit(1)
+        .get();
+    }
 
     if (!staffSnap.empty) {
       const data = staffSnap.docs[0].data();
@@ -697,3 +633,75 @@ exports.getEmailByPhone = onCall(
     );
   }
 );
+
+
+exports.checkEmailRegistered = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    const email = request.data?.email?.trim().toLowerCase();
+
+    if (!email) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Email is required."
+      );
+    }
+
+    try {
+      await auth.getUserByEmail(email);
+      return { registered: true };
+    } catch (error) {
+      if (error.code === "auth/user-not-found") {
+        return { registered: false };
+      }
+
+      throw new HttpsError(
+        "internal",
+        "Could not check email."
+      );
+    }
+  }
+);
+
+
+exports.sendAdminBroadcastNotification = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "You must be signed in.");
+  }
+ 
+  const staffDoc = await db.collection("staff_users").doc(request.auth.uid).get();
+  if (!staffDoc.exists || staffDoc.data().role !== "admin") {
+    throw new HttpsError("permission-denied", "Only admin can send announcements.");
+  }
+ 
+  const title = request.data?.title?.trim();
+  const body = request.data?.body?.trim();
+  if (!title || !body) {
+    throw new HttpsError("invalid-argument", "Both a title and message are required.");
+  }
+  if (title.length > 80) {
+    throw new HttpsError("invalid-argument", "Title should be under 80 characters.");
+  }
+  if (body.length > 300) {
+    throw new HttpsError("invalid-argument", "Message should be under 300 characters.");
+  }
+ 
+  await db.collection("notifications").add({
+    type: "admin_broadcast",
+    uid: null, // broadcast — every customer sees this, same as new_offer
+    title,
+    body,
+    isRead: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+ 
+  await messaging.send({
+    topic: "new_offers",
+    notification: { title, body },
+    data: { type: "admin_broadcast" },
+    android: { priority: "high", notification: { channelId: "freshcart_default" } },
+  });
+ 
+  return { sent: true };
+});
+ 

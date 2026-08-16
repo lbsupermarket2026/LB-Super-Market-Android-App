@@ -180,6 +180,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     AppTextField(
+                      key: const ValueKey('email-field'),
                       controller: _emailController,
                       label: 'Email',
                       keyboardType: TextInputType.emailAddress,
@@ -213,6 +214,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     AppTextField(controller: _codeController, label: 'Verification Code', keyboardType: TextInputType.number),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
+                      key: const ValueKey('phone-field'),
                       controller: _newPasswordController,
                       label: 'New Password',
                       hint: 'Letter, number & special character',

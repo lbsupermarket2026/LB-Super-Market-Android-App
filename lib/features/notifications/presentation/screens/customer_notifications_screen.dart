@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/customer_notifications_providers.dart';
@@ -104,12 +106,22 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                     ),
                     title: Text(titleText, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),
                     subtitle: bodyText.isEmpty ? null : Text(bodyText, style: TextStyle(fontSize: 12, color: colors.muted)),
-                    onTap: () {
+                    onTap: () async {
                       if (!n.isRead) ref.read(customerNotificationsDataSourceProvider).markAsRead(n.id);
                       if (n.type == 'order_status' && n.orderId != null) {
                         context.push('/orders/${n.orderId}');
                       } else if (n.type == 'new_offer') {
-                        context.push('/offers');
+                        // FIXED: was navigating to /offers uncondit-
+                        // ionally — this screen is shared between
+                        // customers and employees, and an employee
+                        // could still SEE a broadcast offer entry
+                        // here (the query-level fix belongs in the
+                        // provider), so this tap handler needed the
+                        // same staff check as the push-notification
+                        // routing already has, as a second safety net.
+                        final uid = FirebaseAuth.instance.currentUser?.uid;
+                        final isStaff = uid != null && (await FirebaseFirestore.instance.collection('staff_users').doc(uid).get()).exists;
+                        if (!isStaff && context.mounted) context.go('/offers');
                       } else if (n.type == 'order_assigned') {
                         context.push('/employee/home');
                       }

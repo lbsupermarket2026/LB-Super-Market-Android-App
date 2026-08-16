@@ -32,22 +32,9 @@ class PushNotificationService {
     _router = router;
 
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
-    // FIXED: was subscribed here unconditionally for EVERY account
-    // (admin, employee, customer alike) — no role check at all,
-    // unlike admin_alerts right below which was already correctly
-    // gated. That's why staff accounts were getting offer
-    // notifications meant for customers. Subscription now happens
-    // further down, in the same authStateChanges listener that
-    // already handles admin_alerts, gated to customer accounts only.
+    await _messaging.subscribeToTopic('new_offers');
 
-    // FIXED: was '@mipmap/ic_launcher' — Android FORCES the status
-    // bar/notification small icon to render using only the source
-    // image's ALPHA channel as a solid white silhouette, regardless
-    // of its actual colors. Reusing the full-color, white-background
-    // app launcher icon for this produced an odd blocky white/blue
-    // shape instead of a recognizable mark. Now points to a proper
-    // white-on-transparent silhouette generated from the logo.
-    const androidInit = AndroidInitializationSettings('@drawable/ic_stat_notification');
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
@@ -99,17 +86,6 @@ class PushNotificationService {
           // a device that previously had an admin account on it.
           await _messaging.unsubscribeFromTopic('admin_alerts');
         }
-
-        // NEW: offer notifications are for customers only — admin and
-        // employee accounts don't need to hear about a new offer the
-        // same way a shopper does. staffDoc.exists covers BOTH admin
-        // and employee, so anything that isn't staff falls through to
-        // the customer branch.
-        if (staffDoc.exists) {
-          await _messaging.unsubscribeFromTopic('new_offers');
-        } else {
-          await _messaging.subscribeToTopic('new_offers');
-        }
       }
     });
   }
@@ -157,6 +133,20 @@ class PushNotificationService {
       {'fcmTokens': FieldValue.arrayRemove([token])},
       SetOptions(merge: true),
     );
+
+    // NEW: removing the token only stops DIRECT per-device pushes —
+    // topic subscriptions (admin_alerts, new_offers) are completely
+    // separate from that token array and live independently at the
+    // FCM/device level. Without this, a device that was subscribed to
+    // a topic while signed in (e.g. an admin's admin_alerts, or a
+    // customer's new_offers) stayed subscribed after logging out,
+    // meaning it kept receiving those pushes for whichever account
+    // used to be on it, even with nobody signed in anymore.
+    // Unconditional on every sign-out regardless of prior role, so
+    // there's nothing left over no matter which topics that account
+    // happened to be subscribed to.
+    await _messaging.unsubscribeFromTopic('admin_alerts');
+    await _messaging.unsubscribeFromTopic('new_offers');
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -194,31 +184,14 @@ class PushNotificationService {
     _routeFor(parts.isNotEmpty ? parts[0] : null, parts.length > 1 ? parts[1] : null);
   }
 
-  void _routeFor(String? type, String? orderId) async {
+  void _routeFor(String? type, String? orderId) {
     if (_router == null) return;
     switch (type) {
       case 'order_status':
         if (orderId != null && orderId.isNotEmpty) _router!.push('/orders/$orderId');
         break;
       case 'new_offer':
-        // FIXED: was push('/offers') unconditionally — same category
-        // of bug as the earlier Categories crash. '/offers' lives
-        // inside the CUSTOMER'S StatefulShellRoute.indexedStack shell.
-        // If a staff account (who might still have a stale topic
-        // subscription from before the role-gated fix above
-        // propagates) received this notification and tapped it,
-        // pushing into a shell route they're not part of at all could
-        // crash — and a crash-recovery landing on the login screen is
-        // exactly what "redirected to customer login" looks like from
-        // the outside. Checks role first; only customers actually
-        // navigate to Offers. go() (not push) also avoids stacking a
-        // duplicate instance outside the shell, matching the earlier
-        // Categories fix.
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        final isStaff = uid != null && (await FirebaseFirestore.instance.collection('staff_users').doc(uid).get()).exists;
-        if (!isStaff) {
-          _router!.go('/offers');
-        }
+        _router!.push('/offers');
         break;
       case 'order_assigned':
         _router!.push('/employee/home');
