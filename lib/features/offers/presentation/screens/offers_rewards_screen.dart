@@ -60,7 +60,6 @@ class _ExpandableOfferListTile extends StatefulWidget {
 class _ExpandableOfferListTileState extends State<_ExpandableOfferListTile> {
   bool _isExpanded = false;
   static const double _collapsedHeight = 172;
-  static const double _expandedHeight = 320;
 
   void _onTap() {
     if (_isExpanded) {
@@ -73,13 +72,22 @@ class _ExpandableOfferListTileState extends State<_ExpandableOfferListTile> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
+    // FIXED: same reasoning as the Home carousel — a fixed
+    // _expandedHeight squeezed every photo into one box regardless of
+    // its real proportions, producing black letterboxing bars.
+    // AnimatedSize animates to whatever height the current child
+    // actually wants: the collapsed tile's fixed height, or the
+    // expanded photo's real aspect ratio (handled inside
+    // ExpandedOfferPhoto itself now).
+    return AnimatedSize(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
-      height: _isExpanded ? _expandedHeight : _collapsedHeight,
       child: _isExpanded
           ? ExpandedOfferPhoto(card: widget.card, onTap: _onTap)
-          : OfferCardTile(card: widget.card, height: _collapsedHeight, onTap: _onTap),
+          : SizedBox(
+              height: _collapsedHeight,
+              child: OfferCardTile(card: widget.card, height: _collapsedHeight, onTap: _onTap),
+            ),
     );
   }
 }

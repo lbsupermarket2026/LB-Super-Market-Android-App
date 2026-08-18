@@ -7,6 +7,7 @@ class CustomerNotificationEntity {
   final DateTime createdAt;
   final String? orderId;
   final String? offerId;
+  final List<String> hiddenFor;
 
   const CustomerNotificationEntity({
     required this.id,
@@ -17,5 +18,6 @@ class CustomerNotificationEntity {
     required this.createdAt,
     this.orderId,
     this.offerId,
+    this.hiddenFor = const [],
   });
 }

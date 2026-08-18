@@ -21,67 +21,94 @@ class AuthRepositoryImpl implements AuthRepository {
   // profile lookup finish AFTER a newer one and silently overwrite it —
   // exactly the "signs in as customer, lands on employee's profile" bug.
   int _authEventGeneration = 0;
+@override
+Stream<UserEntity?> authStateChanges() async* {
+  UserEntity? lastKnownUser;
 
-  @override
-  Stream<UserEntity?> authStateChanges() {
-    UserEntity? lastKnownUser;
+  await for (final firebaseUser in _remote.firebaseAuthStateChanges) {
+    final myGeneration = ++_authEventGeneration;
 
-    return _remote.firebaseAuthStateChanges.asyncMap<UserEntity?>(
-      (firebaseUser) async {
-        final myGeneration = ++_authEventGeneration;
+    // ------------------------------------------------------------
+    // Firebase explicitly says the user is signed out.
+    // This is the ONLY case where we emit null.
+    // ------------------------------------------------------------
+    if (firebaseUser == null) {
+      lastKnownUser = null;
+      yield null;
+      continue;
+    }
 
-        // Firebase explicitly says the user is signed out.
-        // This is the ONLY time we clear the cached user.
-        if (firebaseUser == null) {
-          lastKnownUser = null;
-          return null;
+    // ------------------------------------------------------------
+    // Firebase says the user IS authenticated.
+    //
+    // Keep the previous profile while we restore the Firestore
+    // profile. This prevents a temporary Firestore/network problem
+    // from looking like a logout.
+    // ------------------------------------------------------------
+
+    const maxAttempts = 5;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final model =
+            await _remote.resolveUserProfile(firebaseUser.uid);
+
+        final user = model.toEntity();
+
+        // A newer Firebase auth event happened while this request
+        // was running. Ignore this old profile result.
+        if (myGeneration != _authEventGeneration) {
+          break;
         }
 
-        const maxAttempts = 5;
-
-        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-          try {
-            final model =
-                await _remote.resolveUserProfile(firebaseUser.uid);
-
-            final result = model.toEntity();
-
-            // Ignore results belonging to an older auth event.
-            if (myGeneration != _authEventGeneration) {
-              return lastKnownUser;
-            }
-
-            lastKnownUser = result;
-            return result;
-          } on NotFoundException {
-            if (attempt < maxAttempts) {
-              await Future.delayed(
-                Duration(milliseconds: 500 * attempt),
-              );
-              continue;
-            }
-
-            // Firebase is still authenticated.
-            // NEVER turn this into a logout.
-            return lastKnownUser;
-          } catch (_) {
-            if (attempt < maxAttempts) {
-              await Future.delayed(
-                Duration(milliseconds: 500 * attempt),
-              );
-              continue;
-            }
-
-            // Temporary Firestore/network/App Check/etc. problem.
-            // Keep the last authenticated profile.
-            return lastKnownUser;
-          }
+        lastKnownUser = user;
+        yield user;
+        break;
+      } on NotFoundException {
+        if (attempt < maxAttempts) {
+          await Future.delayed(
+            Duration(milliseconds: 500 * attempt),
+          );
+          continue;
         }
 
-        return lastKnownUser;
-      },
-    );
+        // Firebase is STILL authenticated.
+        //
+        // Do NOT emit null here.
+        //
+        // If we already have a profile, keep it.
+        if (lastKnownUser != null) {
+          yield lastKnownUser;
+        }
+
+        break;
+      } catch (error, stack) {
+        print(
+          '[AUTH PROFILE ERROR] '
+          'attempt=$attempt uid=${firebaseUser.uid} error=$error',
+        );
+        print(stack);
+
+        if (attempt < maxAttempts) {
+          await Future.delayed(
+            Duration(milliseconds: 500 * attempt),
+          );
+          continue;
+        }
+
+        // Firestore/network/App Check/etc. failed.
+        //
+        // Firebase authentication is still valid.
+        // NEVER convert this into a logout.
+        if (lastKnownUser != null) {
+          yield lastKnownUser;
+        }
+
+        break;
+      }
+    }
   }
+}
 
   @override
   Future<Result<void>> updateProfile({required String name, required String phone, String? photoUrl}) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories_impl/auth_repository_impl.dart';
 import '../../domain/entities/user_entity.dart';
@@ -16,6 +17,8 @@ import '../../domain/usecases/upload_profile_photo_usecase.dart';
 import '../../domain/usecases/change_password_usecase.dart';
 import '../../domain/usecases/sign_in_with_identifier_usecase.dart';
 import '../../domain/usecases/sign_up_with_phone_usecase.dart';
+
+
 
 // ---- DI wiring ----
 
@@ -51,28 +54,58 @@ final uploadProfilePhotoUseCaseProvider = Provider<UploadProfilePhotoUseCase>((r
   return UploadProfilePhotoUseCase(ref.watch(authRepositoryProvider));
 });
 
-final changePasswordUseCaseProvider = Provider<ChangePasswordUseCase>((ref) {
-  return ChangePasswordUseCase(ref.watch(authRepositoryProvider));
+final changePasswordUseCaseProvider =
+    Provider<ChangePasswordUseCase>((ref) {
+  return ChangePasswordUseCase(
+    ref.watch(authRepositoryProvider),
+  );
 });
 
-final signOutUseCaseProvider = Provider<SignOutUseCase>((ref) {
-  return SignOutUseCase(ref.watch(authRepositoryProvider));
+final signOutUseCaseProvider =
+    Provider<SignOutUseCase>((ref) {
+  return SignOutUseCase(
+    ref.watch(authRepositoryProvider),
+  );
 });
 
-final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
-  return ResetPasswordUseCase(ref.watch(authRepositoryProvider));
+final resetPasswordUseCaseProvider =
+    Provider<ResetPasswordUseCase>((ref) {
+  return ResetPasswordUseCase(
+    ref.watch(authRepositoryProvider),
+  );
 });
 
-
-final authStateChangesProvider = StreamProvider<UserEntity?>((ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges();
+final firebaseAuthUserProvider =
+    StreamProvider<fb.User?>((ref) {
+  return fb.FirebaseAuth.instance.authStateChanges();
 });
+
+final authStateChangesProvider =
+    StreamProvider<UserEntity?>((ref) {
+  final repository = ref.watch(authRepositoryProvider);
+
+  return repository.authStateChanges().distinct(
+    (previous, next) => previous?.uid == next?.uid,
+  );
+});
+
 
 final currentUserProvider = Provider<UserEntity?>((ref) {
-  return ref.watch(authStateChangesProvider).valueOrNull;
+  final authState = ref.watch(authStateChangesProvider);
+
+  return authState.when(
+    loading: () => null,
+    error: (error, stack) {
+      // Do NOT sign the user out because profile loading failed.
+      print('[AUTH ERROR] $error');
+      return null;
+    },
+    data: (user) => user,
+  );
 });
 
-final profileRefreshTriggerProvider = StateProvider<int>((ref) => 0);
+final profileRefreshTriggerProvider =
+    StateProvider<int>((ref) => 0);
 
 final currentUserProfileProvider = FutureProvider<UserEntity?>((ref) async {
   ref.watch(profileRefreshTriggerProvider);
@@ -363,25 +396,108 @@ class PhoneSignUpNotifier extends Notifier<PhoneSignUpState> {
 
   // FIXED: same "resend silently does nothing" bug as PhoneAuthNotifier
   // above — now passes state.resendToken back in automatically.
-  Future<bool> sendCode(String phoneNumber) async {
-    state = state.copyWith(isSendingCode: true, errorMessage: null);
+  Future<bool> sendCode({
+    required String phoneNumber,
+    required String email,
+  }) async {
+    state = state.copyWith(
+      isSendingCode: true,
+      errorMessage: null,
+    );
+
+    final repository = ref.read(authRepositoryProvider);
+
+    // --------------------------------------------------
+    // 1. Check EMAIL
+    // --------------------------------------------------
+
+    final emailResult =
+        await repository.checkEmailRegistered(email.trim());
+
+    final emailExists = emailResult.match(
+      (failure) {
+        state = state.copyWith(
+          isSendingCode: false,
+          errorMessage: failure.message,
+        );
+        return true;
+      },
+      (registered) => registered,
+    );
+
+    if (emailExists) {
+      state = state.copyWith(
+        isSendingCode: false,
+        errorMessage:
+            'An account already exists with this email. Please login.',
+      );
+      return false;
+    }
+
+    // --------------------------------------------------
+    // 2. Check PHONE
+    // --------------------------------------------------
+
+    final phoneResult =
+        await repository.checkPhoneRegistered(phoneNumber);
+
+    final phoneExists = phoneResult.match(
+      (failure) {
+        state = state.copyWith(
+          isSendingCode: false,
+          errorMessage: failure.message,
+        );
+        return true;
+      },
+      (registered) => registered,
+    );
+
+    if (phoneExists) {
+      state = state.copyWith(
+        isSendingCode: false,
+        errorMessage:
+            'An account already exists with this phone number. Please login.',
+      );
+      return false;
+    }
+
+    // --------------------------------------------------
+    // 3. BOTH ARE NEW → send phone OTP
+    // --------------------------------------------------
+
     try {
       final result = await ref
           .read(sendOtpUseCaseProvider)
-          .call(phoneNumber, forceResendingToken: state.resendToken)
+          .call(
+            phoneNumber,
+            forceResendingToken: state.resendToken,
+          )
           .timeout(const Duration(seconds: 30));
+
       return result.match(
         (failure) {
-          state = state.copyWith(isSendingCode: false, errorMessage: failure.message);
+          state = state.copyWith(
+            isSendingCode: false,
+            errorMessage: failure.message,
+          );
           return false;
         },
         (data) {
-          state = state.copyWith(isSendingCode: false, verificationId: data.$1, resendToken: data.$2, errorMessage: null);
+          state = state.copyWith(
+            isSendingCode: false,
+            verificationId: data.$1,
+            resendToken: data.$2,
+            errorMessage: null,
+          );
           return true;
         },
       );
     } on TimeoutException {
-      state = state.copyWith(isSendingCode: false, errorMessage: 'Taking too long — check your connection and try again.');
+      state = state.copyWith(
+        isSendingCode: false,
+        errorMessage:
+            'Taking too long — check your connection and try again.',
+      );
       return false;
     }
   }

@@ -36,9 +36,17 @@ final customerNotificationsProvider = Provider.autoDispose<List<CustomerNotifica
   final user = ref.watch(currentUserProvider);
   final isCustomer = user != null && user.role == UserRole.customer;
 
+  // NEW: a broadcast that THIS user has already cleared (their uid is
+  // in hiddenFor) is filtered out here — the shared document itself
+  // stays untouched for every other customer, only this person's own
+  // view of it changes. See hideBroadcastForUser in the datasource.
+  final broadcast = (ref.watch(_broadcastNotificationsProvider).valueOrNull ?? [])
+      .where((n) => user == null || !n.hiddenFor.contains(user.uid))
+      .toList();
+
   final combined = <CustomerNotificationEntity>[
     ...personal,
-    if (isCustomer) ...ref.watch(_broadcastNotificationsProvider).valueOrNull ?? [],
+    if (isCustomer) ...broadcast,
   ];
   combined.sort((a, b) => b.createdAt.compareTo(a.createdAt));
   return combined;

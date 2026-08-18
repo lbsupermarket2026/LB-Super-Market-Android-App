@@ -64,23 +64,44 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       setState(() => _emailSent = true);
     } else if (mounted) {
       final error = ref.read(forgotPasswordNotifierProvider).errorMessage;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Something went wrong.')));
+      // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Something went wrong.')));
+      await _showErrorDialog(
+        error ?? 'Something went wrong.',
+      );
     }
   }
+
+
 
   Future<void> _onSendPhoneCode() async {
     final phone = _formattedPhone;
+
     if (phone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid 10-digit phone number.')));
+      await _showErrorDialog(
+        'Enter a valid 10-digit phone number.',
+      );
       return;
     }
-    final success = await ref.read(phonePasswordResetProvider.notifier).sendCode(phone);
+
+    final success = await ref
+        .read(phonePasswordResetProvider.notifier)
+        .sendCode(phone);
+
     if (success && mounted) {
       setState(() => _codeSent = true);
       _startResendCooldown();
+      return;
+    }
+
+    if (mounted) {
+      final error =
+          ref.read(phonePasswordResetProvider).errorMessage;
+
+      if (error != null && error.isNotEmpty) {
+        await _showErrorDialog(error);
+      }
     }
   }
-
   // FIXED: same bug as signup — the only "resend" option previously
   // called .reset() first, wiping the resendToken the fix relies on.
   // This stays on the OTP screen and reuses the notifier's existing
@@ -107,28 +128,135 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     });
   }
 
+  Future<void> _showErrorDialog(String message) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline),
+              SizedBox(width: 10),
+              Text('Error'),
+            ],
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  // Future<void> _onResetWithPhoneOtp() async {
+  //   if (_codeController.text.trim().length < 4) {
+  //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter the code you received.')));
+  //     return;
+  //   }
+  //   final passwordError = _passwordStrengthError(_newPasswordController.text);
+  //   if (passwordError != null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(passwordError)));
+  //     return;
+  //   }
+  //   final success = await ref.read(phonePasswordResetProvider.notifier).resetPassword(
+  //         smsCode: _codeController.text.trim(),
+  //         newPassword: _newPasswordController.text,
+  //       );
+  //   if (!success && mounted) {
+  //     final error = ref.read(phonePasswordResetProvider).errorMessage;
+  //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Could not reset password.')));
+  //   }
+  //   // On success, router redirect (listening to authStateChangesProvider)
+  //   // takes the user to Home automatically — the account now has the
+  //   // freshly set password already in place.
+  // }
+
   Future<void> _onResetWithPhoneOtp() async {
     if (_codeController.text.trim().length < 4) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter the code you received.')));
+      await _showErrorDialog(
+        'Enter the verification code you received.',
+      );
       return;
     }
-    final passwordError = _passwordStrengthError(_newPasswordController.text);
+
+    final passwordError =
+        _passwordStrengthError(_newPasswordController.text);
+
     if (passwordError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(passwordError)));
+      await _showErrorDialog(passwordError);
       return;
     }
-    final success = await ref.read(phonePasswordResetProvider.notifier).resetPassword(
+
+    final success = await ref
+        .read(phonePasswordResetProvider.notifier)
+        .resetPassword(
           smsCode: _codeController.text.trim(),
           newPassword: _newPasswordController.text,
         );
+
     if (!success && mounted) {
-      final error = ref.read(phonePasswordResetProvider).errorMessage;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Could not reset password.')));
+      final error =
+          ref.read(phonePasswordResetProvider).errorMessage;
+
+      await _showErrorDialog(
+        error ?? 'Could not reset password.',
+      );
+
+      return;
     }
-    // On success, router redirect (listening to authStateChangesProvider)
-    // takes the user to Home automatically — the account now has the
-    // freshly set password already in place.
+
+    // IMPORTANT:
+    // resetPasswordWithPhoneOtp() signs the temporary Firebase
+    // session out after changing the password.
+    //
+    // Therefore DO NOT let authStateChanges automatically
+    // decide the next screen here.
+    if (success && mounted) {
+      await _showSuccessDialog(
+        'Your password has been changed successfully. Please login with your new password.',
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
   }
+
+  Future<void> _showSuccessDialog(String message) async {
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_outline),
+              SizedBox(width: 10),
+              Text('Success'),
+            ],
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -201,11 +329,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     AppTextField(controller: _phoneController, label: 'Phone Number', hint: '10-digit number', keyboardType: TextInputType.phone),
-                    if (phoneState.errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: Text(phoneState.errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-                      ),
+                    // if (phoneState.errorMessage != null)
+                    //   Padding(
+                    //     padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    //     child: Text(phoneState.errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    //   ),
                     const SizedBox(height: AppSpacing.lg),
                     PrimaryButton(label: 'Send Code', isLoading: phoneState.isSendingCode, onPressed: _onSendPhoneCode),
                   ] else ...[
@@ -224,11 +352,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
-                    if (phoneState.errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: Text(phoneState.errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
-                      ),
+                    // if (phoneState.errorMessage != null)
+                    //   Padding(
+                    //     padding: const EdgeInsets.only(top: AppSpacing.sm),
+                    //     child: Text(phoneState.errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    //   ),
                     const SizedBox(height: AppSpacing.lg),
                     PrimaryButton(label: 'Verify & Set Password', isLoading: phoneState.isResetting, onPressed: _onResetWithPhoneOtp),
                     const SizedBox(height: AppSpacing.sm),

@@ -61,9 +61,11 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 
 final _routerRefreshNotifierProvider = Provider<_RouterRefreshNotifier>((ref) {
   final notifier = _RouterRefreshNotifier();
+    ref.listen(firebaseAuthUserProvider, (previous, next) {
+    notifier.notify();
+  });
+
   ref.listen(authStateChangesProvider, (previous, next) {
-    // ignore: avoid_print
-    print('[DEBUG refresh] ref.listen fired - previous=$previous next=$next');
     notifier.notify();
   });
   return notifier;

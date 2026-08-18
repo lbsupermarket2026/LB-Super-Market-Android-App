@@ -13,29 +13,44 @@ const _orange = Color(0xFFEF6C00);
 class CustomerNotificationsScreen extends ConsumerWidget {
   const CustomerNotificationsScreen({super.key});
 
-  Future<void> _confirmClearAll(BuildContext context, WidgetRef ref, List notifications) async {
-    // Only "personal" notifications (order updates/assignments) can be
-    // cleared this way — broadcast ones (new_offer, type: uid == null,
-    // shared across every customer) are deliberately excluded, both
-    // because Firestore rules don't allow a regular user to delete a
-    // doc shared with everyone else, and because doing so would clear
-    // it for every customer, not just this one.
-    final clearableIds = notifications.where((n) => n.type != 'new_offer').map((n) => n.id as String).toList();
-    if (clearableIds.isEmpty) return;
+  Future<void> _confirmClearAll(BuildContext context, WidgetRef ref, List<dynamic> notifications) async {
+    // FIXED: broadcast notifications (offers, admin announcements —
+    // uid == null, shared across every customer) were previously
+    // excluded from Clear All entirely, since Firestore rules
+    // correctly block a regular user from DELETING a doc shared with
+    // everyone else. But if even one broadcast slipped into the same
+    // batch as personal ones (a bug elsewhere), the WHOLE delete
+    // batch would fail silently (Firestore batches are all-or-
+    // nothing) — very likely the real explanation for "Clear all does
+    // nothing" whenever an offer/announcement was present. Now
+    // handled properly: personal notifications are genuinely deleted;
+    // broadcasts are "hidden for me" (adds this user's uid to the
+    // doc's hiddenFor array) rather than deleted — the shared
+    // document stays intact for every other customer, only this
+    // person's own view of it changes.
+    final personalIds = notifications.where((n) => n.type != 'new_offer' && n.type != 'admin_broadcast').map((n) => n.id as String).toList();
+    final broadcastIds = notifications.where((n) => n.type == 'new_offer' || n.type == 'admin_broadcast').map((n) => n.id as String).toList();
+    if (personalIds.isEmpty && broadcastIds.isEmpty) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear all notifications?'),
-        content: const Text('This removes your order and delivery notifications. Offer announcements aren\'t affected.'),
+        content: const Text('This clears your entire notification list, including order updates, offers, and announcements.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear all')),
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(customerNotificationsDataSourceProvider).deleteAll(clearableIds);
+    if (confirmed != true) return;
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (personalIds.isNotEmpty) {
+      await ref.read(customerNotificationsDataSourceProvider).deleteAll(personalIds);
+    }
+    if (broadcastIds.isNotEmpty && uid != null) {
+      await ref.read(customerNotificationsDataSourceProvider).hideBroadcastForUser(broadcastIds, uid);
     }
   }
 
@@ -76,7 +91,14 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                 final n = notifications[index];
                 final isOffer = n.type == 'new_offer';
                 final isAssignment = n.type == 'order_assigned';
-                final accentColor = isOffer ? _orange : _green;
+                // FIXED: admin_broadcast (announcements) matched
+                // neither isOffer nor isAssignment above, so it fell
+                // through to the default truck icon — meant for
+                // order_assigned, not an announcement. Announcements
+                // get their own case with a speaker/megaphone icon
+                // instead, matching what they actually are.
+                final isAnnouncement = n.type == 'admin_broadcast';
+                final accentColor = isOffer || isAnnouncement ? _orange : _green;
 
                 // SIMPLIFIED: the previous version layered a dot +
                 // asymmetric colored-stripe border + tint together,
@@ -99,9 +121,11 @@ class CustomerNotificationsScreen extends ConsumerWidget {
                     leading: Icon(
                       isOffer
                           ? Icons.local_offer_outlined
-                          : isAssignment
-                              ? Icons.assignment_turned_in_outlined
-                              : Icons.local_shipping_outlined,
+                          : isAnnouncement
+                              ? Icons.campaign_outlined
+                              : isAssignment
+                                  ? Icons.assignment_turned_in_outlined
+                                  : Icons.local_shipping_outlined,
                       color: accentColor,
                     ),
                     title: Text(titleText, style: TextStyle(fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w800, color: colors.ink)),

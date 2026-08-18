@@ -127,25 +127,23 @@ class AuthRemoteDataSource {
     return _firebaseAuth.currentUser?.emailVerified ?? false;
   }
 
-  Future<(String verificationId, int? resendToken)> sendOtp(String phoneNumber, {int? forceResendingToken}) async {
+  Future<(String verificationId, int? resendToken)> sendOtp(
+    String phoneNumber, {
+    int? forceResendingToken,
+  }) async {
     final completer = Completer<(String, int?)>();
+
     try {
       await _firebaseAuth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
         forceResendingToken: forceResendingToken,
-        verificationCompleted: (credential) async {
-          // Auto-retrieval succeeded — sign in immediately rather than
-          // waiting on a manual code entry that isn't needed.
-          try {
-            await _firebaseAuth.signInWithCredential(credential);
-          } catch (_) {
-            // Swallowed deliberately: if auto sign-in fails here, the
-            // user still has the manual OTP path as a fallback once
-            // verificationId comes through codeSent below.
-          }
+
+        verificationCompleted: (credential) {
+          // Do NOT automatically sign in here.
+          // Wait for the user to enter the OTP and tap Verify.
         },
-        
+
         verificationFailed: (e) {
           print('========== PHONE OTP ERROR ==========');
           print('CODE: ${e.code}');
@@ -164,15 +162,25 @@ class AuthRemoteDataSource {
         },
 
         codeSent: (verificationId, resendToken) {
-          if (!completer.isCompleted) completer.complete((verificationId, resendToken));
+          if (!completer.isCompleted) {
+            completer.complete((verificationId, resendToken));
+          }
         },
+
         codeAutoRetrievalTimeout: (verificationId) {
-          if (!completer.isCompleted) completer.complete((verificationId, null));
+          if (!completer.isCompleted) {
+            completer.complete((verificationId, null));
+          }
         },
       );
     } on fb.FirebaseAuthException catch (e) {
-      if (!completer.isCompleted) completer.completeError(AuthException(_mapFirebaseAuthError(e)));
+      if (!completer.isCompleted) {
+        completer.completeError(
+          AuthException(_mapFirebaseAuthError(e)),
+        );
+      }
     }
+
     return completer.future;
   }
 
@@ -416,12 +424,39 @@ class AuthRemoteDataSource {
     required String newPassword,
   }) async {
     try {
-      final phoneCredential = fb.PhoneAuthProvider.credential(verificationId: verificationId, smsCode: smsCode);
-      final userCredential = await _firebaseAuth.signInWithCredential(phoneCredential);
-      await userCredential.user!.updatePassword(newPassword);
+      final phoneCredential = fb.PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+
+      // Firebase Phone Auth requires authentication before
+      // updatePassword() can be performed.
+      final userCredential =
+          await _firebaseAuth.signInWithCredential(phoneCredential);
+
+      final user = userCredential.user;
+
+      if (user == null) {
+        throw const AuthException(
+          'Could not verify your phone number.',
+        );
+      }
+
+      await user.updatePassword(newPassword);
+
+      // IMPORTANT:
+      // Password reset should NOT leave the user logged in.
+      await _firebaseAuth.signOut();
+
       return userCredential;
     } on fb.FirebaseAuthException catch (e) {
       throw AuthException(_mapFirebaseAuthError(e));
+    } catch (e) {
+      if (e is AuthException) rethrow;
+
+      throw const AuthException(
+        'Could not reset your password. Please try again.',
+      );
     }
   }
 
